@@ -1,0 +1,19 @@
+# general
+escape ^t^t
+startup_message off
+defbce on
+term xterm-256color
+termcapinfo xterm* ti@:te@
+
+# encoding
+defutf8 on
+defkanji utf-8
+encoding utf-8 utf-8
+defencoding utf-8
+
+#split window
+bind s eval split focus "select 0"
+bind q remove
+bind r eval 'command -c resize'
+bind -c resize + eval 'resize +1' 'command -c resize'
+bind -c resize - eval 'resize -1' 'command -c resize'

@@ -1,0 +1,32 @@
+.DS_Store
+Thumbs.db
+.netrwhist
+*~
+#*#
+*.bk
+*.swp
+doc/tags
+doc/tags-j
+
+# emacs
+.emacs.d/undohist
+.emacs.d/ac-comphist.dat
+
+# scm
+.svn
+
+# eclipse
+.project
+.classpath
+.settings
+
+# cakephp
+app/config/database.php.default
+app/config/database.php
+app/config/core.php
+app/tmp
+
+# iphone
+build
+*.pbxuser
+*.mode1v3
