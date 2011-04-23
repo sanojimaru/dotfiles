@@ -8,6 +8,9 @@ Thumbs.db
 doc/tags
 doc/tags-j
 
+# vim
+.vim/bundle
+
 # emacs
 .emacs.d/undohist
 .emacs.d/ac-comphist.dat

@@ -13,7 +13,6 @@ darwin*)
   alias em="emacs -nw"
   alias es="emacs --daemon"
   alias ec="emacsclient -n"
-  export EDITOR="emacs"
 
   # ruby rvm
   [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
@@ -36,7 +35,7 @@ darwin*)
   export PIP_RESPECT_VIRTUALENV=true
 
   # vim
-  # export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
+  export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
   alias vi='env LANG=ja_JP.UTF-8 /Applications/MacVim.app/Contents/MacOS/Vim "$@"'
   alias vim='vi'
   ;;
