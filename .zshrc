@@ -18,7 +18,7 @@ darwin*)
   [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
 
   # node nave
-  # export PATH=$PATH:$HOME/.nave
+  export PATH=$PATH:$HOME/.nave
   # NODE_PATH=`which node`
   # if [ $NODE_PATH = "node not found" ]; then
   #     $HOME/.nave/nave.sh use 0.4.6
