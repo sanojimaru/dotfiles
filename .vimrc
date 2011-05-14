@@ -99,6 +99,45 @@ nnoremap <C-h>  :<C-u>help<Space>
 " カーソル下のキーワードをヘルプでひく
 nnoremap <C-h><C-h> :<C-u>help<Space><C-r><C-w><Enter>
 
+" F2で前のバッファ
+map <F2> <ESC>:bp<CR>
+" F3で次のバッファ
+map <F3> <ESC>:bn<CR>
+" F4でバッファを削除する
+map <F4> <ESC>:bw<CR>
+
+" 最後に編集された位置に移動
+nnoremap gb '[
+nnoremap gp ']
+
+" 対応する括弧に移動
+nnoremap [ %
+nnoremap ] %
+
+" 矩形選択で自由に移動する
+set virtualedit+=block
+
+"ビジュアルモード時vで行末まで選択
+vnoremap v $h
+
+" 括弧を自動補完
+inoremap { {}<LEFT>
+inoremap [ []<LEFT>
+inoremap ( ()<LEFT>
+inoremap " ""<LEFT>
+inoremap ' ''<LEFT>
+"vnoremap { "zdi^V{<C-R>z}<ESC>
+"vnoremap [ "zdi^V[<C-R>z]<ESC>
+"vnoremap ( "zdi^V(<C-R>z)<ESC>
+"vnoremap " "zdi^V"<C-R>z^V"<ESC>
+"vnoremap ' "zdi'<C-R>z'<ESC>
+
+" CTRL-hjklでウィンドウ移動
+nnoremap <C-j> ;<C-w>j
+nnoremap <C-k> ;<C-k>j
+nnoremap <C-l> ;<C-l>j
+nnoremap <C-h> ;<C-h>j
+
 " カーソル行をハイライト
 set cursorline
 " カレントウィンドウにのみ罫線を引く
@@ -136,8 +175,31 @@ Bundle 'git://github.com/mattn/zencoding-vim.git'
 Bundle 'git://github.com/tpope/vim-haml.git'
 Bundle 'git://github.com/hail2u/vim-css3-syntax.git'
 Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
+Bundle 'git://github.com/Shougo/vimproc.git'
+Bundle 'git://github.com/Shougo/vimshell.git'
+Bundle 'git://github.com/thinca/vim-quickrun.git'
+Bundle 'git://github.com/othree/javascript-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
 
 filetype plugin indent on
+
+"------------------------------------
+" vim-quickrun
+"------------------------------------
+let g:quickrun_config = {}
+let g:quickrun_config['ruby.rspec'] = { 'command': 'rspec' }
+
+" ruby.spec
+augroup RSpec
+  autocmd!
+  autocmd BufWinEnter, BufNewFile *_spec.rb set filetype=ruby.rspec
+augroup END
+
+"------------------------------------
+" VimShell
+"------------------------------------
+let g:vimshell_enable_interactive = 1
+let g:vimshell_enable_auto_slash = 1
 
 "------------------------------------
 " neocomplcache

@@ -4,6 +4,7 @@ startup_message off
 defbce on
 term xterm-256color
 termcapinfo xterm* ti@:te@
+defscrollback 5000
 
 # encoding
 defutf8 on
