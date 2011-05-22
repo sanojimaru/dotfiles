@@ -41,6 +41,10 @@ darwin*)
   ;;
 linux*)
   alias ls="ls -l --color"
+  alias "www-data"="sudo su - www-data -s /bin/bash"
+  alias mysql="mysql -uroot -pzaq12wsxcde34rfv -hlocalhost"
+  # ruby rvm
+  [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
   ;;
 esac
 
