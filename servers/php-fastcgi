@@ -11,7 +11,8 @@ PIDFILE=/var/run/php-fastcgi.pid
 
 HOST=127.0.0.1
 PORT=9000
-CHILDREN=8
+SOCKET=/var/run/php-fastcgi.sock
+CHILDREN=2
 USER=www-data
 GROUP=www-data
 
@@ -20,7 +21,8 @@ RETVAL=0
 case "$1" in
     start)
         echo -n $"Starting php-fastcgi: "
-        spawn-fcgi -u $USER -g $GROUP -f $PHP -a $HOST -p $PORT -C $CHILDREN -P $PIDFILE
+        #spawn-fcgi -u $USER -g $GROUP -f $PHP -a $HOST -p $PORT -C $CHILDREN -P $PIDFILE
+        spawn-fcgi -u $USER -g $GROUP -f $PHP -s $SOCKET -C $CHILDREN -P $PIDFILE
         RETVAL=$?
         echo
   ;;
@@ -34,9 +36,10 @@ case "$1" in
         killall -w $PHP
         echo
         if [ $? -eq 0 ]; then
-          spawn-fcgi -u $USER -g $GROUP -f $PHP -a $HOST -p $PORT -C $CHILDREN -P $PIDFILE
-          RETVAL=$?
+          #spawn-fcgi -u $USER -g $GROUP -f $PHP -a $HOST -p $PORT -C $CHILDREN -P $PIDFILE
+          spawn-fcgi -u $USER -g $GROUP -f $PHP -s $SOCKET -C $CHILDREN -P $PIDFILE
         fi
+        RETVAL=$?
   ;;
     status)
         status $PHP
