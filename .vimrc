@@ -1,7 +1,7 @@
 " Vimっす。vi互換なしっす。
 set nocompatible
 " キーマップリーダー
-let mapleader = ","
+let mapleader = "\\"
 " スクロール時の余白確保
 set scrolloff=5
 " 一行に長い文章を書いていても自動折り返しをしない
@@ -34,8 +34,12 @@ set modelines=0
 set expandtab
 " インデントを賢く
 set smartindent
+" 自動でインデント
+set autoindent
 " tab幅を半角2文字に
-set ts=2 sw=2 sts=2
+set tabstop=2
+set shiftwidth=2
+set softtabstop=2
 " 行番号表示
 set number
 "モード表示
@@ -57,7 +61,7 @@ set smartcase
 set incsearch
 " statusline
 set laststatus=2
-set statusline=%<%f\ %m%r%h%w%{'['.(&fenc!=''?&fenc:&enc).':'.&ff.']'}%=%l,%c%v%8p
+set statusline=%<%f\ %y\ %m%r%h%w%{'['.(&fenc!=''?&fenc:&enc).':'.&ff.']'}%=%l,%c%8p
 " encoding
 set enc=utf8
 " backup
@@ -87,12 +91,12 @@ command! Ev edit $MYVIMRC
 command! Rv source $MYVIMRC
 
 "Escの2回押しでハイライト消去
-nmap <ESC><ESC> ;nohlsearch<CR><ESC>
+nmap <ESC><ESC> :nohlsearch<CR><ESC>
 
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
 " 保存時にtabをスペースに変換する
-autocmd BufWritePre * :%s/\t/  /ge
+"autocmd BufWritePre * :%s/\t/  /ge
 
 " Ctrl-iでヘルプ
 nnoremap <C-h>  :<C-u>help<Space>
@@ -212,6 +216,11 @@ let g:vimshell_enable_interactive = 1
 let g:vimshell_enable_auto_slash = 1
 
 "------------------------------------
+" SnipMate
+"------------------------------------
+let g:snippets_dir = $HOME.'/.vim/snippets'
+
+"------------------------------------
 " neocomplcache
 "------------------------------------
 " 起動時に有効化
@@ -224,8 +233,18 @@ let g:neocomplcache_enable_camel_case_completion = 1
 let g:neocomplcache_enable_underbar_completion = 1
 " シンタックスファイルの補完対象キーワードとする最小の長さ
 let g:neocomplcache_min_syntax_length = 3
+let g:neocomplcache_min_keyword_length = 3
+let g:neocomplcache_plugin_completion_length = {
+  \ 'snipmate_complete' : 1,
+  \ 'keyword_complete' : 2,
+  \ 'syntax_complete' : 2
+  \ }
+
 " 候補popup時に先頭の候補を選択しておく
 let g:neocomplcache_enable_auto_select = 0
+
+" Define snippets directory.
+let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
 
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {

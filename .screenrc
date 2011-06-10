@@ -1,5 +1,5 @@
 # general
-escape ^t^t
+escape ^a^a
 startup_message off
 defbce on
 term xterm-256color
