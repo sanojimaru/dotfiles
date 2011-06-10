@@ -23,12 +23,6 @@ doc/tags-j
 .classpath
 .settings
 
-# cakephp
-app/config/database.php.default
-app/config/database.php
-app/config/core.php
-app/tmp
-
 # iphone
 build
 *.pbxuser

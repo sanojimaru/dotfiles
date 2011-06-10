@@ -25,7 +25,7 @@ darwin*)
   # fi
 
   # cakephp
-  export PATH=$PATH:$HOME/usr/local/src/cakephp/cake/console
+  alias cake=$HOME/workspace/cakephp/cake/console/cake
 
   # python
   export WORKON_HOME=$HOME/.virtualenvs
@@ -72,7 +72,7 @@ case ${UID} in
   # Prompt
   setopt prompt_subst
   PROMPT='${RESET}${GREEN}${WINDOW:+"[$WINDOW]"}${RESET}%{$fg_bold[blue]%}${USER}@%m ${RESET}${WHITE}$ ${RESET}'
-  RPROMPT='${RESET}${WHITE}[${BLUE}%(5~,%-2~/.../%2~,%~)% ${WHITE}]${WINDOW:+"[$WINDOW]"} ${RESET}'
+  RPROMPT='${RESET}${WHITE}[${BLUE}%(5~,%-2~/.../%2~,%~)% ${WHITE}] ${RESET}'
   ;;
 esac
 
@@ -143,7 +143,7 @@ setopt nolistbeep
 setopt extended_glob
 
 # Keybind configuration
-bindkey -e
+bindkey -v
 
 # Backspace key
 bindkey "^?" backward-delete-char

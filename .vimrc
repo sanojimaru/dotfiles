@@ -180,8 +180,18 @@ Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
 Bundle 'git://github.com/othree/javascript-syntax.vim.git'
 Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+Bundle 'git://github.com/vim-scripts/SQLComplete.git'
 
-filetype plugin indent on
+filetype on
+filetype plugin on
+filetype indent on
+
+"------------------------------------
+" filetype
+"------------------------------------
+" .phpにhtmlモードを追加する
+autocmd BufNewFile,BufRead *.ctp set filetype=php.html
+autocmd BufNewFile,BufRead *.php set filetype=php.html
 
 "------------------------------------
 " vim-quickrun
