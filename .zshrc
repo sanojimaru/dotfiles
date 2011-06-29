@@ -1,5 +1,7 @@
 # Environment variable configuration
 export LANG=ja_JP.UTF-8
+export LANGUAGE=C
+export LC_ALL=C
 
 # OSにより端末を判定
 case "${OSTYPE}" in
