@@ -5,9 +5,12 @@
 
 ;; 文字コード
 ;;(set-language-environment 'japanese)
-(set-language-environment  'utf-8)
-(prefer-coding-system 'utf-8)
-(set-default-coding-systems 'utf-8-unix)
+(prefer-coding-system           'utf-8-unix)
+(setq                           default-buffer-file-coding-system 'utf-8)
+(set-buffer-file-coding-system  'utf-8)
+(set-terminal-coding-system     'utf-8)
+(set-keyboard-coding-system     'utf-8)
+(set-clipboard-coding-system    'utf-8)
 
 ;; enable debug mode
 (setq debug-on-error t)
@@ -35,7 +38,7 @@
 (global-hl-line-mode t)
 
 ;; window size
-(setq initial-frame-alist 
+(setq initial-frame-alist
       (append
        '((width . 160)
          (height . 45))
@@ -157,7 +160,7 @@
         anything-c-source-emacs-functions
         ))
 
-;; auto-complete 
+;; auto-complete
 ;; (auto-install-batch "auto-complete development version")
 (require 'auto-complete)
 (global-auto-complete-mode t)
@@ -171,7 +174,7 @@
  '(nxhtml-skip-welcome t))
 (custom-set-faces
  '(mumamo-background-chunk-major ((((class color) (min-colors 8)) (:background "*"))))
- '(mumamo-background-chunk-submode1 ((((class color) (min-colors 88) (background dark)) (:background "grey10")))))
+ '(mumamo-background-chunk-submode1 ((((class color) (min-colors 8)) (:background "grey10")))))
 (add-hook 'nxml-mode-hook
           (lambda ()
             (setq auto-fill-mode -1)
@@ -180,6 +183,7 @@
             (setq indent-tabs-mode t)
             (setq tab-width 2)
             (define-key nxml-mode-map "\r" 'newline-and-indent)))
+(add-to-list 'auto-mode-alist '("\\.ctp\\'" . nxhtml-mumamo-mode))
 
 ;; php-mode
 ;; php-completion
@@ -190,7 +194,11 @@
 (add-hook 'php-mode-hook
          (lambda ()
            ;; php-mode
-           (setq php-mode-force-pear t)
+           (c-set-style "stroustrup")
+           (setq tab-width 2
+                 c-basic-offset 2
+                 c-hanging-comment-ender-p nil
+                 indent-tabs-mode nil)
            (setq php-manual-path "/usr/share/doc/php/html")
            (setq php-manual-url "http://www.phppro.jp/phpmanual")
            ;; php-completion
