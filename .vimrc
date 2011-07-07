@@ -96,7 +96,7 @@ nmap <ESC><ESC> :nohlsearch<CR><ESC>
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
 " 保存時にtabをスペースに変換する
-"autocmd BufWritePre * :%s/\t/  /ge
+autocmd BufWritePre * :%s/\t/  /ge
 
 " Ctrl-iでヘルプ
 nnoremap <C-h>  :<C-u>help<Space>
@@ -130,11 +130,6 @@ inoremap [ []<LEFT>
 inoremap ( ()<LEFT>
 inoremap " ""<LEFT>
 inoremap ' ''<LEFT>
-"vnoremap { "zdi^V{<C-R>z}<ESC>
-"vnoremap [ "zdi^V[<C-R>z]<ESC>
-"vnoremap ( "zdi^V(<C-R>z)<ESC>
-"vnoremap " "zdi^V"<C-R>z^V"<ESC>
-"vnoremap ' "zdi'<C-R>z'<ESC>
 
 " CTRL-hjklでウィンドウ移動
 nnoremap <C-j> ;<C-w>j
@@ -171,20 +166,19 @@ Bundle 'git://github.com/scrooloose/nerdcommenter.git'
 Bundle 'git://github.com/msanders/snipmate.vim.git'
 Bundle 'git://github.com/tpope/vim-rails.git'
 Bundle 'git://github.com/vim-ruby/vim-ruby.git'
-Bundle 'git://github.com/motemen/git-vim.git'
 Bundle 'git://github.com/Shougo/neocomplcache.git'
 Bundle 'git://github.com/Shougo/unite.vim.git'
 Bundle 'git://github.com/tsukkee/unite-help.git'
-Bundle 'git://github.com/mattn/zencoding-vim.git'
 Bundle 'git://github.com/tpope/vim-haml.git'
+Bundle 'git://github.com/othree/html5.vim.git'
 Bundle 'git://github.com/hail2u/vim-css3-syntax.git'
+Bundle 'git://github.com/othree/javascript-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+Bundle 'git://github.com/kchmck/vim-coffee-script.git'
 Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
 Bundle 'git://github.com/Shougo/vimproc.git'
 Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
-Bundle 'git://github.com/othree/javascript-syntax.vim.git'
-Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
-Bundle 'git://github.com/vim-scripts/SQLComplete.git'
 
 filetype on
 filetype plugin on
@@ -196,6 +190,12 @@ filetype indent on
 " .phpにhtmlモードを追加する
 autocmd BufNewFile,BufRead *.ctp set filetype=php.html
 autocmd BufNewFile,BufRead *.php set filetype=php.html
+
+" .jstにerbモード、htmlモードを追加する
+autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
+
+" .erbにhtmlモードを追加する
+autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
 
 "------------------------------------
 " vim-quickrun
@@ -241,10 +241,10 @@ let g:neocomplcache_plugin_completion_length = {
   \ }
 
 " 候補popup時に先頭の候補を選択しておく
-let g:neocomplcache_enable_auto_select = 0
+let g:neocomplcache_enable_auto_select = 1
 
 " Define snippets directory.
-let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
+"let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
 
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {
@@ -262,7 +262,7 @@ let g:neocomplcache_keyword_patterns['default'] = '\h\w*'
 
 " Recommended key-mappings.
 " <CR>: close popup and save indent.
-" inoremap <expr><CR>  neocomplcache#smart_close_popup() . "\<CR>"
+"inoremap <expr><CR>  neocomplcache#smart_close_popup()."\<CR>"
 " <TAB>: completion.
 inoremap <expr><TAB>  pumvisible() ? "\<C-n>" : "\<TAB>"
 " <C-h>, <BS>: close popup and delete backword char.
@@ -274,17 +274,17 @@ inoremap <expr><C-e>  neocomplcache#cancel_popup()
 " Enable omni completion.
 autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
 autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
+autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
 autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
 autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
-autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 
 " Enable heavy omni completion.
-if !exists('g:neocomplcache_omni_patterns')
-  let g:neocomplcache_omni_patterns = {}
-endif
-let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
-let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
+"if !exists('g:neocomplcache_omni_patterns')
+"  let g:neocomplcache_omni_patterns = {}
+"endif
+"let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
+"let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
 
 
 "------------------------------------

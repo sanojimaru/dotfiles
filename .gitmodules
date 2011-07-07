@@ -1,3 +1,6 @@
 [submodule ".vim/vundle.git"]
 	path = .vim/vundle.git
 	url = http://github.com/gmarik/vundle.git
+[submodule ".emacs.d/packages/nxhtml"]
+	path = .emacs.d/packages/nxhtml
+	url = https://github.com/emacsmirror/nxhtml.git

@@ -6,26 +6,16 @@ case "${OSTYPE}" in
 darwin*)
   alias ls="ls -lG -w"
   alias ks="ls"
-
-  # emacs
-  alias emacs='/Applications/Emacs.app/Contents/MacOS/Emacs "$@"'
-  alias emacsclient='/Applications/Emacs.app/Contents/MacOS/bin/emacsclient "$@"'
-  alias em="emacs -nw"
-  alias es="emacs --daemon"
-  alias ec="emacsclient -n"
+  alias sl="ls"
 
   # ruby rvm
   [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
 
-  # node nave
-  export PATH=$PATH:$HOME/.nave
-  # NODE_PATH=`which node`
-  # if [ $NODE_PATH = "node not found" ]; then
-  #     $HOME/.nave/nave.sh use 0.4.6
-  # fi
+  # node nvm
+  source $HOME/.nvm/nvm.sh
 
   # cakephp
-  alias cake=$HOME/workspace/cakephp/cake/console/cake
+  alias cake='$HOME/workspace/cakephp/cake/console/cake "$@"'
 
   # python
   export WORKON_HOME=$HOME/.virtualenvs
@@ -34,10 +24,17 @@ darwin*)
   export PIP_REQUIRE_VIRTUALENV=true
   export PIP_RESPECT_VIRTUALENV=true
 
+  # android
+  export PATH=$PATH:$HOME/.android-sdk/apktool
+
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
-  alias vi='env LANG=ja_JP.UTF-8 /Applications/MacVim.app/Contents/MacOS/Vim "$@"'
+  alias vi='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
   alias vim='vi'
+
+  # emacs
+  alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
+  alias em='emacs -nw'
   ;;
 linux*)
   alias ls="ls -l --color"
@@ -159,8 +156,8 @@ bindkey "\\en" history-beginning-search-forward-end
 
 # Command history configuration
 HISTFILE=~/.zsh_history
-HISTSIZE=1000
-SAVEHIST=1000
+HISTSIZE=10000
+SAVEHIST=10000
 
 # 登録済コマンド行は古い方を削除
 setopt hist_ignore_all_dups
