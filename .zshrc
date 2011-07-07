@@ -142,7 +142,7 @@ setopt nolistbeep
 setopt extended_glob
 
 # Keybind configuration
-bindkey -v
+bindkey -e
 
 # Backspace key
 bindkey "^?" backward-delete-char
