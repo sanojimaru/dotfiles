@@ -4,7 +4,39 @@
 ;; set user infomation
 (setq user-full-name "sanojimaru")
 (setq user-mail-address "sanojimaru@gmail.com")
-(setq default-input-method "macosx")
+
+; emacs の種類バージョンを判別するための変数を定義
+;; @see http://github.com/elim/dotemacs/blob/master/init.el
+(defun x->bool (elt) (not (not elt)))
+(defvar emacs22-p (equal emacs-major-version 22))
+(defvar emacs23-p (equal emacs-major-version 23))
+(defvar darwin-p (eq system-type 'darwin))
+(defvar ns-p (featurep 'ns))
+(defvar carbon-p (and (eq window-system 'mac) emacs22-p))
+(defvar mac-p (and (eq window-system 'mac) emacs23-p))
+(defvar linux-p (eq system-type 'gnu/linux))
+(defvar colinux-p (when linux-p
+                    (let ((file "/proc/modules"))
+                      (and
+                      (file-readable-p file)
+                       (x->bool
+                        (with-temp-buffer
+                          (insert-file-contents file)
+                          (goto-char (point-min))
+                          (re-search-forward "^cofuse\.+" nil t)))))))
+(defvar cygwin-p (eq system-type 'cygwin))
+(defvar nt-p (eq system-type 'windows-nt))
+(defvar meadow-p (featurep 'meadow))
+(defvar windows-p (or cygwin-p nt-p meadow-p))
+
+;; OS毎の設定
+(cond (mac-p 
+       (lambda ()
+         (setq auto-install-wget-command "/usr/local/bin/wget"
+               default-input-method "macosx")))
+      (linux-p 
+       (lambda ()
+         (setq auto-install-wget-command "/usr/bin/wget"))))
 
 ;; 文字コード
 ;;(set-language-environment 'japanese)
@@ -102,9 +134,6 @@
 ;; windowの移動をs-矢印に
 (windmove-default-keybindings)
 
-;; wgetを指定
-(setq auto-install-wget-command "/usr/local/bin/wget")
-
 ;; 引数を load-path へ追加
 ;; normal-top-level-add-subdirs-to-load-path はディレクトリ中の中で
 ;; [a-za-z] で開始する物だけ追加するので、追加したくない物は . や _ を先頭に付与しておけばロードしない
@@ -126,30 +155,6 @@
 (setq auto-install-directory "~/.emacs.d/auto-install/")
 (auto-install-update-emacswiki-package-name t)
 (auto-install-compatibility-setup)
-
-; emacs の種類バージョンを判別するための変数を定義
-;; @see http://github.com/elim/dotemacs/blob/master/init.el
-(defun x->bool (elt) (not (not elt)))
-(defvar emacs22-p (equal emacs-major-version 22))
-(defvar emacs23-p (equal emacs-major-version 23))
-(defvar darwin-p (eq system-type 'darwin))
-(defvar ns-p (featurep 'ns))
-(defvar carbon-p (and (eq window-system 'mac) emacs22-p))
-(defvar mac-p (and (eq window-system 'mac) emacs23-p))
-(defvar linux-p (eq system-type 'gnu/linux))
-(defvar colinux-p (when linux-p
-                    (let ((file "/proc/modules"))
-                      (and
-                       (file-readable-p file)
-                       (x->bool
-                        (with-temp-buffer
-                          (insert-file-contents file)
-                          (goto-char (point-min))
-                          (re-search-forward "^cofuse\.+" nil t)))))))
-(defvar cygwin-p (eq system-type 'cygwin))
-(defvar nt-p (eq system-type 'windows-nt))
-(defvar meadow-p (featurep 'meadow))
-(defvar windows-p (or cygwin-p nt-p meadow-p))
 
 ;; font
 (add-to-list 'default-frame-alist '(font . "ricty-12"))
@@ -178,8 +183,8 @@
 
 ;; auto-complete
 ;; (auto-install-batch "auto-complete development version")
-(require 'auto-complete)
-(global-auto-complete-mode t)
+;;(require 'auto-complete)
+;;(global-auto-complete-mode t)
 
 ;; nxhtml-mode
 (load "~/.emacs.d/packages/nxhtml/autostart.el")
