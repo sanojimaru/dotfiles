@@ -1,0 +1,15 @@
+#!/bin/sh
+# filename: emacs
+
+PID=`ps -e | grep emacs | head -1 | awk '{ print $1 }'`
+XMODIFIERS=@im=none
+
+if [ $PID -eq $$ ]; then
+    #/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs -nw "$@"
+    open -a Emacs.app "$@"
+elif [ -z "$1" ]; then
+    echo "Usage: $0 <filename>"
+else
+    /usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/bin/emacsclient "$@"
+fi
+

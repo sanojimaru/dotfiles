@@ -1,7 +1,7 @@
 # Environment variable configuration
 export LANG=ja_JP.UTF-8
-export LANGUAGE=C
-export LC_ALL=C
+export LANGUAGE=ja_JP.UTF-8
+export LC_ALL=ja_JP.UTF-8
 
 # OSにより端末を判定
 case "${OSTYPE}" in
@@ -31,12 +31,13 @@ darwin*)
 
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
-  alias vi='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
-  alias vim='vi'
+  alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
+  alias v='vim'
 
   # emacs
-  alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
-  alias em='emacs -nw'
+  #alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
+  alias emacs='$HOME/.emacs.d/emacs "$@"'
+  alias e='emacs'
   ;;
 linux*)
   alias ls="ls -l --color"

@@ -1,3 +1,6 @@
+;; start server
+(server-start)
+
 ;; set user infomation
 (setq user-full-name "sanojimaru")
 (setq user-mail-address "sanojimaru@gmail.com")
@@ -31,6 +34,7 @@
 
 ;; display line number, column number
 ;(global-linum-mode)
+(line-number-mode t)
 (column-number-mode t)
 (setq default-fill-column 80)
 
@@ -40,28 +44,34 @@
 ;; window size
 (setq initial-frame-alist
       (append
-       '((width . 160)
-         (height . 45))
+       '((width . 80)
+         (height . 50))
        initial-frame-alist))
 
 ;; command-key and option-key
-(when (eq system-type 'darwin)     ; もし、システムが Mac のとき
-  (setq mac-command-key-is-meta nil) ; コマンドキーをメタにしない
-  (setq mac-option-modifier 'meta)   ; オプションキーをメタに
-  (setq mac-command-modifier 'super) ; コマンドキーを Super に
-  (setq mac-pass-control-to-system t)) ; コントロールキーを Mac ではなく Emacs に渡す
+(setq ns-command-modifier (quote meta))
+(setq ns-alternate-modifier (quote super))
+(setq mac-pass-control-to-system nil)
+(setq mac-pass-command-to-system nil)
+(setq mac-pass-option-to-system nil)
 
 ;; バックアップファイルを残さない
 (setq make-backup-files nil)
 
-;; 自動保存しない
-(setq auto-save-default nil)
+;; 自動保存ファイルを終了時に削除
+(setq delete-auto-save-files t)
 
 ;; ベルを鳴らさない
 (setq ring-bell-function 'ignore)
 
 ;; 1行ずつスクロール
 (setq scroll-step 1)
+
+;; スクロールバーを表示
+(set-scroll-bar-mode 'right)
+
+;; モードラインに時計を表示
+(display-time)
 
 ;; 折り返さない
 (setq truncate-lines t)
@@ -91,6 +101,9 @@
 
 ;; windowの移動をs-矢印に
 (windmove-default-keybindings)
+
+;; wgetを指定
+(setq auto-install-wget-command "/usr/local/bin/wget")
 
 ;; 引数を load-path へ追加
 ;; normal-top-level-add-subdirs-to-load-path はディレクトリ中の中で
@@ -141,6 +154,9 @@
 ;; font
 (add-to-list 'default-frame-alist '(font . "ricty-12"))
 
+;; full screen
+(global-set-key (kbd "M-RET") 'ns-toggle-fullscreen)
+
 ;; wombat
 ;; (install-elisp "http://www.elektronensturm.de/files/dateien/color-theme-wombat.el")
 (require 'color-theme-wombat)
@@ -149,7 +165,7 @@
 ;; anything.el
 ;; (auto-install-batch "anything")
 (require 'anything-startup)
-(define-key global-map (kbd "C-x C-a") 'anything)
+(define-key global-map (kbd "C-l") 'anything)
 (setq anything-sources
       '(anything-c-source-buffers+
         anything-c-source-files-in-current-dir
