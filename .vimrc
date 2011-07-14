@@ -1,4 +1,3 @@
-" Vimっす。vi互換なしっす。
 set nocompatible
 " キーマップリーダー
 let mapleader = "\\"
@@ -40,6 +39,8 @@ set autoindent
 set tabstop=2
 set shiftwidth=2
 set softtabstop=2
+" tabを賢く
+set smarttab
 " 行番号表示
 set number
 "モード表示
@@ -71,32 +72,81 @@ colorscheme wombat256mod
 " font
 set gfn=Ricty\ Regular:h12
 set gfw=Ricty\ Regular:h12
+" 特殊文字見せる
+set list
+set listchars=tab:>.,trail:_,nbsp:%,extends:>,precedes:<
+
+" Enable mouse support.
+set mouse=a
+" For screen.
+if &term =~ "^screen"
+  augroup MyAutoCmd
+    autocmd VimLeave * :set mouse=
+  augroup END
+  " screenでマウスを使用するとフリーズするのでその対策
+  set ttymouse=xterm2
+endif
 
 " GVim setting
 if has("gui_running")
   " size
   set co=160
   set lines=50
+  " hide menubar, toolbar, scrollbar
+  set guioptions-=m
+  set guioptions-=T
+  set guioptions-=r
+  set guioptions-=L
+  " Show popup menu if right click.
+  set mousemodel=popup
+  " Don't focus the window when the mouse pointer is moved.
+  set nomousefocus
+  " Hide mouse pointer on insert mode.
+  set mousehide
 endif
 
 " OSのクリップボードを使用する
 set clipboard+=unnamed
-"ヤンクした文字は、システムのクリップボードに入れる"
+"ヤンクした文字は、システムのクリップボードに入れる
 set clipboard=unnamed
-" 挿入モードでCtrl+kを押すとクリップボードの内容を貼り付けられるようにする "
-imap <C-K>  <ESC>"*pa
 
 " Ev/Rvでvimrcの編集と反映
 command! Ev edit $MYVIMRC
 command! Rv source $MYVIMRC
 
-"Escの2回押しでハイライト消去
-nmap <ESC><ESC> :nohlsearch<CR><ESC>
-
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
 " 保存時にtabをスペースに変換する
 autocmd BufWritePre * :%s/\t/  /ge
+
+" 矩形選択で自由に移動する
+set virtualedit+=block
+
+" カーソル行をハイライト
+set cursorline
+" カレントウィンドウにのみ罫線を引く
+augroup cch
+  autocmd! cch
+  autocmd WinLeave * set nocursorline
+  autocmd WinEnter,BufRead * set cursorline
+augroup END
+:hi clear CursorLine
+:hi CursorLine gui=underline
+highlight CursorLine ctermbg=black guibg=black
+
+"------------------------------------
+" keymap
+"------------------------------------
+" C-a, Tab, C-eで行頭、先頭、行末移動
+nnoremap <C-e> <S-a>
+nnoremap <C-a> 0i
+nnoremap <Tab> ^i
+
+" 挿入モードでCtrl+kを押すとクリップボードの内容を貼り付けられるようにする "
+imap <C-K>  <ESC>"*pa
+
+"Escの2回押しでハイライト消去
+nmap <ESC><ESC> :nohlsearch<CR><ESC>
 
 " Ctrl-iでヘルプ
 nnoremap <C-h>  :<C-u>help<Space>
@@ -118,9 +168,6 @@ nnoremap gp ']
 nnoremap [ %
 nnoremap ] %
 
-" 矩形選択で自由に移動する
-set virtualedit+=block
-
 "ビジュアルモード時vで行末まで選択
 vnoremap v $h
 
@@ -137,17 +184,6 @@ nnoremap <C-k> ;<C-k>j
 nnoremap <C-l> ;<C-l>j
 nnoremap <C-h> ;<C-h>j
 
-" カーソル行をハイライト
-set cursorline
-" カレントウィンドウにのみ罫線を引く
-augroup cch
-  autocmd! cch
-  autocmd WinLeave * set nocursorline
-  autocmd WinEnter,BufRead * set cursorline
-augroup END
-:hi clear CursorLine
-:hi CursorLine gui=underline
-highlight CursorLine ctermbg=black guibg=black
 
 "------------------------------------
 " vundle.git
@@ -300,9 +336,9 @@ nmap ss <Plug>Yssurround
 " 入力モードで開始する
 let g:unite_enable_start_insert=1
 " バッファ一覧
-noremap <C-x><C-l> :Unite buffer<CR>
+noremap <C-l> :Unite buffer<CR>
 " ファイル一覧
-noremap <C-x><C-f> :Unite -buffer-name=file file<CR>
+noremap <C-w> :Unite -buffer-name=file file<CR>
 " 最近使ったファイルの一覧
 noremap <C-x><C-r> :Unite file_mru<CR>
 " ESCキーを2回押すと終了する

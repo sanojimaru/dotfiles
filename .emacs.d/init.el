@@ -81,8 +81,8 @@
        initial-frame-alist))
 
 ;; command-key and option-key
-(setq ns-command-modifier (quote meta))
-(setq ns-alternate-modifier (quote super))
+;(setq ns-command-modifier (quote meta))
+;(setq ns-alternate-modifier (quote super))
 (setq mac-pass-control-to-system nil)
 (setq mac-pass-command-to-system nil)
 (setq mac-pass-option-to-system nil)
@@ -185,6 +185,12 @@
 ;; (auto-install-batch "auto-complete development version")
 ;;(require 'auto-complete)
 ;;(global-auto-complete-mode t)
+
+;; yasnippet
+(add-to-list 'load-path "~/.emacs.d/packages/yasnippet-0.6.1c")
+(require 'yasnippet)
+(yas/initialize)
+(yas/load-directory "~/.emacs.d/packages/yasnippet-0.6.1c/snippets")
 
 ;; nxhtml-mode
 (load "~/.emacs.d/packages/nxhtml/autostart.el")

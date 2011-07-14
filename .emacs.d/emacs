@@ -10,6 +10,6 @@ if [ $PID -eq $$ ]; then
 elif [ -z "$1" ]; then
     echo "Usage: $0 <filename>"
 else
-    /usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/bin/emacsclient "$@"
+    /usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/bin/emacsclient --no-wait "$@"
 fi
 

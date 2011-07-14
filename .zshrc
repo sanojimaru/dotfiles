@@ -1,7 +1,7 @@
 # Environment variable configuration
-export LANG=ja_JP.UTF-8
-export LANGUAGE=ja_JP.UTF-8
-export LC_ALL=ja_JP.UTF-8
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
 
 # OSにより端末を判定
 case "${OSTYPE}" in
@@ -31,8 +31,11 @@ darwin*)
 
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
-  alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
+  alias vim='/Applications/MacVim.app/Contents/MacOS/Vim -u $HOME/.vimrc "$@"'
+  alias vi='vim'
   alias v='vim'
+  alias gvim='open -a MacVim.app "$@"'
+  alias gv='gvim'
 
   # emacs
   #alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
@@ -68,11 +71,6 @@ case ${UID} in
   RED="%{${fg[red]}%}"
   CYAN="%{${fg[cyan]}%}"
   WHITE="%{${fg[white]}%}"
-
-  # Prompt
-  setopt prompt_subst
-  PROMPT='${RESET}${GREEN}${WINDOW:+"[$WINDOW]"}${RESET}%{$fg_bold[blue]%}${USER}@%m ${RESET}${WHITE}$ ${RESET}'
-  RPROMPT='${RESET}${WHITE}[${BLUE}%(5~,%-2~/.../%2~,%~)% ${WHITE}] ${RESET}'
   ;;
 esac
 
@@ -90,6 +88,23 @@ xterm|xterm-color|xterm-256color|screen|screen-256color)
     }
     ;;
 esac
+
+# Prompt
+setopt prompt_subst
+PROMPT='${RESET}${GREEN}${WINDOW:+"[$WINDOW]"}${RESET}%{$fg_bold[blue]%}${USER}@%m ${RESET}${WHITE}$ ${RESET}'
+RPROMPT='${RESET}${WHITE}%1(v|%F{green}%1v%f|)[${BLUE}%(5~,%-2~/.../%2~,%~)% ${WHITE}] ${RESET}'
+#RPROMPT='${RESET}${WHITE}[${BLUE}%(5~,%-2~/.../%2~,%~)% ${WHITE}] ${RESET}'
+# %1(v|%F{green}%1v%f|)
+
+# vcs_info
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' formats '(%s)-[%b]'
+zstyle ':vcs_info:*' actionformats '(%s)-[%b|%a]'
+precmd () {
+    psvar=()
+    LANG=en_US.UTF-8 vcs_info
+    [[ -n "$vcs_info_msg_0_" ]] && psvar[1]="$vcs_info_msg_0_"
+}
 
 # 指定したコマンド名がなく、ディレクトリ名と一致した場合 cd する
 setopt auto_cd
