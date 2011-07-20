@@ -20,14 +20,14 @@ darwin*)
   alias cake='$HOME/workspace/cakephp/cake/console/cake "$@"'
 
   # python
-  export WORKON_HOME=$HOME/.virtualenvs
-  source /usr/local/bin/virtualenvwrapper.sh
-  export PIP_DOWNLOAD_CACHE=~/.pip_cache
-  export PIP_REQUIRE_VIRTUALENV=true
-  export PIP_RESPECT_VIRTUALENV=true
+  #export WORKON_HOME=$HOME/.virtualenvs
+  #source /usr/local/bin/virtualenvwrapper.sh
+  #export PIP_DOWNLOAD_CACHE=~/.pip_cache
+  #export PIP_REQUIRE_VIRTUALENV=true
+  #export PIP_RESPECT_VIRTUALENV=true
 
   # android
-  export PATH=$PATH:$HOME/.android-sdk/apktool
+  #export PATH=$PATH:$HOME/.android-sdk/apktool
 
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
@@ -47,7 +47,7 @@ linux*)
   alias "www-data"="sudo su - www-data -s /bin/bash"
   alias mysql="mysql -uroot -pzaq12wsxcde34rfv -hlocalhost"
   # ruby rvm
-  [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+  #[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
   ;;
 esac
 

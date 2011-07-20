@@ -178,7 +178,8 @@ inoremap ( ()<LEFT>
 inoremap " ""<LEFT>
 inoremap ' ''<LEFT>
 
-" CTRL-hjklでウィンドウ移動
+" ウィンドウ移動
+nnoremap <C-Right> ;<C-l>j
 nnoremap <C-j> ;<C-w>j
 nnoremap <C-k> ;<C-k>j
 nnoremap <C-l> ;<C-l>j
