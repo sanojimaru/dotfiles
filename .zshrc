@@ -47,7 +47,8 @@ linux*)
   alias "www-data"="sudo su - www-data -s /bin/bash"
   alias mysql="mysql -uroot -pzaq12wsxcde34rfv -hlocalhost"
   # ruby rvm
-  #[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+  [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+  [[ -s "/usr/local/rvm/scripts/rvm" ]] && source "/usr/local/rvm/scripts/rvm"
   ;;
 esac
 
