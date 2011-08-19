@@ -131,12 +131,12 @@ snippet base
 snippet r
 	<br`Close()[1:]`>
 snippet div
-	<div class="${1:name}">
+	<div id="${1:name}">
 		${2}
 	</div>
 # Embed QT Movie
 snippet movie
-	<object width="$2" height="$3" classclass="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B"
+	<object width="$2" height="$3" classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B"
 	 codebase="http://www.apple.com/qtactivex/qtplugin.cab">
 		<param name="src" value="$1"`Close()`>
 		<param name="controller" value="$4"`Close()`>
@@ -149,7 +149,7 @@ snippet movie
 		`Close()[1:]`>
 	</object>${6}
 snippet fieldset
-	<fieldset class="$1">
+	<fieldset id="$1">
 		<legend>${1:name}</legend>
 
 		${3}
@@ -162,17 +162,11 @@ snippet form
 	<p><input type="submit" value="Continue &rarr;"`Close()`></p>
 	</form>
 snippet h1
-	<h1 class="${1:heading}">${2:$1}</h1>
-snippet h2
-	<h2 class="${1:heading}">${2:$1}</h2>
-snippet h3
-	<h3 class="${1:heading}">${2:$1}</h3>
-snippet h5
-	<h5 class="${1:heading}">${2:$1}</h5>
+	<h1 id="${1:heading}">${2:$1}</h1>
 snippet input
 	<input type="${1:text/submit/hidden/button}" name="${2:some_name}" value="${3}"`Close()`>${4}
 snippet label
-	<label for="${2:$1}">${1:name}</label><input type="${3:text/submit/hidden/button}" name="${4:$2}" value="${5}" class="${6:$2}"`Close()`>${7}
+	<label for="${2:$1}">${1:name}</label><input type="${3:text/submit/hidden/button}" name="${4:$2}" value="${5}" id="${6:$2}"`Close()`>${7}
 snippet link
 	<link rel="${1:stylesheet}" href="${2:/css/master.css}" type="text/css" media="${3:screen}" charset="utf-8"`Close()`>${4}
 snippet mailto
@@ -184,48 +178,13 @@ snippet opt
 snippet optt
 	<option>${1:option}</option>${2}
 snippet select
-	<select name="${1:some_name}" class="${2:$1}">
+	<select name="${1:some_name}" id="${2:$1}">
 		<option value="${3:option}">${4:$3}</option>
-	</select>
-	${5}
+	</select>${5}
 snippet table
-	<table>
-		<tr>
-			<th>${2:Header}</th>
-			<td>${3:Data}</td>
-		</tr>
-	</table>
-	${4}
-snippet tr
-	<tr>
-		<td>${1}</td>
-	</tr>
-	${2}
-snippet th
-	<th>${1}</th>
-	${2}
-snippet td
-	<td>${1}</td>
-	${2}
-snippet ul
-	<ul class="${1}">
-		<li>${2}</li>
-	</ul>
-	${3}
-snippet li
-	<li>${1}</li>
-	${2}
-snippet dl
-	<dl class="${1}">
-		<dt>${2}</dt>
-		<dd>${3}</dd>
-	</dl>
-	${4}
-snippet dt
-	<dt>${1}</dt>
-	${2}
-snippet dd
-	<dd>${1}</dd>
-	${2}
+	<table border="${1:0}">
+		<tr><th>${2:Header}</th></tr>
+		<tr><th>${3:Data}</th></tr>
+	</table>${4}
 snippet textarea
 	<textarea name="${1:Name}" rows="${2:8}" cols="${3:40}">${4}</textarea>${5}

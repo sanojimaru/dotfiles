@@ -67,7 +67,8 @@ set statusline=%<%f\ %y\ %m%r%h%w%{'['.(&fenc!=''?&fenc:&enc).':'.&ff.']'}%=%l,%
 set enc=utf8
 " backup
 set nobackup
-" color scheme
+" color
+set t_Co=256
 colorscheme wombat256mod
 " font
 set gfn=Ricty\ Regular:h12
@@ -111,8 +112,8 @@ set clipboard+=unnamed
 set clipboard=unnamed
 
 " Ev/Rvでvimrcの編集と反映
-command! Ev edit $MYVIMRC
-command! Rv source $MYVIMRC
+command! Ev edit $HOME/.vimrc
+command! Rv source $HOME/.vimrc
 
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
@@ -216,6 +217,7 @@ Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
 Bundle 'git://github.com/Shougo/vimproc.git'
 Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
+Bundle 'smoothPageScroll.vim'
 
 filetype on
 filetype plugin on
@@ -231,8 +233,22 @@ autocmd BufNewFile,BufRead *.php set filetype=php.html
 " .jstにerbモード、htmlモードを追加する
 autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
 
-" .erbにhtmlモードを追加する
+" .erbにいろいろモードを追加する
 autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
+autocmd BufNewFile,BufRead *.css.erb set filetype=eruby.css
+autocmd BufNewFile,BufRead *.scss.erb set filetype=eruby.css
+autocmd BufNewFile,BufRead *.js.erb set filetype=eruby.js
+autocmd BufNewFile,BufRead *.coffee.erb set filetype=eruby.coffee
+
+"------------------------------------
+" SmoothPageScroll
+"------------------------------------
+let g:smooth_page_scroll_delay = 0
+map <PageDown> :call SmoothPageScrollDown()<CR>
+map <PageUp> :call SmoothPageScrollUp()<CR>
+map <C-f> :call SmoothPageScrollDown()<CR>
+map <C-b> :call SmoothPageScrollUp()<CR>
+
 
 "------------------------------------
 " vim-quickrun
@@ -337,11 +353,17 @@ nmap ss <Plug>Yssurround
 " 入力モードで開始する
 let g:unite_enable_start_insert=1
 " バッファ一覧
-noremap <C-l> :Unite buffer<CR>
+noremap <C-x><C-l> :Unite buffer<CR>
 " ファイル一覧
-noremap <C-w> :Unite -buffer-name=file file<CR>
+noremap <C-x><C-o> :Unite -buffer-name=file file<CR>
 " 最近使ったファイルの一覧
 noremap <C-x><C-r> :Unite file_mru<CR>
 " ESCキーを2回押すと終了する
 au FileType unite nnoremap <silent> <buffer> <ESC><ESC> :q<CR>
 au FileType unite inoremap <silent> <buffer> <ESC><ESC> <ESC>:q<CR>
+
+"------------------------------------
+" rails.vim
+"------------------------------------
+let g:rails_level=4
+let g:rails_default_database='mysql'

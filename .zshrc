@@ -31,7 +31,7 @@ darwin*)
 
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
-  alias vim='/Applications/MacVim.app/Contents/MacOS/Vim -u $HOME/.vimrc "$@"'
+  alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
   alias vi='vim'
   alias v='vim'
   alias gvim='open -a MacVim.app "$@"'
@@ -41,6 +41,9 @@ darwin*)
   #alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
   alias emacs='$HOME/.emacs.d/emacs "$@"'
   alias e='emacs'
+
+  # MySQL
+  alias mysql='mysql -uroot -hubuntu.vmware "$@"'
   ;;
 linux*)
   alias ls="ls -l --color"
@@ -172,7 +175,7 @@ setopt nolistbeep
 setopt extended_glob
 
 # Keybind configuration
-bindkey -e
+bindkey -v
 
 # Backspace key
 bindkey "^?" backward-delete-char
@@ -246,3 +249,9 @@ bindkey -a 'q' push-line
 #
 setopt complete_aliases     # aliased ls needs if file/dir completions work
 alias where="command -v"
+
+# screen
+if [ $SHLVL = 1 ]; then
+  screen -R
+  exit
+fi

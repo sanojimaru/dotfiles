@@ -1,18 +1,33 @@
 # general
 escape ^t^t
+#zombie ^[
 startup_message off
 defbce on
+autodetach on
+
+# Terminal
 term xterm-256color
-termcapinfo xterm* ti@:te@
-defscrollback 5000
+termcapinfo xterm-256color 'is=^[r^[mJ^[H^[?7h^[?1;4;6l'
+
+# Scroll back
+defscrollback 9182
+
+# List window
+hardstatus on
+hardstatus alwayslastline "%{.Wb}.: %-w%{.RW}%n %t%{-}%+w :. %=[%Y-%m-%d %02c]"
 
 # encoding
 defutf8 on
 defkanji utf-8
 encoding utf-8 utf-8
 defencoding utf-8
+setenv LANG en_US.UTF-8
+
+# shell
+shell /usr/local/bin/zsh
 
 #split window
+bind w windowlist -b
 bind s eval split focus "select 0"
 bind q remove
 bind r eval 'command -c resize'
