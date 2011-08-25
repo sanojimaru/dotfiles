@@ -217,7 +217,8 @@ Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
 Bundle 'git://github.com/Shougo/vimproc.git'
 Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
-Bundle 'smoothPageScroll.vim'
+Bundle 'git://github.com/ujihisa/shadow.vim.git'
+
 
 filetype on
 filetype plugin on
@@ -239,16 +240,6 @@ autocmd BufNewFile,BufRead *.css.erb set filetype=eruby.css
 autocmd BufNewFile,BufRead *.scss.erb set filetype=eruby.css
 autocmd BufNewFile,BufRead *.js.erb set filetype=eruby.js
 autocmd BufNewFile,BufRead *.coffee.erb set filetype=eruby.coffee
-
-"------------------------------------
-" SmoothPageScroll
-"------------------------------------
-let g:smooth_page_scroll_delay = 0
-map <PageDown> :call SmoothPageScrollDown()<CR>
-map <PageUp> :call SmoothPageScrollUp()<CR>
-map <C-f> :call SmoothPageScrollDown()<CR>
-map <C-b> :call SmoothPageScrollUp()<CR>
-
 
 "------------------------------------
 " vim-quickrun
