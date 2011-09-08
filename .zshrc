@@ -44,6 +44,9 @@ darwin*)
 
   # MySQL
   alias mysql='mysql -uroot -hubuntu.vmware "$@"'
+
+  # git-flow-completion
+  source ~/workspace/git-flow-completion/git-flow-completion.zsh
   ;;
 linux*)
   alias ls="ls -l --color"
@@ -175,7 +178,7 @@ setopt nolistbeep
 setopt extended_glob
 
 # Keybind configuration
-bindkey -v
+bindkey -e
 
 # Backspace key
 bindkey "^?" backward-delete-char
