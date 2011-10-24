@@ -71,7 +71,8 @@ set enc=utf8
 set nobackup
 " color
 set t_Co=256
-colorscheme wombat256mod
+set background=dark
+colorscheme solarized
 " font
 set gfn=Ricty\ Regular:h12
 set gfw=Ricty\ Regular:h12
@@ -200,6 +201,7 @@ call vundle#rc()
 " My Bundles here:
 " from github:
 Bundle 'git://github.com/vim-scripts/wombat256.vim.git'
+Bundle 'git://github.com/altercation/vim-colors-solarized.git'
 Bundle 'git://github.com/tpope/vim-surround.git'
 Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
 Bundle 'git://github.com/scrooloose/nerdcommenter.git'

@@ -4,6 +4,7 @@ escape ^t^t
 startup_message off
 defbce on
 autodetach on
+altscreen on
 
 # Terminal
 term xterm-256color
@@ -14,7 +15,11 @@ defscrollback 9182
 
 # List window
 hardstatus on
-hardstatus alwayslastline "%{.Wb}.: %-w%{.RW}%n %t%{-}%+w :. %=[%Y-%m-%d %02c]"
+hardstatus alwayslastline '%m/%d %02c:%s %{= .g}%H%{-} %L=%-w%45L>%{=u g.}%n %t%{-}%+w %-17<%=%{= .y}(%l)'
+
+# logs
+logfile "$HOME/.screen/logs/%Y%m%d-%n.log"
+deflog on
 
 # encoding
 defutf8 on

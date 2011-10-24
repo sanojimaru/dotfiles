@@ -29,6 +29,9 @@ darwin*)
   # android
   #export PATH=$PATH:$HOME/.android-sdk/apktool
 
+  # Sublime text2
+  alias subl='/Applications/Sublime\ Text\ 2.app/Contents/SharedSupport/bin/subl -w "$@"'
+
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
   alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
@@ -252,7 +255,7 @@ setopt complete_aliases     # aliased ls needs if file/dir completions work
 alias where="command -v"
 
 # screen
-if [ $SHLVL = 1 ]; then
-  screen -R
-  exit
-fi
+#if [ $SHLVL = 1 ]; then
+  #screen -R
+  #exit
+#fi
