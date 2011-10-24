@@ -34,12 +34,10 @@ darwin*)
   alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
   alias vi='vim'
   alias v='vim'
-  alias gvim='open -a MacVim.app "$@"'
-  alias gv='gvim'
 
   # emacs
-  #alias emacs='/usr/local/Cellar/emacs/23.3/Emacs.app/Contents/MacOS/Emacs "$@"'
-  alias emacs='$HOME/.emacs.d/emacs "$@"'
+  alias emacs='/Applications/Emacs.app/Contents/MacOS/Emacs "$@"'
+  alias em='emacs'
   alias e='emacs'
 
   # MySQL

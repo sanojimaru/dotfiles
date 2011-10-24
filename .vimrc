@@ -53,6 +53,8 @@ set ruler
 set showcmd
 "括弧入力時の対応する括弧を表示
 set showmatch
+"2バイト半角文字対応
+set ambiwidth=double
 " カラー表示
 syntax on
 " search
@@ -118,7 +120,7 @@ command! Rv source $HOME/.vimrc
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
 " 保存時にtabをスペースに変換する
-autocmd BufWritePre * :%s/\t/  /ge
+"autocmd BufWritePre * :%s/\t/  /ge
 
 " 矩形選択で自由に移動する
 set virtualedit+=block
@@ -219,7 +221,6 @@ Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
 Bundle 'git://github.com/ujihisa/shadow.vim.git'
 
-
 filetype on
 filetype plugin on
 filetype indent on
@@ -229,10 +230,11 @@ filetype indent on
 "------------------------------------
 " .phpにhtmlモードを追加する
 autocmd BufNewFile,BufRead *.ctp set filetype=php.html
-autocmd BufNewFile,BufRead *.php set filetype=php.html
+"autocmd BufNewFile,BufRead *.php set filetype=php.html
 
 " .jstにerbモード、htmlモードを追加する
 autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
+autocmd BufNewFile,BufRead *.jst.ejs set filetype=eruby.html
 
 " .erbにいろいろモードを追加する
 autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
@@ -342,13 +344,13 @@ nmap ss <Plug>Yssurround
 " unite.vim
 "------------------------------------
 " 入力モードで開始する
-let g:unite_enable_start_insert=1
+let g:unite_enable_start_insert=0
 " バッファ一覧
-noremap <C-x><C-l> :Unite buffer<CR>
+noremap <C-L><C-L> :Unite buffer<CR>
 " ファイル一覧
-noremap <C-x><C-o> :Unite -buffer-name=file file<CR>
+noremap <C-L><C-F> :Unite -buffer-name=file file<CR>
 " 最近使ったファイルの一覧
-noremap <C-x><C-r> :Unite file_mru<CR>
+noremap <C-L><C-R> :Unite file_mru<CR>
 " ESCキーを2回押すと終了する
 au FileType unite nnoremap <silent> <buffer> <ESC><ESC> :q<CR>
 au FileType unite inoremap <silent> <buffer> <ESC><ESC> <ESC>:q<CR>
