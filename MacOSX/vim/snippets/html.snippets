@@ -131,7 +131,7 @@ snippet base
 snippet r
 	<br`Close()[1:]`>
 snippet div
-	<div id="${1:name}">
+	<div class="${1:name}">
 		${2}
 	</div>
 # Embed QT Movie
@@ -149,9 +149,8 @@ snippet movie
 		`Close()[1:]`>
 	</object>${6}
 snippet fieldset
-	<fieldset id="$1">
+	<fieldset>
 		<legend>${1:name}</legend>
-
 		${3}
 	</fieldset>
 snippet form
@@ -162,7 +161,13 @@ snippet form
 	<p><input type="submit" value="Continue &rarr;"`Close()`></p>
 	</form>
 snippet h1
-	<h1 id="${1:heading}">${2:$1}</h1>
+	<h1>${1}</h1>
+snippet h2
+	<h2>${1}</h2>
+snippet h3
+	<h3>${1}</h3>
+snippet h5
+	<h5>${1}</h5>
 snippet input
 	<input type="${1:text/submit/hidden/button}" name="${2:some_name}" value="${3}"`Close()`>${4}
 snippet label
@@ -182,9 +187,26 @@ snippet select
 		<option value="${3:option}">${4:$3}</option>
 	</select>${5}
 snippet table
-	<table border="${1:0}">
-		<tr><th>${2:Header}</th></tr>
-		<tr><th>${3:Data}</th></tr>
-	</table>${4}
+	<table>
+		<tr>
+			${1}
+		</tr>
+	</table>
+snippet tr
+	<tr>
+		${1}
+	</tr>
+snippet th
+	<th>${1}</th>
+snippet td
+	<td>${1}</td>
 snippet textarea
 	<textarea name="${1:Name}" rows="${2:8}" cols="${3:40}">${4}</textarea>${5}
+snippet code
+	<code>${1}</code>
+snippet ul
+	<ul>
+		${1}
+	</ul>
+snippet li
+	<li>${1}</li>

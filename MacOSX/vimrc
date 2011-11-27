@@ -120,8 +120,6 @@ command! Rv source $HOME/.vimrc
 
 " 保存時に行末の空白を除去する
 autocmd BufWritePre * :%s/\s\+$//ge
-" 保存時にtabをスペースに変換する
-"autocmd BufWritePre * :%s/\t/  /ge
 
 " 矩形選択で自由に移動する
 set virtualedit+=block
@@ -141,28 +139,16 @@ highlight CursorLine ctermbg=black guibg=black
 "------------------------------------
 " keymap
 "------------------------------------
-" C-a, Tab, C-eで行頭、先頭、行末移動
-nnoremap <C-e> <S-a>
-nnoremap <C-a> 0i
-nnoremap <Tab> ^i
-
 " 挿入モードでCtrl+kを押すとクリップボードの内容を貼り付けられるようにする "
 imap <C-K>  <ESC>"*pa
 
 "Escの2回押しでハイライト消去
 nmap <ESC><ESC> :nohlsearch<CR><ESC>
 
-" Ctrl-iでヘルプ
+" Ctrl-hでヘルプ
 nnoremap <C-h>  :<C-u>help<Space>
 " カーソル下のキーワードをヘルプでひく
 nnoremap <C-h><C-h> :<C-u>help<Space><C-r><C-w><Enter>
-
-" F2で前のバッファ
-map <F2> <ESC>:bp<CR>
-" F3で次のバッファ
-map <F3> <ESC>:bn<CR>
-" F4でバッファを削除する
-map <F4> <ESC>:bw<CR>
 
 " 最後に編集された位置に移動
 nnoremap gb '[
@@ -181,14 +167,7 @@ inoremap [ []<LEFT>
 inoremap ( ()<LEFT>
 inoremap " ""<LEFT>
 inoremap ' ''<LEFT>
-
-" ウィンドウ移動
-nnoremap <C-Right> ;<C-l>j
-nnoremap <C-j> ;<C-w>j
-nnoremap <C-k> ;<C-k>j
-nnoremap <C-l> ;<C-l>j
-nnoremap <C-h> ;<C-h>j
-
+inoremap ` ``<LEFT>
 
 "------------------------------------
 " vundle.git
@@ -200,28 +179,30 @@ call vundle#rc()
 
 " My Bundles here:
 " from github:
-Bundle 'git://github.com/vim-scripts/wombat256.vim.git'
 Bundle 'git://github.com/altercation/vim-colors-solarized.git'
 Bundle 'git://github.com/tpope/vim-surround.git'
 Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
 Bundle 'git://github.com/scrooloose/nerdcommenter.git'
 Bundle 'git://github.com/msanders/snipmate.vim.git'
+Bundle 'https://github.com/Shougo/vimfiler.git'
 Bundle 'git://github.com/tpope/vim-rails.git'
 Bundle 'git://github.com/vim-ruby/vim-ruby.git'
 Bundle 'git://github.com/Shougo/neocomplcache.git'
 Bundle 'git://github.com/Shougo/unite.vim.git'
 Bundle 'git://github.com/tsukkee/unite-help.git'
-Bundle 'git://github.com/tpope/vim-haml.git'
 Bundle 'git://github.com/othree/html5.vim.git'
 Bundle 'git://github.com/hail2u/vim-css3-syntax.git'
-Bundle 'git://github.com/othree/javascript-syntax.vim.git'
-Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+Bundle 'git://github.com/tpope/vim-haml.git'
 Bundle 'git://github.com/kchmck/vim-coffee-script.git'
 Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/IndentAnything.git'
+Bundle 'git://github.com/othree/javascript-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
 Bundle 'git://github.com/Shougo/vimproc.git'
 Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
-Bundle 'git://github.com/ujihisa/shadow.vim.git'
+Bundle 'git://github.com/pekepeke/titanium-vim.git'
+Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
 
 filetype on
 filetype plugin on
@@ -234,6 +215,10 @@ filetype indent on
 autocmd BufNewFile,BufRead *.ctp set filetype=php.html
 "autocmd BufNewFile,BufRead *.php set filetype=php.html
 
+" Smarty template(tpl)をhtmlモードとする
+autocmd BufNewFile,BufRead *.tpl set filetype=html
+
+
 " .jstにerbモード、htmlモードを追加する
 autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
 autocmd BufNewFile,BufRead *.jst.ejs set filetype=eruby.html
@@ -245,11 +230,11 @@ autocmd BufNewFile,BufRead *.scss.erb set filetype=eruby.css
 autocmd BufNewFile,BufRead *.js.erb set filetype=eruby.js
 autocmd BufNewFile,BufRead *.coffee.erb set filetype=eruby.coffee
 
-"------------------------------------
-" vim-quickrun
-"------------------------------------
-let g:quickrun_config = {}
-let g:quickrun_config['ruby.rspec'] = { 'command': 'rspec' }
+" 対象のファイルタイプの場合、保存時にtabをスペースに変換する
+autocmd FileType html,css,js,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
+
+" pythonの場合、tab幅を半角4文字に
+autocmd FileType python set tabstop=4 shiftwidth=4 softtabstop=4
 
 " ruby.spec
 augroup RSpec
@@ -258,10 +243,26 @@ augroup RSpec
 augroup END
 
 "------------------------------------
+" vim-quickrun
+"------------------------------------
+let g:quickrun_config = {}
+
+if strlen($rvm_bin_path)
+  let g:quickrun_config['ruby'] = {
+\    'command': 'ruby',
+\    'exec': '$rvm_bin_path/ruby %s',
+\    'tempfile': '{tempname()}.rb'
+\  }
+endif
+
+let g:quickrun_config['ruby.rspec'] = { 'command': 'rspec' }
+
+"------------------------------------
 " VimShell
 "------------------------------------
 let g:vimshell_enable_interactive = 1
 let g:vimshell_enable_auto_slash = 1
+nnoremap <C-W><C-W> :VimShell<CR>
 
 "------------------------------------
 " SnipMate
@@ -348,11 +349,17 @@ nmap ss <Plug>Yssurround
 " 入力モードで開始する
 let g:unite_enable_start_insert=0
 " バッファ一覧
-noremap <C-L><C-L> :Unite buffer<CR>
+noremap <C-U><C-B> :Unite buffer<CR>
 " ファイル一覧
-noremap <C-L><C-F> :Unite -buffer-name=file file<CR>
+noremap <C-U><C-F> :UniteWithBufferDir -buffer-name=files file<CR>
 " 最近使ったファイルの一覧
-noremap <C-L><C-R> :Unite file_mru<CR>
+noremap <C-U><C-R> :Unite file_mru<CR>
+" レジスタ一覧
+noremap <C-U><C-Y> :Unite -buffer-name=register register<CR>
+" ファイルとバッファ
+noremap <C-U><C-U> :Unite buffer file_mru<CR>
+" 全部
+noremap <C-U><C-A> :Unite UniteWithBufferDir -buffer-name=files buffer file_mru bookmark file<CR>
 " ESCキーを2回押すと終了する
 au FileType unite nnoremap <silent> <buffer> <ESC><ESC> :q<CR>
 au FileType unite inoremap <silent> <buffer> <ESC><ESC> <ESC>:q<CR>

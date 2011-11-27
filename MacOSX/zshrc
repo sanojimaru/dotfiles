@@ -17,20 +17,23 @@ darwin*)
   source $HOME/.nvm/nvm.sh
 
   # cakephp
-  alias cake='$HOME/workspace/cakephp/cake/console/cake "$@"'
+  alias cake='$HOME/workspace/cakephp/lib/Cake/Console/cake "$@"'
+  alias cake13='$HOME/workspace/cakephp1.3/cake/console/cake "$@"'
 
   # python
-  #export WORKON_HOME=$HOME/.virtualenvs
-  #source /usr/local/bin/virtualenvwrapper.sh
-  #export PIP_DOWNLOAD_CACHE=~/.pip_cache
-  #export PIP_REQUIRE_VIRTUALENV=true
-  #export PIP_RESPECT_VIRTUALENV=true
+  export WORKON_HOME=$HOME/.virtualenvs
+  source `which virtualenvwrapper.sh`
+  export PIP_DOWNLOAD_CACHE=~/.pip_cache
+  export PIP_REQUIRE_VIRTUALENV=true
+  export PIP_RESPECT_VIRTUALENV=true
 
   # android
-  #export PATH=$PATH:$HOME/.android-sdk/apktool
+  export ANDROID_SDK=$HOME/workspace/android-sdk
+  export PATH=$PATH:$ANDROID_SDK/platform-tools:$ANDROID_SDK/tools
 
-  # Sublime text2
-  alias subl='/Applications/Sublime\ Text\ 2.app/Contents/SharedSupport/bin/subl -w "$@"'
+  # Titanium
+  export TITANIUM_SDK='/Library/Application\ Support/Titanium/mobilesdk/osx/1.7.5'
+  alias titanium=$TITANIUM_SDK/titanium.py
 
   # vim
   export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
@@ -45,6 +48,9 @@ darwin*)
 
   # MySQL
   alias mysql='mysql -uroot -hubuntu.vmware "$@"'
+
+  # PEAR
+  export PATH=$HOME/.pear/bin:$PATH
 
   # git-flow-completion
   source ~/workspace/git-flow-completion/git-flow-completion.zsh
@@ -163,6 +169,9 @@ setopt auto_menu
 # sudoも補完の対象
 zstyle ':completion:*:sudo:*' command-path /usr/local/sbin /usr/local/bin /usr/sbin /usr/bin /sbin /bin
 
+# 大文字小文字を無視
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+
 # 色付きで補完する
 zstyle ':completion:*' list-colors di=34 fi=0
 #zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
@@ -255,7 +264,7 @@ setopt complete_aliases     # aliased ls needs if file/dir completions work
 alias where="command -v"
 
 # screen
-#if [ $SHLVL = 1 ]; then
-  #screen -R
-  #exit
-#fi
+if [ $SHLVL = 1 ]; then
+  screen -R
+  exit
+fi
