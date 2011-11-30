@@ -1,0 +1,56 @@
+# Environment variable configuration
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# OSにより端末を判定
+alias ls="ls -lG -w"
+alias ks="ls"
+alias sl="ls"
+
+# rbenv
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+export RBENV_VERSION=1.9.3-p0
+
+# node nvm
+source $HOME/.nvm/nvm.sh
+
+# cakephp
+alias cake='$HOME/workspace/src/cakephp/lib/Cake/Console/cake "$@"'
+alias cake13='$HOME/workspace/src/cakephp1.3/cake/console/cake "$@"'
+
+# python
+export WORKON_HOME=$HOME/.virtualenvs
+source `which virtualenvwrapper.sh`
+export PIP_DOWNLOAD_CACHE=~/.pip_cache
+export PIP_REQUIRE_VIRTUALENV=true
+export PIP_RESPECT_VIRTUALENV=true
+
+# android
+export ANDROID_SDK=$HOME/workspace/android-sdk
+export PATH=$PATH:$ANDROID_SDK/platform-tools:$ANDROID_SDK/tools
+
+# Titanium
+export TITANIUM_SDK='/Library/Application\ Support/Titanium/mobilesdk/osx/1.7.5'
+alias titanium=$TITANIUM_SDK/titanium.py
+
+# vim
+export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
+alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
+alias vi='vim'
+alias v='vim'
+
+# emacs
+alias emacs='/Applications/Emacs.app/Contents/MacOS/Emacs "$@"'
+alias em='emacs'
+alias e='emacs'
+
+# MySQL
+alias mysql='mysql -uroot -hubuntu.vmware "$@"'
+
+# PEAR
+export PATH=$HOME/.pear/bin:$PATH
+
+# git-flow-completion
+source ~/workspace/src/git-flow-completion/git-flow-completion.zsh
