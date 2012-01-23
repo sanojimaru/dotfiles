@@ -97,7 +97,12 @@ snippet docx
 	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 snippet html
 	<html>
-	${1}
+		<head>
+			<tltle>${1}</title>
+		</head>
+		<body>
+			${2}
+		</body>
 	</html>
 snippet xhtml
 	<html xmlns="http://www.w3.org/1999/xhtml">
@@ -187,11 +192,29 @@ snippet select
 		<option value="${3:option}">${4:$3}</option>
 	</select>${5}
 snippet table
-	<table>
+	<table class="${1}">
+		<tr>
+			${2}
+		</tr>
+	</table>
+snippet thead
+	<thead>
 		<tr>
 			${1}
 		</tr>
-	</table>
+	</thead>
+snippet tbody
+	<tbody>
+		<tr>
+			${1}
+		</tr>
+	</tbody>
+snippet tfoot
+	<tfoot>
+		<tr>
+			${1}
+		</tr>
+	</tfoot>
 snippet tr
 	<tr>
 		${1}
@@ -205,8 +228,8 @@ snippet textarea
 snippet code
 	<code>${1}</code>
 snippet ul
-	<ul>
-		${1}
+	<ul class="${1}">
+		${2}
 	</ul>
 snippet li
 	<li>${1}</li>
