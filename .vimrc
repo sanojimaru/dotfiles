@@ -179,30 +179,41 @@ call vundle#rc()
 
 " My Bundles here:
 " from github:
-"Bundle 'git://github.com/altercation/vim-colors-solarized.git'
-"Bundle 'git://github.com/tpope/vim-surround.git'
-"Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
-"Bundle 'git://github.com/scrooloose/nerdcommenter.git'
-"Bundle 'git://github.com/msanders/snipmate.vim.git'
-"Bundle 'https://github.com/Shougo/vimfiler.git'
-"Bundle 'git://github.com/tpope/vim-rails.git'
-"Bundle 'git://github.com/vim-ruby/vim-ruby.git'
-"Bundle 'git://github.com/Shougo/neocomplcache.git'
-"Bundle 'git://github.com/Shougo/unite.vim.git'
-"Bundle 'git://github.com/tsukkee/unite-help.git'
-"Bundle 'git://github.com/othree/html5.vim.git'
-"Bundle 'git://github.com/hail2u/vim-css3-syntax.git'
-"Bundle 'git://github.com/tpope/vim-haml.git'
-"Bundle 'git://github.com/kchmck/vim-coffee-script.git'
-"Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
-"Bundle 'git://github.com/vim-scripts/IndentAnything.git'
-"Bundle 'git://github.com/othree/javascript-syntax.vim.git'
-"Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
-"Bundle 'git://github.com/Shougo/vimproc.git'
-"Bundle 'git://github.com/Shougo/vimshell.git'
-"Bundle 'git://github.com/thinca/vim-quickrun.git'
-"Bundle 'git://github.com/pekepeke/titanium-vim.git'
-"Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
+" Utils
+Bundle 'git://github.com/altercation/vim-colors-solarized.git'
+Bundle 'git://github.com/tpope/vim-surround.git'
+Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
+Bundle 'git://github.com/scrooloose/nerdcommenter.git'
+Bundle 'git://github.com/msanders/snipmate.vim.git'
+Bundle 'https://github.com/Shougo/vimfiler.git'
+Bundle 'git://github.com/Shougo/neocomplcache.git'
+Bundle 'git://github.com/Shougo/unite.vim.git'
+Bundle 'git://github.com/tsukkee/unite-help.git'
+Bundle 'git://github.com/Shougo/vimproc.git'
+Bundle 'git://github.com/Shougo/vimshell.git'
+Bundle 'git://github.com/thinca/vim-quickrun.git'
+
+" ruby
+Bundle 'git://github.com/tpope/vim-rails.git'
+Bundle 'git://github.com/vim-ruby/vim-ruby.git'
+Bundle 'git://github.com/tpope/vim-haml.git'
+
+" PHP
+"Bundle 'git://github.com/vim-scripts/smarty.vim.git'
+Bundle 'git://github.com/2072/PHP-Indenting-for-VIm.git'
+
+" css
+Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
+
+" js, cs
+Bundle 'git://github.com/vim-scripts/IndentAnything.git'
+Bundle 'git://github.com/othree/javascript-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+Bundle 'git://github.com/kchmck/vim-coffee-script.git'
+Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
+
+" Titanium
+Bundle 'git://github.com/pekepeke/titanium-vim.git'
 
 filetype on
 filetype plugin on
@@ -211,19 +222,9 @@ filetype indent on
 "------------------------------------
 " filetype
 "------------------------------------
-" .phpにhtmlモードを追加する
-autocmd BufNewFile,BufRead *.ctp set filetype=php.html
-"autocmd BufNewFile,BufRead *.php set filetype=php.html
-
-" Smarty template(tpl)をhtmlモードとする
-autocmd BufNewFile,BufRead *.tpl set filetype=html
-
-
-" .jstにerbモード、htmlモードを追加する
+autocmd BufNewFile,BufRead *.tpl set filetype=smarty
 autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
 autocmd BufNewFile,BufRead *.jst.ejs set filetype=eruby.html
-
-" .erbにいろいろモードを追加する
 autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
 autocmd BufNewFile,BufRead *.css.erb set filetype=eruby.css
 autocmd BufNewFile,BufRead *.scss.erb set filetype=eruby.css
@@ -246,15 +247,6 @@ augroup END
 " vim-quickrun
 "------------------------------------
 let g:quickrun_config = {}
-
-if strlen($rvm_bin_path)
-  let g:quickrun_config['ruby'] = {
-\    'command': 'ruby',
-\    'exec': '$rvm_bin_path/ruby %s',
-\    'tempfile': '{tempname()}.rb'
-\  }
-endif
-
 let g:quickrun_config['ruby.rspec'] = { 'command': 'rspec' }
 
 "------------------------------------
@@ -293,7 +285,7 @@ let g:neocomplcache_plugin_completion_length = {
 let g:neocomplcache_enable_auto_select = 1
 
 " Define snippets directory.
-"let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
+let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
 
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {

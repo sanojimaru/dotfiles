@@ -51,3 +51,11 @@ export PATH=$HOME/.pear/bin:$PATH
 
 # git-flow-completion
 source ~/workspace/src/git-flow-completion/git-flow-completion.zsh
+
+# AWS
+export JAVA_HOME="$(/usr/libexec/java_home)"
+export EC2_HOME="/usr/local/Cellar/ec2-api-tools/1.5.2.3/jars"
+export EC2_PRIVATE_KEY="$(/bin/ls $HOME/files/secrets/aws_security_certificates/eds_pk-*.pem)"
+export EC2_CERT="$(/bin/ls $HOME/files/secrets/aws_security_certificates/eds_cert-*.pem)"
+export EC2_REGION=ap-northeast-1
+export AWS_RDS_HOME="/usr/local/Cellar/rds-command-line-tools/1.3.003/jars"

@@ -9,5 +9,8 @@
   interactive = auto
   grep = auto
 [core]
-	excludesfile = ~/.gitignore
-	autocrlf = input
+  excludesfile = ~/.gitignore
+  autocrlf = input
+[github]
+  user = sanojimaru
+  token = b8e481df1f07f4ef1f8ae8492e28fbc5
