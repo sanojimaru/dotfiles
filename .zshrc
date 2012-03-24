@@ -198,7 +198,7 @@ setopt complete_aliases     # aliased ls needs if file/dir completions work
 alias where="command -v"
 
 # screen
-if [ $SHLVL = 1 ]; then
-  screen -R
-  exit
-fi
+#if [ $SHLVL = 1 ]; then
+  #screen -R
+  #exit
+#fi

@@ -32,16 +32,15 @@ export PATH=$PATH:$ANDROID_SDK/platform-tools:$ANDROID_SDK/tools
 export TITANIUM_SDK='/Library/Application\ Support/Titanium/mobilesdk/osx/1.7.5'
 alias titanium=$TITANIUM_SDK/titanium.py
 
+# emacs
+alias emacs="/usr/local/Cellar/emacs/23.3b/Emacs.app/Contents/MacOS/Emacs"
+alias em='emacs'
+
 # vim
 export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
 alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
 alias vi='vim'
 alias v='vim'
-
-# emacs
-alias emacs='/Applications/Emacs.app/Contents/MacOS/Emacs "$@"'
-alias em='emacs'
-alias e='emacs'
 
 # MySQL
 alias mysql='mysql -uroot -hworkspace.dev "$@"'

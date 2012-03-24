@@ -19,7 +19,7 @@
 (windmove-default-keybindings)
 
 ;; Fonts
-(let* ((size 15)
+(let* ((size 13)
        (asciifont "Ricty")
        (jpfont "Ricty")
        (h (* size 10))
@@ -43,22 +43,23 @@
   (color-theme-initialize)
   ;; color-theme-solorized.el
   (when (require 'color-theme-solarized)
-    (color-theme-solarized)))
-
-
+    (color-theme-solarized-dark)))
 
 ;; install-elisp.el
 (when (require 'install-elisp nil t)
-  (setq install-elisp-repository-directory "~/.emacs.d/auto-install-elisp"))
+  (setq install-elisp-repository-directory "~/.emacs.d/elisp"))
 
 ;; auto-install.el
 (when (require 'auto-install nil t)
-  (setq auto-install-directory "~/.emacs.d/auto-install-elisp")
+  (setq auto-install-directory "~/.emacs.d/elisp/auto-install")
   (auto-install-update-emacswiki-package-name t)
   (auto-install-compatibility-setup))
 
 ;; anything
 (require 'anything-startup)
+
+;; Key-bindings
+(define-key global-map [s-return] 'ns-toggle-fullscreen)
 
 ;; emacsclient
 (server-start)
