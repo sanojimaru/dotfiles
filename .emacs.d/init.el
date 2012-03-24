@@ -10,10 +10,13 @@
 ;; Kill wellcome screen
 (setq inhibit-splash-screen t)
 
-;;for Mac 
+;; for Mac
 (setq mac-allow-anti-aliasing t)
 (setq mac-control-modifier 'control)
 (setq mac-option-modifier 'meta)
+
+;; window move
+(windmove-default-keybindings)
 
 ;; Fonts
 (let* ((size 15)
@@ -26,21 +29,36 @@
   (set-fontset-font nil 'japanese-jisx0213.2004-1 jp-fontspec)
   (set-fontset-font nil 'japanese-jisx0213-2 jp-fontspec)
   (set-fontset-font nil 'katakana-jisx0201 jp-fontspec)
-  (set-fontset-font nil '(#x0080 . #x024F) fontspec) 
+  (set-fontset-font nil '(#x0080 . #x024F) fontspec)
   (set-fontset-font nil '(#x0370 . #x03FF) fontspec))
+
+;; load-path
+(let ((default-directory (expand-file-name "~/.emacs.d/elisp")))
+  (add-to-list 'load-path default-directory)
+  (if (fboundp 'normal-top-level-add-subdirs-to-load-path)
+      (normal-top-level-add-subdirs-to-load-path)))
+
+;; color-theme.el
+(when (require 'color-theme)
+  (color-theme-initialize)
+  ;; color-theme-solorized.el
+  (when (require 'color-theme-solarized)
+    (color-theme-solarized)))
+
+
 
 ;; install-elisp.el
 (when (require 'install-elisp nil t)
-  (setq install-elisp-repository-directory "~/.emacs.d/elisp"))
+  (setq install-elisp-repository-directory "~/.emacs.d/auto-install-elisp"))
 
-;; auto-install.el 
+;; auto-install.el
 (when (require 'auto-install nil t)
-  (setq auto-install-directory "~/.emacs.d/elisp")
+  (setq auto-install-directory "~/.emacs.d/auto-install-elisp")
   (auto-install-update-emacswiki-package-name t)
   (auto-install-compatibility-setup))
 
 ;; anything
-(require 'anything)
+(require 'anything-startup)
 
 ;; emacsclient
 (server-start)
