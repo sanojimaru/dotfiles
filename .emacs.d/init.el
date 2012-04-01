@@ -23,7 +23,7 @@
 
 ;; Hilight cursor line
 (defface hlline-face
-  '((((class color) (background dark)) (:background "dark slate gray"))
+  '((((class color) (background dark)) (:background "#073642"))
     (((class color) (background light)) (:background "ForestGreen"))
     (t ()))
   "*Face used by hl-line.")
@@ -138,6 +138,76 @@
 ;; auto-save-buffers-enhanced.el
 (require 'auto-save-buffers-enhanced)
 (auto-save-buffers-enhanced t)
+
+;; yasnippet
+(when (require 'yasnippet nil t)
+  (setq yas/snippet-dirs '("~/.emacs.d/elisp/yasnippet/snippets"
+                           "~/.emacs.d/elisp/yasnippet/extras/imported"))
+  (yas/global-mode 1)
+  (setq yas/trigger-key "SPC")
+  (setq yas/next-field-key "TAB")
+  (setq yas/prev-field-key "<S-tab>")
+  (define-key yas/minor-mode-map (kbd "C-x i i") 'yas/insert-snippet)
+  (define-key yas/minor-mode-map (kbd "C-x i f") 'yas/find-snippets)
+  (define-key yas/minor-mode-map (kbd "C-x i n") 'yas/new-snippet)
+  (define-key yas/minor-mode-map (kbd "C-x i v") 'yas/visit-snippet-file)
+  (define-key yas/minor-mode-map (kbd "C-x i e") 'yas/expand)
+
+  (require 'dropdown-list)
+  (setq yas/prompt-functions '(yas/dropdown-prompt
+                               yas/ido-prompt
+                               yas/completing-prompt))
+
+  (setq yas/buffer-local-condition
+        '(or (not (or (string= "font-lock-comment-face"
+                               (get-char-property (point) 'face))
+                      (string= "font-lock-string-face"
+                               (get-char-property (point) 'face))))
+             '(require-snippet-condition . force-in-comment)))
+
+  (defun ac-yasnippet-candidate ()
+    (let ((table (yas/get-snippet-tables major-mode)))
+      (if table
+          (let (candidates (list))
+            (mapcar (lambda (mode)
+                      (maphash (lambda (key value)
+                                 (push key candidates))
+                               (yas/snippet-table-hash mode)))
+                    table)
+            (all-completions ac-prefix candidates)))))
+
+  (defface ac-yasnippet-candidate-face
+    '((t (:background "sandybrown" :foreground "black")))
+    "Face for yasnippet candidate.")
+
+  (defface ac-yasnippet-selection-face
+    '((t (:background "coral3" :foreground "white")))
+    "Face for the yasnippet selected candidate.")
+
+  (defvar ac-source-yasnippet
+    '((candidates . ac-yasnippet-candidate)
+      (action . yas/expand)
+      (limit . 3)
+      (candidate-face . ac-yasnippet-candidate-face)
+      (selection-face . ac-yasnippet-selection-face))
+    "Source for Yasnippet.")
+
+  (provide 'auto-complete-yasnippet)
+  (yas/initialize))
+
+;; auto-complete.el
+(when (require 'auto-complete nil t)
+  (require 'auto-complete-config)
+  (global-auto-complete-mode t)
+  (set-face-background 'ac-candidate-face "lightgray")
+  (set-face-underline 'ac-candidate-face "darkgray")
+  (set-face-background 'ac-selection-face "steelblue")
+  (ac-set-trigger-key "TAB")
+  (setq ac-auto-start 3)
+  (setq ac-dwim t)
+  (set-default 'ac-sources '(ac-source-yasnippet
+                             ac-source-abbrev
+                             ac-source-words-in-buffer)))
 
 ;; emacsclient
 (server-start)
