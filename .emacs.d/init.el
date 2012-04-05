@@ -82,6 +82,7 @@
 ;; for window system
 (if window-system
     (progn
+      ;; Transparancy
       (set-frame-parameter nil 'alpha 95)))
 
 ;; window move
@@ -108,21 +109,28 @@
       (normal-top-level-add-subdirs-to-load-path)))
 
 ;; color-theme.el
-(when (require 'color-theme)
-  (color-theme-initialize)
-  ;; color-theme-solorized.el
-  (when (require 'color-theme-solarized)
-    (color-theme-solarized-dark)))
+(require 'color-theme)
+(color-theme-initialize)
+;; color-theme-solorized.el
+(require 'color-theme-solarized)
+(color-theme-solarized-dark)
+
+;; Colors
+(set-cursor-color "#475c56")
+(setq default-frame-alist
+      (append
+       (list
+        '(cursor-color . "#475c56"))
+       default-frame-alist))
 
 ;; install-elisp.el
-(when (require 'install-elisp nil t)
-  (setq install-elisp-repository-directory "~/.emacs.d/elisp"))
-
+(require 'install-elisp)
+(setq install-elisp-repository-directory "~/.emacs.d/elisp")
 ;; auto-install.el
-(when (require 'auto-install nil t)
-  (setq auto-install-directory "~/.emacs.d/elisp/auto-install")
-  (auto-install-update-emacswiki-package-name t)
-  (auto-install-compatibility-setup))
+(require 'auto-install nil t)
+(setq auto-install-directory "~/.emacs.d/elisp/auto-install")
+(auto-install-update-emacswiki-package-name t)
+(auto-install-compatibility-setup)
 
 ;; anything
 (require 'anything-startup)
@@ -232,8 +240,8 @@
 
 ;; rhtml-mode
 (autoload 'rhtml-mode "rhtml-mode")
-(add-to-list 'auto-mode-alist '("¥¥.erb$" . rhtml-mode))
 (add-hook 'rhtml-mode-hook (lambda () (rinari-launch)))
+(add-to-list 'auto-mode-alist '("¥¥.erb$" . rhtml-mode))
 
 ;; yaml-mode
 (autoload 'yaml-mode "yaml-mode")
@@ -241,8 +249,9 @@
 
 ;; scss-mode
 (autoload 'scss-mode "scss-mode")
-(add-to-list 'auto-mode-alist '("¥¥.scss$" . scss-mode))
 (setq scss-compile-at-save nil)
+(add-to-list 'auto-mode-alist '("¥¥.scss$" . scss-mode))
+
 
 ;; emacsclient
 (server-start)
