@@ -209,5 +209,40 @@
                              ac-source-abbrev
                              ac-source-words-in-buffer)))
 
+;; ruby-mode
+(autoload 'ruby-mode "ruby-mode" "Mode for editing ruby source files" t)
+(setq auto-mode-alist (cons '("\\.rb$" . ruby-mode) auto-mode-alist))
+(setq interpreter-mode-alist (append '(("ruby" . ruby-mode)) interpreter-mode-alist))
+(setq ruby-indent-level 2)
+(setq ruby-indent-tabs-mode nil)
+(autoload 'run-ruby "inf-ruby" "Run an inferior Ruby process")
+(autoload 'inf-ruby-keys "inf-ruby" "Set local key defs for inf-ruby in ruby-mode")
+
+;; ruby-electric.el
+(require 'ruby-electric)
+;; ruby-block.el
+(require 'ruby-block)
+;; Rinari
+(require 'rinari)
+(add-hook 'ruby-mode-hook '(lambda ()
+                             (inf-ruby-keys)
+                             (ruby-block-mode t)
+                             (ruby-electric-mode t)
+                             (setq ruby-block-highlight-toggle t)))
+
+;; rhtml-mode
+(autoload 'rhtml-mode "rhtml-mode")
+(add-to-list 'auto-mode-alist '("¥¥.erb$" . rhtml-mode))
+(add-hook 'rhtml-mode-hook (lambda () (rinari-launch)))
+
+;; yaml-mode
+(autoload 'yaml-mode "yaml-mode")
+(add-to-list 'auto-mode-alist '("¥¥.yml$" . yaml-mode))
+
+;; scss-mode
+(autoload 'scss-mode "scss-mode")
+(add-to-list 'auto-mode-alist '("¥¥.scss$" . scss-mode))
+(setq scss-compile-at-save nil)
+
 ;; emacsclient
 (server-start)

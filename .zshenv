@@ -49,7 +49,7 @@ alias mysql='mysql -uroot -hworkspace.dev "$@"'
 export PATH=$HOME/.pear/bin:$PATH
 
 # git-flow-completion
-source ~/workspace/src/git-flow-completion/git-flow-completion.zsh
+source ~/src/git-flow-completion/git-flow-completion.zsh
 
 # AWS
 export JAVA_HOME="$(/usr/libexec/java_home)"
