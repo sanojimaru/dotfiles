@@ -152,7 +152,7 @@
   (setq yas/snippet-dirs '("~/.emacs.d/elisp/yasnippet/snippets"
                            "~/.emacs.d/elisp/yasnippet/extras/imported"))
   (yas/global-mode 1)
-  (setq yas/trigger-key "SPC")
+  (setq yas/trigger-key "TAB")
   (setq yas/next-field-key "TAB")
   (setq yas/prev-field-key "<S-tab>")
   (define-key yas/minor-mode-map (kbd "C-x i i") 'yas/insert-snippet)
@@ -239,18 +239,25 @@
                              (setq ruby-block-highlight-toggle t)))
 
 ;; rhtml-mode
-(autoload 'rhtml-mode "rhtml-mode")
+(require 'rhtml-mode)
 (add-hook 'rhtml-mode-hook (lambda () (rinari-launch)))
 (add-to-list 'auto-mode-alist '("¥¥.erb$" . rhtml-mode))
 
 ;; yaml-mode
-(autoload 'yaml-mode "yaml-mode")
+(require  'yaml-mode)
 (add-to-list 'auto-mode-alist '("¥¥.yml$" . yaml-mode))
 
 ;; scss-mode
-(autoload 'scss-mode "scss-mode")
+(require 'scss-mode)
 (setq scss-compile-at-save nil)
 (add-to-list 'auto-mode-alist '("¥¥.scss$" . scss-mode))
+
+;; Close all buffers
+(require 'cl)
+(defun close-all-buffers ()
+  (interactive)
+  (loop for buffer being the buffers
+     do (kill-buffer buffer)))
 
 
 ;; emacsclient
