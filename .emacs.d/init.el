@@ -259,6 +259,5 @@
   (loop for buffer being the buffers
      do (kill-buffer buffer)))
 
-
 ;; emacsclient
 (server-start)
