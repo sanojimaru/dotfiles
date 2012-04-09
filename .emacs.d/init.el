@@ -88,6 +88,10 @@
 ;; window move
 (windmove-default-keybindings)
 
+;; keybinds for default functions
+(define-key global-map (kbd "C-c ¥") 'comment-or-uncomment-region)
+
+
 ;; Fonts
 (let* ((size 13)
        (asciifont "Ricty")
@@ -149,7 +153,8 @@
 
 ;; yasnippet
 (when (require 'yasnippet nil t)
-  (setq yas/snippet-dirs '("~/.emacs.d/elisp/yasnippet/snippets"
+  (setq yas/snippet-dirs '("~/.emacs.d/snippets"
+                           "~/.emacs.d/elisp/yasnippet/snippets"
                            "~/.emacs.d/elisp/yasnippet/extras/imported"))
   (yas/global-mode 1)
   (setq yas/trigger-key "TAB")
@@ -203,19 +208,26 @@
   (provide 'auto-complete-yasnippet)
   (yas/initialize))
 
+;; wrap-region.el
+(require 'wrap-region)
+(wrap-region-mode t)
+(wrap-region-add-wrappers
+ '())
+
+
 ;; auto-complete.el
-(when (require 'auto-complete nil t)
-  (require 'auto-complete-config)
-  (global-auto-complete-mode t)
-  (set-face-background 'ac-candidate-face "lightgray")
-  (set-face-underline 'ac-candidate-face "darkgray")
-  (set-face-background 'ac-selection-face "steelblue")
-  (ac-set-trigger-key "TAB")
-  (setq ac-auto-start 3)
-  (setq ac-dwim t)
-  (set-default 'ac-sources '(ac-source-yasnippet
-                             ac-source-abbrev
-                             ac-source-words-in-buffer)))
+(require 'auto-complete)
+(require 'auto-complete-config)
+(global-auto-complete-mode t)
+(set-face-background 'ac-candidate-face "lightgray")
+(set-face-underline 'ac-candidate-face "darkgray")
+(set-face-background 'ac-selection-face "steelblue")
+(ac-set-trigger-key "TAB")
+(setq ac-auto-start 3)
+(setq ac-dwim t)
+(set-default 'ac-sources '(ac-source-yasnippet
+                           ac-source-abbrev
+                           ac-source-words-in-buffer))
 
 ;; ruby-mode
 (autoload 'ruby-mode "ruby-mode" "Mode for editing ruby source files" t)
@@ -251,6 +263,31 @@
 (require 'scss-mode)
 (setq scss-compile-at-save nil)
 (add-to-list 'auto-mode-alist '("¥¥.scss$" . scss-mode))
+
+;; php-mode
+(require 'php-mode)
+(add-hook 'php-mode-hook
+          '(lambda ()
+             ; (setq php-mode-force-pear t)
+             (setq tab-width 4)
+             (setq indent-tabs-mode nil)
+             (setq c-basic-offset 4)
+             (c-set-offset 'arglist-intro '+)
+             (c-set-offset 'arglist-close 0)))
+; (add-to-list 'auto-mode-alist '("¥¥.php$" . php-mode))
+; (add-to-list 'auto-mode-alist '("¥¥.module$" . php-mode))
+; (add-to-list 'auto-mode-alist '("¥¥.inc$" . php-mode))
+
+;; mmm-mode
+(require 'mmm-mode)
+(setq mmm-global-mode 'maybe)
+;; html-php
+(mmm-add-mode-ext-class nil "¥¥.php$" 'html-php)
+(mmm-add-classes '((html-php
+                    :submode php-mode
+                    :front "<?php"
+                    :back "?>")))
+; (add-to-list 'auto-mode-alist '("¥¥.php$" . xml-mode))
 
 ;; Close all buffers
 (require 'cl)
