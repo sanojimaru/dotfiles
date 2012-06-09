@@ -231,12 +231,11 @@
 
 ;; ruby-mode
 (autoload 'ruby-mode "ruby-mode" "Mode for editing ruby source files" t)
+(autoload 'run-ruby "run-ruby" "Run an inferior Ruby process")
+(autoload 'inf-ruby-keys "inf-ruby" "Set local key defs for inf-ruby in ruby-mode")
 (setq auto-mode-alist (cons '("\\.rb$" . ruby-mode) auto-mode-alist))
 (setq interpreter-mode-alist (append '(("ruby" . ruby-mode)) interpreter-mode-alist))
-(setq ruby-indent-level 2)
-(setq ruby-indent-tabs-mode nil)
-(autoload 'run-ruby "inf-ruby" "Run an inferior Ruby process")
-(autoload 'inf-ruby-keys "inf-ruby" "Set local key defs for inf-ruby in ruby-mode")
+(setq ruby-deep-indent-paren nil)
 
 ;; ruby-electric.el
 (require 'ruby-electric)
@@ -274,20 +273,31 @@
              (setq c-basic-offset 4)
              (c-set-offset 'arglist-intro '+)
              (c-set-offset 'arglist-close 0)))
-; (add-to-list 'auto-mode-alist '("¥¥.php$" . php-mode))
-; (add-to-list 'auto-mode-alist '("¥¥.module$" . php-mode))
-; (add-to-list 'auto-mode-alist '("¥¥.inc$" . php-mode))
+(add-to-list 'auto-mode-alist '("¥¥.php$" . html-mode))
+(add-to-list 'auto-mode-alist '("¥¥.module$" . php-mode))
+(add-to-list 'auto-mode-alist '("¥¥.inc$" . php-mode))
 
 ;; mmm-mode
 (require 'mmm-mode)
 (setq mmm-global-mode 'maybe)
 ;; html-php
-(mmm-add-mode-ext-class nil "¥¥.php$" 'html-php)
+(mmm-add-mode-ext-class nil "\\.php$" 'html-php)
 (mmm-add-classes '((html-php
                     :submode php-mode
-                    :front "<?php"
-                    :back "?>")))
-; (add-to-list 'auto-mode-alist '("¥¥.php$" . xml-mode))
+                    :front "<\\?\\(php\\)?"
+                    :back "\\?>")))
+
+;; coffee-mode
+(require 'coffee-mode)
+(add-to-list 'auto-mode-alist '("¥¥.coffee$" . coffee-mode))
+
+;; haml-mode
+(require 'haml-mode)
+(add-to-list 'auto-mode-alist '("¥¥.haml$" . haml-mode))
+(add-hook 'haml-mode-hook
+           (lambda ()
+             (setq indent-tabs-mode nil)
+             (define-key haml-mode-map "\C-m" 'newline-and-indent)))
 
 ;; Close all buffers
 (require 'cl)
