@@ -8,7 +8,7 @@ alias ks="ls"
 alias sl="ls"
 
 # rbenv
-export PATH="$HOME/.rbenv/bin:$PATH"
+export PATH="$HOME/bin:$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 export RBENV_VERSION=1.9.3-p0
 
@@ -43,6 +43,7 @@ alias v='vim'
 
 # MySQL
 alias mysql='mysql -uroot -hworkspace.dev "$@"'
+alias mysqldump='mysqldump -uroot -hworkspace.dev "$@"'
 
 # PEAR
 export PATH=$HOME/.pear/bin:$PATH

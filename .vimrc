@@ -1,3 +1,57 @@
+"------------------------------------
+" vundle.git
+"------------------------------------
+set nocompatible
+filetype off
+set rtp+=~/.vim/vundle.git/
+call vundle#rc()
+
+" My Bundles here:
+" from github:
+" Utils
+Bundle 'git://github.com/altercation/vim-colors-solarized.git'
+Bundle 'git://github.com/tpope/vim-surround.git'
+Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
+Bundle 'git://github.com/scrooloose/nerdcommenter.git'
+Bundle 'git://github.com/msanders/snipmate.vim.git'
+Bundle 'https://github.com/Shougo/vimfiler.git'
+Bundle 'git://github.com/Shougo/neocomplcache.git'
+Bundle 'git://github.com/Shougo/unite.vim.git'
+Bundle 'git://github.com/tsukkee/unite-help.git'
+Bundle 'git://github.com/Shougo/vimproc.git'
+Bundle 'git://github.com/Shougo/vimshell.git'
+Bundle 'git://github.com/thinca/vim-quickrun.git'
+Bundle 'git://github.com/Lokaltog/vim-powerline.git'
+
+" ruby
+Bundle 'git://github.com/tpope/vim-rails.git'
+Bundle 'git://github.com/vim-ruby/vim-ruby.git'
+Bundle 'git://github.com/tpope/vim-haml.git'
+
+" PHP
+Bundle 'git://github.com/2072/PHP-Indenting-for-VIm.git'
+
+" css
+Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
+
+" js, cs
+Bundle 'git://github.com/vim-scripts/IndentAnything.git'
+Bundle 'git://github.com/othree/javascript-syntax.vim.git'
+Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+Bundle 'git://github.com/kchmck/vim-coffee-script.git'
+Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
+
+" Titanium
+Bundle 'git://github.com/pekepeke/titanium-vim.git'
+
+filetype on
+filetype plugin on
+filetype indent on
+
+"------------------------------------
+" configure
+"------------------------------------
+" 互換モードOFF
 set nocompatible
 " キーマップリーダー
 let mapleader = "\\"
@@ -36,9 +90,9 @@ set smartindent
 " 自動でインデント
 set autoindent
 " tab幅を半角2文字に
-set tabstop=2
-set shiftwidth=2
-set softtabstop=2
+set tabstop=4
+set shiftwidth=4
+set softtabstop=4
 " tabを賢く
 set smarttab
 " 行番号表示
@@ -62,64 +116,19 @@ set nohlsearch
 set ignorecase
 set smartcase
 set incsearch
-" statusline
-set laststatus=2
-set statusline=%<%f\ %y\ %m%r%h%w%{'['.(&fenc!=''?&fenc:&enc).':'.&ff.']'}%=%l,%c%8p
 " encoding
 set enc=utf8
-" backup
-set nobackup
-" color
-set t_Co=256
-set background=dark
-colorscheme solarized
-" font
-set gfn=Ricty\ Regular:h12
-set gfw=Ricty\ Regular:h12
 " 特殊文字見せる
 set list
 set listchars=tab:>.,trail:_,nbsp:%,extends:>,precedes:<
 
-" Enable mouse support.
-set mouse=a
-" For screen.
-if &term =~ "^screen"
-  augroup MyAutoCmd
-    autocmd VimLeave * :set mouse=
-  augroup END
-  " screenでマウスを使用するとフリーズするのでその対策
-  set ttymouse=xterm2
-endif
-
-" GVim setting
-if has("gui_running")
-  " size
-  set co=160
-  set lines=50
-  " hide menubar, toolbar, scrollbar
-  set guioptions-=m
-  set guioptions-=T
-  set guioptions-=r
-  set guioptions-=L
-  " Show popup menu if right click.
-  set mousemodel=popup
-  " Don't focus the window when the mouse pointer is moved.
-  set nomousefocus
-  " Hide mouse pointer on insert mode.
-  set mousehide
-endif
-
-" OSのクリップボードを使用する
+" Use native clipboard
 set clipboard+=unnamed
-"ヤンクした文字は、システムのクリップボードに入れる
 set clipboard=unnamed
 
-" Ev/Rvでvimrcの編集と反映
+" Ev/Rv edit/reload vimrc
 command! Ev edit $HOME/.vimrc
 command! Rv source $HOME/.vimrc
-
-" 保存時に行末の空白を除去する
-autocmd BufWritePre * :%s/\s\+$//ge
 
 " 矩形選択で自由に移動する
 set virtualedit+=block
@@ -137,11 +146,14 @@ augroup END
 highlight CursorLine ctermbg=black guibg=black
 
 "------------------------------------
+" autocmd
+"------------------------------------
+" remove last space
+autocmd BufWritePre * :%s/\s\+$//ge
+
+"------------------------------------
 " keymap
 "------------------------------------
-" 挿入モードでCtrl+kを押すとクリップボードの内容を貼り付けられるようにする "
-imap <C-K>  <ESC>"*pa
-
 "Escの2回押しでハイライト消去
 nmap <ESC><ESC> :nohlsearch<CR><ESC>
 
@@ -170,72 +182,15 @@ inoremap ' ''<LEFT>
 inoremap ` ``<LEFT>
 
 "------------------------------------
-" vundle.git
-"------------------------------------
-set nocompatible
-filetype off
-set rtp+=~/.vim/vundle.git/
-call vundle#rc()
-
-" My Bundles here:
-" from github:
-" Utils
-Bundle 'git://github.com/altercation/vim-colors-solarized.git'
-Bundle 'git://github.com/tpope/vim-surround.git'
-Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
-Bundle 'git://github.com/scrooloose/nerdcommenter.git'
-Bundle 'git://github.com/msanders/snipmate.vim.git'
-Bundle 'https://github.com/Shougo/vimfiler.git'
-Bundle 'git://github.com/Shougo/neocomplcache.git'
-Bundle 'git://github.com/Shougo/unite.vim.git'
-Bundle 'git://github.com/tsukkee/unite-help.git'
-Bundle 'git://github.com/Shougo/vimproc.git'
-Bundle 'git://github.com/Shougo/vimshell.git'
-Bundle 'git://github.com/thinca/vim-quickrun.git'
-
-" ruby
-Bundle 'git://github.com/tpope/vim-rails.git'
-Bundle 'git://github.com/vim-ruby/vim-ruby.git'
-Bundle 'git://github.com/tpope/vim-haml.git'
-
-" PHP
-"Bundle 'git://github.com/vim-scripts/smarty.vim.git'
-Bundle 'git://github.com/2072/PHP-Indenting-for-VIm.git'
-
-" css
-Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
-
-" js, cs
-Bundle 'git://github.com/vim-scripts/IndentAnything.git'
-Bundle 'git://github.com/othree/javascript-syntax.vim.git'
-Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
-Bundle 'git://github.com/kchmck/vim-coffee-script.git'
-Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
-
-" Titanium
-Bundle 'git://github.com/pekepeke/titanium-vim.git'
-
-filetype on
-filetype plugin on
-filetype indent on
-
-"------------------------------------
 " filetype
 "------------------------------------
-autocmd BufNewFile,BufRead *.tpl set filetype=smarty
-autocmd BufNewFile,BufRead *.jst set filetype=eruby.html
-autocmd BufNewFile,BufRead *.jst.ejs set filetype=eruby.html
-autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
-autocmd BufNewFile,BufRead *.css.erb set filetype=eruby.css
-autocmd BufNewFile,BufRead *.scss.erb set filetype=eruby.css
-autocmd BufNewFile,BufRead *.js.erb set filetype=eruby.js
-autocmd BufNewFile,BufRead *.coffee.erb set filetype=eruby.coffee
+autocmd BufNewFile,BufRead *.ctp,*.php set filetype=php.html
 
 " 対象のファイルタイプの場合、保存時にtabをスペースに変換する
 autocmd FileType html,css,js,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
 
 " pythonの場合、tab幅を半角4文字に
-autocmd FileType python set tabstop=4 shiftwidth=4 softtabstop=4
+autocmd FileType ruby set tabstop=2 shiftwidth=2 softtabstop=2
 
 " ruby.spec
 augroup RSpec
@@ -259,7 +214,7 @@ nnoremap <C-W><C-W> :VimShell<CR>
 "------------------------------------
 " SnipMate
 "------------------------------------
-let g:snippets_dir = $HOME.'/.vim/snippets'
+let g:snippets_dir = '~/.vim/snippets'
 
 "------------------------------------
 " neocomplcache
@@ -285,7 +240,7 @@ let g:neocomplcache_plugin_completion_length = {
 let g:neocomplcache_enable_auto_select = 1
 
 " Define snippets directory.
-let g:neocomplcache_snippets_dir = $HOME.'/.vim/snippets'
+let g:neocomplcache_snippets_dir = '~/.vim/snippets'
 
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {
@@ -314,19 +269,19 @@ inoremap <expr><C-e>  neocomplcache#cancel_popup()
 
 " Enable omni completion.
 autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
-autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
+autocmd FileType html,php,ctp setlocal omnifunc=htmlcomplete#CompleteTags
 autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
 autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
 autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
 autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
+autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
 
 " Enable heavy omni completion.
-"if !exists('g:neocomplcache_omni_patterns')
-"  let g:neocomplcache_omni_patterns = {}
-"endif
-"let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
-"let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
-
+if !exists('g:neocomplcache_omni_patterns')
+  let g:neocomplcache_omni_patterns = {}
+  let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
+  let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
+endif
 
 "------------------------------------
 " surround.vim
