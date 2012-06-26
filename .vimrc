@@ -146,10 +146,19 @@ augroup END
 highlight CursorLine ctermbg=black guibg=black
 
 "------------------------------------
+" user functions
+"------------------------------------
+
+"------------------------------------
 " autocmd
 "------------------------------------
 " remove last space
 autocmd BufWritePre * :%s/\s\+$//ge
+" auto save
+set autowriteall
+set updatetime=1000
+au CursorHold * silent! wall
+au CursorHoldI * silent! wall
 
 "------------------------------------
 " keymap
