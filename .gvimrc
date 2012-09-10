@@ -13,7 +13,7 @@ set nomousefocus
 " Hide mouse pointer on insert mode.
 set mousehide
 " transparent
-set transparency=20
+set transparency=10
 " color
 set t_Co=256
 set background=dark

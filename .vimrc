@@ -22,6 +22,7 @@ Bundle 'git://github.com/Shougo/vimproc.git'
 Bundle 'git://github.com/Shougo/vimshell.git'
 Bundle 'git://github.com/thinca/vim-quickrun.git'
 Bundle 'git://github.com/Lokaltog/vim-powerline.git'
+Bundle 'git://github.com/tpope/vim-endwise.git'
 
 " ruby
 Bundle 'git://github.com/tpope/vim-rails.git'
@@ -118,6 +119,7 @@ set smartcase
 set incsearch
 " encoding
 set enc=utf8
+set fileencodings+=sjis,cp932
 " 特殊文字見せる
 set list
 set listchars=tab:>.,trail:_,nbsp:%,extends:>,precedes:<
@@ -146,17 +148,13 @@ augroup END
 highlight CursorLine ctermbg=black guibg=black
 
 "------------------------------------
-" user functions
-"------------------------------------
-
-"------------------------------------
 " autocmd
 "------------------------------------
 " remove last space
 autocmd BufWritePre * :%s/\s\+$//ge
 " auto save
 set autowriteall
-set updatetime=1000
+set updatetime=1500
 au CursorHold * silent! wall
 au CursorHoldI * silent! wall
 
@@ -191,9 +189,23 @@ inoremap ' ''<LEFT>
 inoremap ` ``<LEFT>
 
 "------------------------------------
+" use functions
+"------------------------------------
+" magic comment
+function! MagicComment()
+    let magic_comment = "# -*- coding: utf-8 -*-\n"
+    let pos = getpos(".")
+    call cursor(1, 0)
+    execute ":normal i" . magic_comment
+    call setpos(".", pos)
+endfunction
+map <silent> <Leader># :call MagicComment()<CR>
+
+"------------------------------------
 " filetype
 "------------------------------------
-autocmd BufNewFile,BufRead *.ctp,*.php set filetype=php.html
+autocmd BufNewFile,BufRead *.ctp set filetype=php
+autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
 
 " 対象のファイルタイプの場合、保存時にtabをスペースに変換する
 autocmd FileType html,css,js,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
@@ -277,20 +289,20 @@ inoremap <expr><C-y>  neocomplcache#close_popup()
 inoremap <expr><C-e>  neocomplcache#cancel_popup()
 
 " Enable omni completion.
-autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
-autocmd FileType html,php,ctp setlocal omnifunc=htmlcomplete#CompleteTags
-autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
-autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
-autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
-autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
+"autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
+"autocmd FileType html,php,ctp setlocal omnifunc=htmlcomplete#CompleteTags
+"autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
+"autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+"autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
+"autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
 
 " Enable heavy omni completion.
-if !exists('g:neocomplcache_omni_patterns')
-  let g:neocomplcache_omni_patterns = {}
-  let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
-  let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
-endif
+"if !exists('g:neocomplcache_omni_patterns')
+  "let g:neocomplcache_omni_patterns = {}
+  "let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
+  "let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
+"endif
 
 "------------------------------------
 " surround.vim
