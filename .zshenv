@@ -7,13 +7,14 @@ alias ls="ls -lG -w"
 alias ks="ls"
 alias sl="ls"
 
+# homebrew
+export LDFLAGS="-L/usr/local/opt/libtool/lib"
+export CPPFLAGS="-I/usr/local/opt/libtool/include"
+
 # rbenv
 export PATH="$HOME/bin:$HOME/.rbenv/bin:$PATH"
-eval "$(rbenv init -)"
-export RBENV_VERSION=1.9.3-p0
-
-# node nvm
-source $HOME/.nvm/nvm.sh
+eval "$(rbenv init - zsh)"
+source ~/.rbenv/completions/rbenv.zsh
 
 # cakephp
 alias cake='$HOME/workspace/src/cakephp/lib/Cake/Console/cake "$@"'
