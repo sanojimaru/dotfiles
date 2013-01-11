@@ -1,53 +1,56 @@
 "------------------------------------
-" vundle.git
+" neobundle.git
 "------------------------------------
+"
 set nocompatible
 filetype off
-set rtp+=~/.vim/vundle.git/
-call vundle#rc()
+if has('vim_starting')
+    set runtimepath+=~/.vim/bundle/neobundle.vim/
+endif
+call neobundle#rc(expand('~/.vim/bundle/'))
 
 " My Bundles here:
 " from github:
 " Utils
-Bundle 'git://github.com/altercation/vim-colors-solarized.git'
-Bundle 'git://github.com/tpope/vim-surround.git'
-Bundle 'git://github.com/chrismetcalf/vim-yankring.git'
-Bundle 'git://github.com/scrooloose/nerdcommenter.git'
-Bundle 'git://github.com/msanders/snipmate.vim.git'
-Bundle 'https://github.com/Shougo/vimfiler.git'
-Bundle 'git://github.com/Shougo/neocomplcache.git'
-Bundle 'git://github.com/Shougo/unite.vim.git'
-Bundle 'git://github.com/tsukkee/unite-help.git'
-Bundle 'git://github.com/Shougo/vimproc.git'
-Bundle 'git://github.com/Shougo/vimshell.git'
-Bundle 'git://github.com/thinca/vim-quickrun.git'
-Bundle 'git://github.com/Lokaltog/vim-powerline.git'
-Bundle 'git://github.com/tpope/vim-endwise.git'
+NeoBundle 'git://github.com/altercation/vim-colors-solarized.git'
+NeoBundle 'git://github.com/tpope/vim-surround.git'
+NeoBundle 'git://github.com/chrismetcalf/vim-yankring.git'
+NeoBundle 'git://github.com/scrooloose/nerdcommenter.git'
+NeoBundle 'git://github.com/msanders/snipmate.vim.git'
+NeoBundle 'https://github.com/Shougo/vimfiler.git'
+NeoBundle 'git://github.com/Shougo/neocomplcache.git'
+NeoBundle 'git://github.com/Shougo/unite.vim.git'
+NeoBundle 'git://github.com/tsukkee/unite-help.git'
+NeoBundle 'git://github.com/Shougo/vimproc.git'
+NeoBundle 'git://github.com/Shougo/vimshell.git'
+NeoBundle 'git://github.com/thinca/vim-quickrun.git'
+NeoBundle 'git://github.com/Lokaltog/vim-powerline.git'
+NeoBundle 'git://github.com/tpope/vim-endwise.git'
 
 " ruby
-Bundle 'git://github.com/tpope/vim-rails.git'
-Bundle 'git://github.com/vim-ruby/vim-ruby.git'
-Bundle 'git://github.com/tpope/vim-haml.git'
+NeoBundle 'git://github.com/tpope/vim-rails.git'
+NeoBundle 'git://github.com/vim-ruby/vim-ruby.git'
+NeoBundle 'git://github.com/tpope/vim-haml.git'
 
-" PHP
-Bundle 'git://github.com/2072/PHP-Indenting-for-VIm.git'
-
-" css
-Bundle 'git://github.com/cakebaker/scss-syntax.vim.git'
+" css, scss
+NeoBundle 'git://github.com/cakebaker/scss-syntax.vim.git'
 
 " js, cs
-Bundle 'git://github.com/vim-scripts/IndentAnything.git'
-Bundle 'git://github.com/othree/javascript-syntax.vim.git'
-Bundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
-Bundle 'git://github.com/kchmck/vim-coffee-script.git'
-Bundle 'git://github.com/garbas/vim-jquery-tmpl.git'
+NeoBundle 'git://github.com/vim-scripts/IndentAnything.git'
+NeoBundle 'git://github.com/othree/javascript-syntax.vim.git'
+NeoBundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
+NeoBundle 'git://github.com/kchmck/vim-coffee-script.git'
+NeoBundle 'git://github.com/garbas/vim-jquery-tmpl.git'
 
-" Titanium
-Bundle 'git://github.com/pekepeke/titanium-vim.git'
+filetype plugin indent on
 
-filetype on
-filetype plugin on
-filetype indent on
+" Installation check.
+if neobundle#exists_not_installed_bundles()
+    echomsg 'Not installed bundles : ' .
+                \ string(neobundle#get_not_installed_bundle_names())
+    echomsg 'Please execute ":NeoBundleInstall" command.'
+    "finish
+endif
 
 "------------------------------------
 " configure
@@ -90,7 +93,7 @@ set expandtab
 set smartindent
 " 自動でインデント
 set autoindent
-" tab幅を半角2文字に
+" tab幅を半角4文字に
 set tabstop=4
 set shiftwidth=4
 set softtabstop=4
@@ -204,14 +207,13 @@ map <silent> <Leader># :call MagicComment()<CR>
 "------------------------------------
 " filetype
 "------------------------------------
-autocmd BufNewFile,BufRead *.ctp set filetype=php
-autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
+autocmd BufNewFile,BufRead *.ctp set filetype=php.html
+autocmd BufNewFile,BufRead *.erb set filetype=eruby
+autocmd BufNewFile,BufRead *.ejs set filetype=eruby
+autocmd BufNewFile,BufRead *.jst set filetype=eruby
 
 " 対象のファイルタイプの場合、保存時にtabをスペースに変換する
-autocmd FileType html,css,js,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
-
-" pythonの場合、tab幅を半角4文字に
-autocmd FileType ruby set tabstop=2 shiftwidth=2 softtabstop=2
+autocmd FileType html,css,javascript,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
 
 " ruby.spec
 augroup RSpec
@@ -248,21 +250,16 @@ let g:neocomplcache_enable_smart_case = 1
 let g:neocomplcache_enable_camel_case_completion = 1
 " アンダーバー補完を有効にする
 let g:neocomplcache_enable_underbar_completion = 1
-" シンタックスファイルの補完対象キーワードとする最小の長さ
+" Set minimum syntax keyword length.
 let g:neocomplcache_min_syntax_length = 3
+" Set minimum keyword length
 let g:neocomplcache_min_keyword_length = 3
-let g:neocomplcache_plugin_completion_length = {
-  \ 'snipmate_complete' : 1,
-  \ 'keyword_complete' : 2,
-  \ 'syntax_complete' : 2
-  \ }
-
-" 候補popup時に先頭の候補を選択しておく
+" Set manual completion length.
+let g:NeoComplCache_manual_completion_start_length = 0
+" 最初の候補を自動選択
 let g:neocomplcache_enable_auto_select = 1
-
 " Define snippets directory.
 let g:neocomplcache_snippets_dir = '~/.vim/snippets'
-
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {
     \ 'default' : '',
@@ -270,12 +267,6 @@ let g:neocomplcache_dictionary_filetype_lists = {
     \ 'javascript' : '~/.vim/dict/javascript.dict',
     \ 'php' : '~/.vim/dict/php.dict',
     \ 'vim' : '~/.vim/dict/vim.dict'}
-
-" Define keyword.
-if !exists('g:neocomplcache_keyword_patterns')
-  let g:neocomplcache_keyword_patterns = {}
-endif
-let g:neocomplcache_keyword_patterns['default'] = '\h\w*'
 
 " Recommended key-mappings.
 " <CR>: close popup and save indent.
@@ -289,20 +280,26 @@ inoremap <expr><C-y>  neocomplcache#close_popup()
 inoremap <expr><C-e>  neocomplcache#cancel_popup()
 
 " Enable omni completion.
-"autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
-"autocmd FileType html,php,ctp setlocal omnifunc=htmlcomplete#CompleteTags
-"autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
-"autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
-"autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
+autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
+autocmd FileType html setlocal omnifunc=htmlcomplete#CompleteTags
+autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
+autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
 "autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
 
 " Enable heavy omni completion.
-"if !exists('g:neocomplcache_omni_patterns')
-  "let g:neocomplcache_omni_patterns = {}
+if !exists('g:neocomplcache_omni_patterns')
+  let g:neocomplcache_omni_patterns = {}
   "let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
   "let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
-"endif
+endif
+
+" Define keyword.
+if !exists('g:neocomplcache_keyword_patterns')
+  let g:neocomplcache_keyword_patterns = {}
+endif
+let g:neocomplcache_keyword_patterns['default'] = '\v\h\w*'
 
 "------------------------------------
 " surround.vim

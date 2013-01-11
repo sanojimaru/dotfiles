@@ -45,6 +45,8 @@ alias v='vim'
 # MySQL
 alias mysql='mysql -uroot -hworkspace.dev "$@"'
 alias mysqldump='mysqldump -uroot -hworkspace.dev "$@"'
+alias mysqllocal='mysql -hlocalhost "$@"'
+alias mysqldumplocal='mysqldump -hlocalhost "$@"'
 
 # PEAR
 export PATH=$HOME/.pear/bin:$PATH
@@ -59,3 +61,9 @@ export EC2_PRIVATE_KEY="$(/bin/ls $HOME/iccom_ssh_keys/aws_security_certificates
 export EC2_CERT="$(/bin/ls $HOME/iccom_ssh_keys/aws_security_certificates/eds_cert-*.pem)"
 export EC2_REGION=ap-northeast-1
 export AWS_RDS_HOME="/usr/local/Cellar/rds-command-line-tools/1.3.003/jars"
+
+# picmix接続
+alias sshpf_picmix=`cat <<EOF
+sudo ssh -C -N -f -L 80:wwwd.picmix.jp:80 dev.ic-com.co.jp &&
+ssh -C -N -f -L 80:wwwt.picmix.jp:80 dev.ic-com.co.jp
+EOF`
