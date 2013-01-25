@@ -11,6 +11,10 @@ alias sl="ls"
 export LDFLAGS="-L/usr/local/opt/libtool/lib"
 export CPPFLAGS="-I/usr/local/opt/libtool/include"
 
+# nave
+alias nave='$HOME/src/nave/nave.sh "$@"'
+export PATH="/Users/sanojimaru/node_modules/.bin:$PATH"
+
 # rbenv
 export PATH="$HOME/bin:$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init - zsh)"
@@ -31,10 +35,6 @@ export PATH=$PATH:$ANDROID_SDK/platform-tools:$ANDROID_SDK/tools
 # Titanium
 export TITANIUM_SDK='/Library/Application\ Support/Titanium/mobilesdk/osx/1.7.5'
 alias titanium=$TITANIUM_SDK/titanium.py
-
-# emacs
-alias emacs="/usr/local/Cellar/emacs/23.3b/Emacs.app/Contents/MacOS/Emacs"
-alias em='emacs'
 
 # vim
 export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim

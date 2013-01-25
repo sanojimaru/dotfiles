@@ -208,9 +208,8 @@ map <silent> <Leader># :call MagicComment()<CR>
 " filetype
 "------------------------------------
 autocmd BufNewFile,BufRead *.ctp set filetype=php.html
-autocmd BufNewFile,BufRead *.erb set filetype=eruby
-autocmd BufNewFile,BufRead *.ejs set filetype=eruby
-autocmd BufNewFile,BufRead *.jst set filetype=eruby
+autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
+autocmd BufNewFile,BufRead *.ejs set filetype=eruby.html
 
 " 対象のファイルタイプの場合、保存時にtabをスペースに変換する
 autocmd FileType html,css,javascript,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
@@ -255,7 +254,7 @@ let g:neocomplcache_min_syntax_length = 3
 " Set minimum keyword length
 let g:neocomplcache_min_keyword_length = 3
 " Set manual completion length.
-let g:NeoComplCache_manual_completion_start_length = 0
+let g:NeoComplCache_manual_completion_start_length = 2
 " 最初の候補を自動選択
 let g:neocomplcache_enable_auto_select = 1
 " Define snippets directory.
@@ -280,12 +279,12 @@ inoremap <expr><C-y>  neocomplcache#close_popup()
 inoremap <expr><C-e>  neocomplcache#cancel_popup()
 
 " Enable omni completion.
-autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
-autocmd FileType html setlocal omnifunc=htmlcomplete#CompleteTags
-autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
-autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
-autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
+"autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
+"autocmd FileType html setlocal omnifunc=htmlcomplete#CompleteTags
+"autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
+"autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+"autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
 "autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
 
 " Enable heavy omni completion.
