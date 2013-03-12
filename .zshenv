@@ -10,6 +10,13 @@ alias sl="ls"
 # homebrew
 export LDFLAGS="-L/usr/local/opt/libtool/lib"
 export CPPFLAGS="-I/usr/local/opt/libtool/include"
+export PATH="/usr/local/sbin:$PATH"
+
+# Play
+export PATH="$HOME/src/play-2.1.0:$PATH"
+
+# php-fpm
+export PATH="$(brew --prefix josegonzalez/php/php54)/bin:$PATH"
 
 # nave
 alias nave='$HOME/src/nave/nave.sh "$@"'
@@ -36,6 +43,10 @@ export PATH=$PATH:$ANDROID_SDK/platform-tools:$ANDROID_SDK/tools
 export TITANIUM_SDK='/Library/Application\ Support/Titanium/mobilesdk/osx/1.7.5'
 alias titanium=$TITANIUM_SDK/titanium.py
 
+# Sublime text 2
+alias subl='/Applications/Sublime\ Text\ 2.app/Contents/SharedSupport/bin/subl "$@"'
+alias e='subl'
+
 # vim
 export EDITOR=/Applications/MacVim.app/Contents/MacOS/Vim
 alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
@@ -47,9 +58,6 @@ alias mysql='mysql -uroot -hworkspace.dev "$@"'
 alias mysqldump='mysqldump -uroot -hworkspace.dev "$@"'
 alias mysqllocal='mysql -hlocalhost "$@"'
 alias mysqldumplocal='mysqldump -hlocalhost "$@"'
-
-# PEAR
-export PATH=$HOME/.pear/bin:$PATH
 
 # git-flow-completion
 source ~/src/git-flow-completion/git-flow-completion.zsh
@@ -67,3 +75,6 @@ alias sshpf_picmix=`cat <<EOF
 sudo ssh -C -N -f -L 80:wwwd.picmix.jp:80 dev.ic-com.co.jp &&
 ssh -C -N -f -L 80:wwwt.picmix.jp:80 dev.ic-com.co.jp
 EOF`
+
+# 窓タッチ
+alias sshpf_madotouch='ssh -C -N -f -L 13389:10.0.1.246:3389 madotouch.gateway'

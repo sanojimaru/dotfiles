@@ -41,6 +41,7 @@ NeoBundle 'git://github.com/othree/javascript-syntax.vim.git'
 NeoBundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
 NeoBundle 'git://github.com/kchmck/vim-coffee-script.git'
 NeoBundle 'git://github.com/garbas/vim-jquery-tmpl.git'
+NeoBundle 'git://github.com/hallettj/jslint.vim.git'
 
 filetype plugin indent on
 
