@@ -1,3 +1,3 @@
 export PATH="/Users/sanojimaru/.rbenv/shims:/Users/sanojimaru/.rbenv/bin:$PATH"
-export POW_DOMAINS=dev,pow
-export POW_DST_PORT=88
+export POW_DOMAINS=dev,pw
+export POW_DST_PORT=80

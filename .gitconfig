@@ -14,3 +14,5 @@
 [github]
   user = sanojimaru
   token = b8e481df1f07f4ef1f8ae8492e28fbc5
+[push]
+	default = simple

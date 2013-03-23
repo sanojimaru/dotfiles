@@ -41,6 +41,11 @@ These snippets can now be installed via [Sublime Package Control](http://wbond.n
     <td>`<%=  %>`</td>
   </tr>
   <tr>
+    <td>print ERB comment</td>
+    <td>__pc__</td>
+    <td>`<%#  %>`</td>
+  </tr>
+  <tr>
     <td>`if` block</td>
     <td>__if__</td>
     <td>`<% if  %>...<% end %>`</td>
@@ -49,6 +54,16 @@ These snippets can now be installed via [Sublime Package Control](http://wbond.n
     <td>`if` / `else` block</td>
     <td>__ife__</td>
     <td>`<% if  %>...<% else %>...<% end %>`</td>
+  </tr>
+  <tr>
+    <td>`else` tag</td>
+    <td>__else__</td>
+    <td>`<% else %>`</td>
+  </tr>
+  <tr>
+    <td>`elsif` tag</td>
+    <td>__elsif__</td>
+    <td>`<% elsif %>`</td>
   </tr>
   <tr>
     <td>`end` block</td>
