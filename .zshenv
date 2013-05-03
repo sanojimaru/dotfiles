@@ -46,12 +46,6 @@ alias vim='/Applications/MacVim.app/Contents/MacOS/Vim "$@"'
 alias vi='vim'
 alias v='vim'
 
-# MySQL
-alias mysql='mysql -uroot -hworkspace.dev "$@"'
-alias mysqldump='mysqldump -uroot -hworkspace.dev "$@"'
-alias mysqllocal='mysql -hlocalhost "$@"'
-alias mysqldumplocal='mysqldump -hlocalhost "$@"'
-
 # git-flow-completion
 source ~/src/git-flow-completion/git-flow-completion.zsh
 

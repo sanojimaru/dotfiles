@@ -29,7 +29,7 @@ defencoding utf-8
 setenv LANG en_US.UTF-8
 
 # shell
-shell /bin/zsh
+shell /usr/local/bin/zsh
 
 #split window
 bind w windowlist -b
