@@ -138,8 +138,8 @@ bindkey "\\en" history-beginning-search-forward-end
 
 # Command history configuration
 HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
+HISTSIZE=5000
+SAVEHIST=5000
 
 # 登録済コマンド行は古い方を削除
 setopt hist_ignore_all_dups
@@ -196,9 +196,3 @@ bindkey -a 'q' push-line
 #
 setopt complete_aliases     # aliased ls needs if file/dir completions work
 alias where="command -v"
-
-# screen
-#if [ $SHLVL = 1 ]; then
-  #screen -R
-  #exit
-#fi
