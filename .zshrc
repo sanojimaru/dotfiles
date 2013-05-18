@@ -1,3 +1,8 @@
+# LANG
+# http://curiousabt.blog27.fc2.com/blog-entry-65.html
+export LANG=ja_JP.UTF-8
+export LESSCHARSET=utf-8
+
 # Default shell configuration
 autoload colors
 colors
@@ -191,8 +196,30 @@ autoload predict-on
 bindkey -a 'q' push-line
 
 # Alias configuration
-#
-# expand aliases before completing
-#
-setopt complete_aliases     # aliased ls needs if file/dir completions work
+setopt complete_aliases
 alias where="command -v"
+
+# alias
+[ -f ~/dotfiles/.zshrc.alias ] && source ~/dotfiles/.zshrc.alias
+
+# tmux/screenの自動起動設定
+#  Note: .bashrc or .zshrc に設定して使用して下さい。
+#
+#  ログイン時にtmux または screenが起動してない場合は自動的に起動
+#  デタッチ済みセッションが存在すればアタッチし、なければ新規セッションを生成
+#  tmuxを優先して起動し、tmuxが使えなければscreenを起動する
+#
+if [ -z "$TMUX" -a -z "$STY" ]; then
+    if type tmuxx >/dev/null 2>&1; then
+        tmuxx
+    elif type tmux >/dev/null 2>&1; then
+        if tmux has-session && tmux list-sessions | egrep -q '.*]$'; then
+            # デタッチ済みセッションが存在する
+            tmux attach && echo "tmux attached session "
+        else
+            tmux new-session && echo "tmux created new session"
+        fi
+    elif type screen >/dev/null 2>&1; then
+        screen -rx || screen -D -RR
+    fi
+fi

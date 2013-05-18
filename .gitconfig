@@ -1,6 +1,6 @@
 [user]
-	name = Hirohide Sano <@sanojimaru>
-	email = sanojimaru@gmail.com
+  name = Hirohide Sano <@sanojimaru>
+  email = sanojimaru@gmail.com
 [color]
   # colorの設定(以下のコマンドは自動で色つける)
   status = auto
@@ -15,4 +15,4 @@
   user = sanojimaru
   token = b8e481df1f07f4ef1f8ae8492e28fbc5
 [push]
-	default = simple
+  default = simple

@@ -1,6 +1,6 @@
 " size
-set co=190
-set lines=60
+set co=120
+set lines=30
 " hide menubar, toolbar, scrollbar
 set guioptions-=m
 set guioptions-=T
@@ -23,4 +23,3 @@ set gfn=Ricty\ Regular:h13.5
 set gfw=Ricty\ Regular:h13.5
 " fullscreen
 set fuoptions=maxvert,maxhorz
-au GUIEnter * set fullscreen

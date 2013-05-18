@@ -1,7 +1,6 @@
 "------------------------------------
 " neobundle.git
 "------------------------------------
-"
 set nocompatible
 filetype off
 if has('vim_starting')
@@ -9,23 +8,31 @@ if has('vim_starting')
 endif
 call neobundle#rc(expand('~/.vim/bundle/'))
 
-" My Bundles here:
-" from github:
 " Utils
+" カラーテーマ
 NeoBundle 'git://github.com/altercation/vim-colors-solarized.git'
+" s,ssで選択範囲を括弧でくくったりするやつ
 NeoBundle 'git://github.com/tpope/vim-surround.git'
+" yankの履歴とか
 NeoBundle 'git://github.com/chrismetcalf/vim-yankring.git'
+" コメントアウトが便利 <Leader>c<Space>
 NeoBundle 'git://github.com/scrooloose/nerdcommenter.git'
-NeoBundle 'git://github.com/msanders/snipmate.vim.git'
-NeoBundle 'https://github.com/Shougo/vimfiler.git'
+" 補完
 NeoBundle 'git://github.com/Shougo/neocomplcache.git'
+NeoBundle 'git://github.com/Shougo/neosnippet.vim.git'
+NeoBundle 'git://github.com/honza/vim-snippets.git'
+" いわずもがな
 NeoBundle 'git://github.com/Shougo/unite.vim.git'
-NeoBundle 'git://github.com/tsukkee/unite-help.git'
+" シェルとかプロセスとかコマンド実行とか
 NeoBundle 'git://github.com/Shougo/vimproc.git'
 NeoBundle 'git://github.com/Shougo/vimshell.git'
 NeoBundle 'git://github.com/thinca/vim-quickrun.git'
+" かっこいいステータスバー
 NeoBundle 'git://github.com/Lokaltog/vim-powerline.git'
+" endとか}とかを補完
 NeoBundle 'git://github.com/tpope/vim-endwise.git'
+" OSデフォルトのクリップボードを使う
+NeoBundle 'git://github.com/kana/vim-fakeclip.git'
 
 " ruby
 NeoBundle 'git://github.com/tpope/vim-rails.git'
@@ -36,12 +43,7 @@ NeoBundle 'git://github.com/tpope/vim-haml.git'
 NeoBundle 'git://github.com/cakebaker/scss-syntax.vim.git'
 
 " js, cs
-NeoBundle 'git://github.com/vim-scripts/IndentAnything.git'
-NeoBundle 'git://github.com/othree/javascript-syntax.vim.git'
-NeoBundle 'git://github.com/vim-scripts/Javascript-Indentation.git'
 NeoBundle 'git://github.com/kchmck/vim-coffee-script.git'
-NeoBundle 'git://github.com/garbas/vim-jquery-tmpl.git'
-NeoBundle 'git://github.com/hallettj/jslint.vim.git'
 
 filetype plugin indent on
 
@@ -58,81 +60,113 @@ endif
 "------------------------------------
 " 互換モードOFF
 set nocompatible
+
 " キーマップリーダー
 let mapleader = "\\"
+
 " スクロール時の余白確保
 set scrolloff=5
+
 " 一行に長い文章を書いていても自動折り返しをしない
 set textwidth=0
+
 " バックアップ取らない
 set nobackup
+
 " スワップファイル作らない
 set noswapfile
+
 " 他で書き換えられたら自動で読み直す
 set autoread
+
 " 編集中でも他のファイルを開けるようにする
 set hidden
+
 " バックスペースでなんでも消せるように
 set backspace=indent,eol,start
+
 " テキスト整形オプション，マルチバイト系を追加
 set formatoptions=lmoq
+
 " ビープをならさない
 set vb t_vb=
+
 " Exploreの初期ディレクトリ
 set browsedir=buffer
+
 " カーソルを行頭、行末で止まらないようにする
 set whichwrap=b,s,h,l,<,>,[,]
+
 " コマンドをステータス行に表示
 set showcmd
+
 " 現在のモードを表示
 set showmode
+
 " モードラインは無効
 set modelines=0
+
 " tabを使わない
 set expandtab
+
 " インデントを賢く
 set smartindent
+
 " 自動でインデント
 set autoindent
+
 " tab幅を半角4文字に
 set tabstop=4
 set shiftwidth=4
 set softtabstop=4
+
 " tabを賢く
 set smarttab
+
 " 行番号表示
 set number
+
 "モード表示
 set showmode
+
 "編集中のファイル名を表示
 set title
+
 "ルーラーの表示
 set ruler
+
 "入力中のコマンドをステータスに表示する
 set showcmd
+
 "括弧入力時の対応する括弧を表示
 set showmatch
-"2バイト半角文字対応
+
+" 2バイト半角文字対応
 set ambiwidth=double
+
 " カラー表示
 syntax on
-" search
+
+" 検索設定
 set nohlsearch
 set ignorecase
 set smartcase
 set incsearch
+
 " encoding
 set enc=utf8
 set fileencodings+=sjis,cp932
+
 " 特殊文字見せる
 set list
 set listchars=tab:>.,trail:_,nbsp:%,extends:>,precedes:<
 
-" Use native clipboard
+" Macのクリップボードを使う
+set clipboard+=autoselect
 set clipboard+=unnamed
 set clipboard=unnamed
 
-" Ev/Rv edit/reload vimrc
+" Ev/Rvでvimrcを編集/リロードする
 command! Ev edit $HOME/.vimrc
 command! Rv source $HOME/.vimrc
 
@@ -195,15 +229,6 @@ inoremap ` ``<LEFT>
 "------------------------------------
 " use functions
 "------------------------------------
-" magic comment
-function! MagicComment()
-    let magic_comment = "# -*- coding: utf-8 -*-\n"
-    let pos = getpos(".")
-    call cursor(1, 0)
-    execute ":normal i" . magic_comment
-    call setpos(".", pos)
-endfunction
-map <silent> <Leader># :call MagicComment()<CR>
 
 "------------------------------------
 " filetype
@@ -212,20 +237,10 @@ autocmd BufNewFile,BufRead *.ctp set filetype=php.html
 autocmd BufNewFile,BufRead *.erb set filetype=eruby.html
 autocmd BufNewFile,BufRead *.ejs set filetype=eruby.html
 
-" 対象のファイルタイプの場合、保存時にtabをスペースに変換する
-autocmd FileType html,css,javascript,php,ruby,eruby,python,coffee,vim :%s/\t/  /ge
-
-" ruby.spec
-augroup RSpec
-  autocmd!
-  autocmd BufWinEnter, BufNewFile *_spec.rb set filetype=ruby.rspec
-augroup END
-
 "------------------------------------
 " vim-quickrun
 "------------------------------------
 let g:quickrun_config = {}
-let g:quickrun_config['ruby.rspec'] = { 'command': 'rspec' }
 
 "------------------------------------
 " VimShell
@@ -235,44 +250,50 @@ let g:vimshell_enable_auto_slash = 1
 nnoremap <C-W><C-W> :VimShell<CR>
 
 "------------------------------------
-" SnipMate
-"------------------------------------
-let g:snippets_dir = '~/.vim/snippets'
-
-"------------------------------------
 " neocomplcache
 "------------------------------------
 " 起動時に有効化
 let g:neocomplcache_enable_at_startup = 1
+
 " 大文字小文字を区別する
 let g:neocomplcache_enable_smart_case = 1
+
 " キャメルケース補完を有効にする
 let g:neocomplcache_enable_camel_case_completion = 1
+
 " アンダーバー補完を有効にする
 let g:neocomplcache_enable_underbar_completion = 1
+
 " Set minimum syntax keyword length.
 let g:neocomplcache_min_syntax_length = 3
+
 " Set minimum keyword length
 let g:neocomplcache_min_keyword_length = 3
+
 " Set manual completion length.
 let g:NeoComplCache_manual_completion_start_length = 2
+
 " 最初の候補を自動選択
 let g:neocomplcache_enable_auto_select = 1
+
 " Define snippets directory.
 let g:neocomplcache_snippets_dir = '~/.vim/snippets'
+
 " Define dictionary.
 let g:neocomplcache_dictionary_filetype_lists = {
     \ 'default' : '',
     \ 'java' : '~/.vim/dict/java.dict',
     \ 'javascript' : '~/.vim/dict/javascript.dict',
     \ 'php' : '~/.vim/dict/php.dict',
-    \ 'vim' : '~/.vim/dict/vim.dict'}
+    \ 'vim' : '~/.vim/dict/vim.dict' }
 
 " Recommended key-mappings.
 " <CR>: close popup and save indent.
+
 "inoremap <expr><CR>  neocomplcache#smart_close_popup()."\<CR>"
 " <TAB>: completion.
 inoremap <expr><TAB>  pumvisible() ? "\<C-n>" : "\<TAB>"
+
 " <C-h>, <BS>: close popup and delete backword char.
 inoremap <expr><C-h> neocomplcache#smart_close_popup()."\<C-h>"
 inoremap <expr><BS> neocomplcache#smart_close_popup()."\<C-h>"
@@ -280,26 +301,34 @@ inoremap <expr><C-y>  neocomplcache#close_popup()
 inoremap <expr><C-e>  neocomplcache#cancel_popup()
 
 " Enable omni completion.
-"autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
-"autocmd FileType html setlocal omnifunc=htmlcomplete#CompleteTags
-"autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
-"autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
-"autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
-"autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
-"autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
+autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
+autocmd FileType html setlocal omnifunc=htmlcomplete#CompleteTags
+autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
+autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+autocmd FileType python setlocal omnifunc=pythoncomplete#Complete
+autocmd FileType ruby setlocal omnifunc=rubycomplete#Complete
+autocmd FileType php setlocal omnifunc=phpcomplete#CompletePHP
 
-" Enable heavy omni completion.
-if !exists('g:neocomplcache_omni_patterns')
-  let g:neocomplcache_omni_patterns = {}
-  "let g:neocomplcache_omni_patterns.ruby = '[^. *\t]\.\w*\|\h\w*::'
-  "let g:neocomplcache_omni_patterns.php = '[^. \t]->\h\w*\|\h\w*::'
-endif
+"------------------------------------
+" neosnipeet.vim
+"------------------------------------
+" Plugin key-mappings.
+imap <C-k>     <Plug>(neosnippet_expand_or_jump)
+smap <C-k>     <Plug>(neosnippet_expand_or_jump)
+xmap <C-k>     <Plug>(neosnippet_expand_target)
 
-" Define keyword.
-if !exists('g:neocomplcache_keyword_patterns')
-  let g:neocomplcache_keyword_patterns = {}
+" SuperTab like snippets behavior.
+imap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: pumvisible() ? "\<C-n>" : "\<TAB>"
+smap <expr><TAB> neosnippet#expandable_or_jumpable() ?
+\ "\<Plug>(neosnippet_expand_or_jump)"
+\: "\<TAB>"
+
+" For snippet_complete marker.
+if has('conceal')
+  set conceallevel=2 concealcursor=i
 endif
-let g:neocomplcache_keyword_patterns['default'] = '\v\h\w*'
 
 "------------------------------------
 " surround.vim
@@ -325,6 +354,8 @@ noremap <C-U><C-Y> :Unite -buffer-name=register register<CR>
 noremap <C-U><C-U> :Unite buffer file_mru<CR>
 " 全部
 noremap <C-U><C-A> :Unite UniteWithBufferDir -buffer-name=files buffer file_mru bookmark file<CR>
+" 現在のバッファのカレントディレクトリからファイル一覧
+nnoremap <silent> [unite]d  :<C-u>UniteWithBufferDir -no-split file<CR>
 " ESCキーを2回押すと終了する
 au FileType unite nnoremap <silent> <buffer> <ESC><ESC> :q<CR>
 au FileType unite inoremap <silent> <buffer> <ESC><ESC> <ESC>:q<CR>
