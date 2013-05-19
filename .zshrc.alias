@@ -16,6 +16,9 @@ if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
 # pythonbrew
 [[ -s $HOME/.pythonbrew/etc/bashrc ]] && source $HOME/.pythonbrew/etc/bashrc
 
+# php
+PATH="$(brew --prefix josegonzalez/php/php54)/bin:$PATH"
+
 # Sublime text 2
 #alias subl='/Applications/Sublime\ Text\ 2.app/Contents/SharedSupport/bin/subl "$@"'
 #alias e='subl'
