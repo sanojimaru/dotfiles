@@ -1,0 +1,26 @@
+[
+  {
+    "command": "composer.decreaseReasoningEffort",
+    "key": "Ctrl+Shift+,"
+  },
+  {
+    "command": "composer.increaseReasoningEffort",
+    "key": "Ctrl+Shift+."
+  },
+  {
+    "command": "composer.submit",
+    "key": "Ctrl+Shift+S"
+  },
+  {
+    "command": "nextTab",
+    "key": "Ctrl+Tab"
+  },
+  {
+    "command": "openAvatarOverlay",
+    "key": null
+  },
+  {
+    "command": "previousTab",
+    "key": "Ctrl+Shift+Tab"
+  }
+]

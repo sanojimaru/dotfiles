@@ -3,7 +3,6 @@ tap "aws/tap"
 # Static checker for GitHub Actions workflow files
 brew "actionlint"
 # Extendable version manager with support for Ruby, Node.js, Erlang & more
-brew "asdf"
 # Interpreted, interactive, object-oriented programming language
 brew "python@3.13"
 # CLI tool to build, test, debug, and deploy Serverless applications using AWS SAM

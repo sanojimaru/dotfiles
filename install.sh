@@ -22,4 +22,13 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 
+# VS Code (パスに空白を含むので必ず引用)
+VSCODE="$HOME/Library/Application Support/Code/User"
+for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$f"; done
+
+# Claude Code / Codex (設定の実体だけ。認証情報・履歴・skills は対象外)
+link claude/hooks/inject-core-context.sh  "$HOME/.claude/hooks/inject-core-context.sh"
+link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
+link codex/keybindings.json               "$HOME/.codex/keybindings.json"
+
 echo "完了。パッケージは: brew bundle --file=$ROOT/Brewfile"
