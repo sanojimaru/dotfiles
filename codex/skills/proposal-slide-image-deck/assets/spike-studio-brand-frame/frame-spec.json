@@ -1,0 +1,214 @@
+{
+  "schema_version": "zuno.proposal-slide-brand-frame.v1",
+  "source_pptx": "/Users/htakeda/dev/zuno/materials/internal/提案書サンプル/20260424_サムテック株式会社御中_ご提案書.pptx",
+  "slide_size": {
+    "cx_emu": 9144000,
+    "cy_emu": 5143500,
+    "aspect_ratio": "16:9"
+  },
+  "footer": {
+    "text": "2025 ©Spike Studio Inc. | Confidential",
+    "font_name": "Arial",
+    "font_size_pt": 8.0,
+    "color_hex": "BABABA",
+    "alignment": "left",
+    "box_pct": {
+      "left_pct": 2.1,
+      "top_pct": 93.6,
+      "width_pct": 55.8,
+      "height_pct": 6.0
+    }
+  },
+  "page_number": {
+    "font_name": "Arial",
+    "font_size_pt": 10.0,
+    "color_hex": "158158",
+    "alignment": "right",
+    "box_pct": {
+      "left_pct": 92.7,
+      "top_pct": 90.7,
+      "width_pct": 6.0,
+      "height_pct": 7.7
+    }
+  },
+  "render_defaults": {
+    "canvas_width_px": 1920,
+    "canvas_height_px": 1080,
+    "page_number_format": "number-only",
+    "page_number_min_digits": 2
+  },
+  "variants": {
+    "cover": {
+      "layout_name": "slideLayout1.xml",
+      "used_slide_count": 1,
+      "images": [
+        {
+          "asset": "confidential.png",
+          "box_pct": {
+            "left_pct": 74.5,
+            "top_pct": 9.4,
+            "width_pct": 19.1,
+            "height_pct": 7.7
+          }
+        },
+        {
+          "asset": "logo.png",
+          "box_pct": {
+            "left_pct": 67.4,
+            "top_pct": 83.6,
+            "width_pct": 26.3,
+            "height_pct": 7.2
+          }
+        }
+      ],
+      "safe_zones": [
+        {
+          "label": "cover-1",
+          "box_pct": {
+            "left_pct": 74.5,
+            "top_pct": 9.4,
+            "width_pct": 19.1,
+            "height_pct": 7.7
+          }
+        },
+        {
+          "label": "cover-2",
+          "box_pct": {
+            "left_pct": 67.4,
+            "top_pct": 83.6,
+            "width_pct": 26.3,
+            "height_pct": 7.2
+          }
+        },
+        {
+          "label": "footer",
+          "box_pct": {
+            "left_pct": 2.1,
+            "top_pct": 93.6,
+            "width_pct": 55.8,
+            "height_pct": 6.0
+          }
+        },
+        {
+          "label": "page-number",
+          "box_pct": {
+            "left_pct": 92.7,
+            "top_pct": 90.7,
+            "width_pct": 6.0,
+            "height_pct": 7.7
+          }
+        }
+      ]
+    },
+    "body": {
+      "layout_name": "slideLayout32.xml",
+      "used_slide_count": 21,
+      "images": [
+        {
+          "asset": "logo.png",
+          "box_pct": {
+            "left_pct": 81.6,
+            "top_pct": 4.4,
+            "width_pct": 15.5,
+            "height_pct": 4.2
+          }
+        }
+      ],
+      "safe_zones": [
+        {
+          "label": "body-1",
+          "box_pct": {
+            "left_pct": 81.6,
+            "top_pct": 4.4,
+            "width_pct": 15.5,
+            "height_pct": 4.2
+          }
+        },
+        {
+          "label": "footer",
+          "box_pct": {
+            "left_pct": 2.1,
+            "top_pct": 93.6,
+            "width_pct": 55.8,
+            "height_pct": 6.0
+          }
+        },
+        {
+          "label": "page-number",
+          "box_pct": {
+            "left_pct": 92.7,
+            "top_pct": 90.7,
+            "width_pct": 6.0,
+            "height_pct": 7.7
+          }
+        }
+      ]
+    },
+    "body-confidential": {
+      "layout_name": "slideLayout47.xml",
+      "used_slide_count": 8,
+      "images": [
+        {
+          "asset": "confidential.png",
+          "box_pct": {
+            "left_pct": 70.1,
+            "top_pct": 4.4,
+            "width_pct": 10.5,
+            "height_pct": 4.2
+          }
+        },
+        {
+          "asset": "logo.png",
+          "box_pct": {
+            "left_pct": 81.6,
+            "top_pct": 4.4,
+            "width_pct": 15.5,
+            "height_pct": 4.2
+          }
+        }
+      ],
+      "safe_zones": [
+        {
+          "label": "body-confidential-1",
+          "box_pct": {
+            "left_pct": 70.1,
+            "top_pct": 4.4,
+            "width_pct": 10.5,
+            "height_pct": 4.2
+          }
+        },
+        {
+          "label": "body-confidential-2",
+          "box_pct": {
+            "left_pct": 81.6,
+            "top_pct": 4.4,
+            "width_pct": 15.5,
+            "height_pct": 4.2
+          }
+        },
+        {
+          "label": "footer",
+          "box_pct": {
+            "left_pct": 2.1,
+            "top_pct": 93.6,
+            "width_pct": 55.8,
+            "height_pct": 6.0
+          }
+        },
+        {
+          "label": "page-number",
+          "box_pct": {
+            "left_pct": 92.7,
+            "top_pct": 90.7,
+            "width_pct": 6.0,
+            "height_pct": 7.7
+          }
+        }
+      ]
+    }
+  },
+  "source_assets": {
+    "logo_target": "../media/image1.png",
+    "confidential_target": "../media/image5.png"
+  }
+}

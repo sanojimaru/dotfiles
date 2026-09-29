@@ -95,8 +95,9 @@ Brewfile の `vscode` 行 (約 100 件) に記載。`brew bundle` で導入さ�
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `claude/` — Claude Code のフック (`~/.claude/hooks` へリンク)
-- `codex/` — Codex のキーバインド (`~/.codex` へリンク)
+- `claude/` — Claude Code の `settings.json` とフック (`~/.claude` へリンク)
+- `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)、`config.shared.toml` (共有部分のみ)
+- `scripts/codex-config.py` — `~/.codex/config.toml` の共有部分を取り出す/マージする
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask / VS Code 拡張
 - `install.sh` — シンボリックリンクの作成
@@ -107,9 +108,16 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
 
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
-`~/.codex/config.toml` は Codex アプリが常時書き換え、案件のパス等も含むため管理しない。
-`~/.claude/settings.json` は非公開の社内リポジトリ (プラグイン配布元) を含むため管理しない。
+`~/.codex/config.toml` は Codex アプリが常時書き換え、案件のパス (`[projects.*]`) も含むため、リンクせず共有部分だけを管理する。
+
+```sh
+python3 scripts/codex-config.py extract   # config.toml -> codex/config.shared.toml (コミット前に実行)
+python3 scripts/codex-config.py apply     # 共有部分を config.toml へマージ (install.sh が実行)
+```
+
+共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
+`~/.claude/settings.json` と `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
 
 ## メンテナンス
 

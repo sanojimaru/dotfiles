@@ -1,0 +1,4 @@
+interface:
+  display_name: "提案スライド画像デッキ"
+  short_description: "提案テキストを画像スライドとPDFの完成デッキへ変換"
+  default_prompt: "Use $proposal-slide-image-deck to create a Japanese B2B proposal image deck from this outline."
