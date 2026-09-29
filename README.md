@@ -110,10 +110,8 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
 `~/.codex/config.toml` は Codex アプリが常時書き換え、案件のパス (`[projects.*]`) も含むため、リンクせず共有部分だけを管理する。
 
-```sh
-python3 scripts/codex-config.py extract   # config.toml -> codex/config.shared.toml (コミット前に実行)
-python3 scripts/codex-config.py apply     # 共有部分を config.toml へマージ (install.sh が実行)
-```
+運用は何もしなくてよい。`git commit` 時の pre-commit フック (`.githooks/`) が共有部分を自動で更新し、`install.sh` が新しい Mac へ自動でマージする。
+手動で行う場合は `python3 scripts/codex-config.py extract|apply`。
 
 共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。

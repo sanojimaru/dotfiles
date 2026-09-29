@@ -37,4 +37,7 @@ done
 # config.toml は Codex が書き換えるので、共有部分だけをマージする (端末固有部分は保持)
 [ -f "$HOME/.codex/config.toml" ] && python3 "$ROOT/scripts/codex-config.py" apply
 
+# コミット時に codex 設定の共有部分を自動更新するフック
+git -C "$ROOT" config core.hooksPath .githooks
+
 echo "完了。パッケージは: brew bundle --file=$ROOT/Brewfile"
