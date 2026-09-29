@@ -1,0 +1,16 @@
+add_newline = false
+command_timeout = 500
+
+[character]
+success_symbol = "[❯](green)"
+error_symbol = "[❯](red)"
+
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+
+[git_branch]
+symbol = " "
+
+[cmd_duration]
+min_time = 3000

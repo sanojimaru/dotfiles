@@ -1,0 +1,6 @@
+[tools]
+direnv = "latest"
+golangci-lint = "latest"
+lefthook = "latest"
+task = "latest"
+websocat = "1.14.1"
