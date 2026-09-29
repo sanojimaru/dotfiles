@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# コミット時に ~/.codex/config.toml の共有部分を自動で取り込む (手動の extract は不要)
+# コミット時の自動処理 (手動作業は不要)
+#  1. ~/.codex/config.toml の共有部分を取り込む
+#  2. ~/.claude/settings.json が実ファイルに戻っていたら取り込んでリンクを張り直す
 root="$(git rev-parse --show-toplevel)"
+
 if [ -f "$HOME/.codex/config.toml" ]; then
   if python3 "$root/scripts/codex-config.py" extract >/dev/null 2>&1; then
     git add "$root/codex/config.shared.toml"
@@ -8,3 +11,5 @@ if [ -f "$HOME/.codex/config.toml" ]; then
     echo "warn: codex config の抽出に失敗 (コミットは続行)" >&2
   fi
 fi
+
+python3 "$root/scripts/claude-settings-sync.py" && git add "$root/claude/settings.json" 2>/dev/null || true
