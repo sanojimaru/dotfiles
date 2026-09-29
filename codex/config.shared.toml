@@ -1,0 +1,97 @@
+model = "gpt-5.6-terra"
+model_reasoning_effort = "low"
+personality = "pragmatic"
+service_tier = "default"
+
+[plugins."github@openai-curated"]
+enabled = true
+
+[plugins."google-drive@openai-curated"]
+enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."chrome@openai-bundled"]
+enabled = true
+
+[plugins."intake-flow@intake-flow"]
+enabled = true
+
+[plugins."unstopia@unstopia-local"]
+enabled = true
+
+[plugins."aidd-fw@helix"]
+enabled = true
+
+[plugins."aidd-skills@helix"]
+enabled = true
+
+[plugins."aidd-documents@helix"]
+enabled = true
+
+[plugins."aidd-guardrail@helix"]
+enabled = true
+
+[plugins."aidd-modernize@helix"]
+enabled = true
+
+[plugins."codex-app-tools@openai-bundled"]
+enabled = true
+
+[plugins."unified-computer-use@openai-bundled"]
+enabled = true
+
+[mcp_servers.codegraph]
+command = "codegraph"
+args = ["serve", "--mcp"]
+
+[mcp_servers.obsidian_local_rest_api_with_mcp]
+url = "http://127.0.0.1:27123/mcp/"
+bearer_token_env_var = "OBSIDIAN_MCP_API_KEY"
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+
+[marketplaces.intake-flow]
+source_type = "git"
+source = "https://github.com/spikestudio/intake-flow.git"
+ref = "main"
+
+[marketplaces.helix]
+source_type = "git"
+source = "https://github.com/spikestudio/helix.git"
+ref = "main"
+
+[features]
+js_repl = false
+
+[desktop]
+conversationDetailMode = "STEPS_PROSE"
+ambient-suggestions-enabled = true
+git-show-sidebar-pr-icons = true
+worktree-keep-count = 10
+git-always-force-push = true
+followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"

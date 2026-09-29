@@ -60,7 +60,7 @@ chsh -s /opt/homebrew/bin/fish
 |---|---|
 | 検索・表示 | ripgrep, fd, fzf, eza, bat, zoxide, cloc, poppler |
 | Git | git, gh, gibo, git-filter-repo, subversion |
-| ランタイム管理 | mise (`config/mise/config.toml`: direnv, golangci-lint, lefthook, task, websocat)、asdf (旧。mise へ移行済み) |
+| ランタイム管理 | mise (`config/mise/config.toml`: direnv, golangci-lint, lefthook, task, websocat) |
 | Python | python@3.13, uv, pipx |
 | Java / ネイティブ | openjdk, icu4c@76, pkgconf, pango |
 | ネットワーク | wget, tailscale, ngrok (cask) |
@@ -95,13 +95,27 @@ Brewfile の `vscode` 行 (約 100 件) に記載。`brew bundle` で導入さ�
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
+- `claude/` — Claude Code の `settings.json` とフック (`~/.claude` へリンク)
+- `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)、`config.shared.toml` (共有部分のみ)
+- `scripts/codex-config.py` — `~/.codex/config.toml` の共有部分を取り出す/マージする
+- `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask / VS Code 拡張
 - `install.sh` — シンボリックリンクの作成
 
 ## 管理しないもの
 
-API キー等は `~/.env` に置き、リポジトリには含めない。
+API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
+
+`~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
+`~/.codex/config.toml` は Codex アプリが常時書き換え、案件のパス (`[projects.*]`) も含むため、リンクせず共有部分だけを管理する。
+
+運用は何もしなくてよい。`git commit` 時の pre-commit フック (`.githooks/`) が共有部分を自動で更新し、`install.sh` が新しい Mac へ自動でマージする。
+手動で行う場合は `python3 scripts/codex-config.py extract|apply`。
+
+共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
+`~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
+`~/.claude/settings.json` と `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
 
 ## メンテナンス
 

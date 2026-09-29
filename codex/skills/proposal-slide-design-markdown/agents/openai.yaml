@@ -1,0 +1,4 @@
+interface:
+  display_name: "提案設計 Markdown"
+  short_description: "根拠資料から提案スライド設計 Markdown を構造化・検証"
+  default_prompt: "Use $proposal-slide-design-markdown to create an evidence-backed proposal slide design Markdown."
