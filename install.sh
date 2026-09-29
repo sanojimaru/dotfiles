@@ -35,7 +35,7 @@ for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"
 done
 # config.toml は Codex が書き換えるので、共有部分だけをマージする (端末固有部分は保持)
-[ -f "$HOME/.codex/config.toml" ] && python3 "$ROOT/scripts/codex-config.py" apply
+python3 "$ROOT/scripts/codex-config.py" apply
 
 # コミット時に codex 設定の共有部分を自動更新するフック
 git -C "$ROOT" config core.hooksPath .githooks

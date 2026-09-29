@@ -84,6 +84,11 @@ def extract():
 
 
 def apply():
+    if not LIVE.exists():  # 新しい Mac: 共有部分をそのまま初期設定にする
+        LIVE.parent.mkdir(parents=True, exist_ok=True)
+        LIVE.write_text(SHARED.read_text())
+        print(f"created {LIVE}")
+        return
     spre, sblocks = parse(SHARED.read_text())
     lpre, lblocks = parse(LIVE.read_text())
     shared = {h: ls for h, ls in sblocks}
@@ -116,6 +121,9 @@ def apply():
 
     text = "\n".join(trim(new_pre) + [""] + [l for _, ls in out_blocks for l in ls]).rstrip() + "\n"
     tomllib.loads(text)  # 壊れた TOML は書かない
+    if text == LIVE.read_text():
+        print("unchanged")
+        return
     bak = LIVE.with_name(f"config.toml.bak.{time.strftime('%Y%m%d-%H%M%S')}")
     shutil.copy2(LIVE, bak)
     LIVE.write_text(text)
