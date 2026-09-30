@@ -141,7 +141,7 @@
   },
   "language": "japanese",
   "sandbox": {
-    "enabled": false,
+    "enabled": true,
     "autoAllowBashIfSandboxed": true,
     "filesystem": {
       "allowWrite": [
@@ -153,10 +153,7 @@
       ]
     },
     "excludedCommands": [
-      "ssh *",
-      "git *",
-      "aws *",
-      "terraform *"
+      "git *"
     ],
     "network": {
       "allowedDomains": [
