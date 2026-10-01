@@ -2,7 +2,8 @@
 direnv = "latest"
 golangci-lint = "latest"
 lefthook = "latest"
-python = "3.14.7"
+node = "lts"
+python = "latest"
 task = "latest"
 websocat = "1.14.1"
 
