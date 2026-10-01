@@ -87,8 +87,7 @@
       "Bash(terraform workspace list*)",
       "Bash(terraform workspace show*)"
     ],
-    "ask": [
-    ],
+    "ask": [],
     "defaultMode": "auto"
   },
   "model": "claude-sonnet-5",
@@ -116,7 +115,8 @@
     "common@helix": true,
     "development@helix": true,
     "knowledge-graph@helix": true,
-    "agent-builder@helix": true
+    "agent-builder@helix": true,
+    "fsm-jev-observer@skills-dir": false
   },
   "extraKnownMarketplaces": {
     "anthropic-agent-skills": {
@@ -143,6 +143,11 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
+    "network": {
+      "allowedDomains": [
+        "*"
+      ]
+    },
     "filesystem": {
       "allowWrite": [
         "/Users/sanojimaru/workspace/helix",
@@ -154,12 +159,7 @@
     },
     "excludedCommands": [
       "git *"
-    ],
-    "network": {
-      "allowedDomains": [
-        "*"
-      ]
-    }
+    ]
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",

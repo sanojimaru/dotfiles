@@ -13,8 +13,8 @@ set -gx ANDROID_HOME $HOME/Library/Android/sdk
 
 fish_add_path -g $ANDROID_HOME/emulator $ANDROID_HOME/platform-tools
 fish_add_path -g $PNPM_HOME $HOME/.dir/bin
-fish_add_path -g $HOME/.local/share/mise/shims $HOME/.local/bin $HOME/.cargo/bin
 fish_add_path -g /opt/homebrew/bin /opt/homebrew/sbin
+fish_add_path -g $HOME/.local/share/mise/shims $HOME/.local/bin $HOME/.cargo/bin
 
 if status is-interactive
     set -g fish_greeting

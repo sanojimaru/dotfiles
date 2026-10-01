@@ -1,5 +1,5 @@
-model = "gpt-5.6-terra"
-model_reasoning_effort = "low"
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
 personality = "pragmatic"
 service_tier = "default"
 
@@ -36,9 +36,6 @@ enabled = true
 [plugins."chrome@openai-bundled"]
 enabled = true
 
-[plugins."intake-flow@intake-flow"]
-enabled = true
-
 [plugins."unstopia@unstopia-local"]
 enabled = true
 
@@ -61,6 +58,9 @@ enabled = true
 enabled = true
 
 [plugins."unified-computer-use@openai-bundled"]
+enabled = true
+
+[plugins."code-review@openai-bundled"]
 enabled = true
 
 [mcp_servers.codegraph]
@@ -88,7 +88,7 @@ ref = "main"
 js_repl = false
 
 [desktop]
-conversationDetailMode = "STEPS_PROSE"
+conversationDetailMode = "STEPS_COMMANDS"
 ambient-suggestions-enabled = true
 git-show-sidebar-pr-icons = true
 worktree-keep-count = 10
