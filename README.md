@@ -91,7 +91,7 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `claude/` — Claude Code の `settings.json` とフック (`~/.claude` へリンク)
+- `claude/` — Claude Code の `settings.json` `CLAUDE.md` とフック (`~/.claude` へリンク)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)、`config.shared.toml` (共有部分のみ)
 - `scripts/codex-config.py` — `~/.codex/config.toml` の共有部分を取り出す/マージする
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
@@ -112,6 +112,7 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
 `~/.claude/settings.json` と `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
+`claude/CLAUDE.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
 
 ## メンテナンス
 
