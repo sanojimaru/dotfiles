@@ -21,10 +21,8 @@ brew bundle
 # 4. 設定をホームへリンク (既存ファイルは ~/.dotfiles_backup へ退避)
 ./install.sh
 
-# 5. 言語ランタイム/CLI (mise) と uv ツール
+# 5. 言語ランタイム/CLI (mise)
 mise install
-uv tool install harbor                                                          # 任意
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git   # 任意
 
 # 6. vim プラグイン (vim-plug)
 curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
@@ -82,10 +80,6 @@ claude (cask, デスクトップアプリ), claude-code (cask), codex (cask), ge
 ### その他アプリ
 
 drawio (cask), libreoffice (cask)
-
-### uv ツール
-
-`uv tool list` で確認。現在は harbor と specify-cli。
 
 ## 構成
 
