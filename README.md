@@ -24,7 +24,6 @@ brew bundle
 # 5. 言語ランタイム/CLI (mise) と uv ツール
 mise install
 uv tool install harbor                                                          # 任意
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git   # 任意
 
 # 6. vim プラグイン (vim-plug)
 curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
@@ -85,7 +84,7 @@ drawio (cask), libreoffice (cask)
 
 ### uv ツール
 
-`uv tool list` で確認。現在は harbor と specify-cli。
+`uv tool list` で確認。現在は harbor。
 
 ## 構成
 
