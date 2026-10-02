@@ -30,6 +30,7 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 link claude/hooks/inject-core-context.sh  "$HOME/.claude/hooks/inject-core-context.sh"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
 link claude/settings.json                 "$HOME/.claude/settings.json"
+link claude/CLAUDE.md                     "$HOME/.claude/CLAUDE.md"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"

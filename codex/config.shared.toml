@@ -1,12 +1,30 @@
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
-personality = "pragmatic"
 service_tier = "default"
+personality = "pragmatic"
+model_reasoning_effort = "medium"
+model = "gpt-6.1-sol"
 
-[plugins."github@openai-curated"]
+[desktop]
+conversationDetailMode = "STEPS_COMMANDS"
+ambient-suggestions-enabled = true
+git-show-sidebar-pr-icons = true
+worktree-keep-count = 10
+git-always-force-push = true
+followUpQueueMode = "queue"
+dock-icon-preference = "codex-system"
+
+[plugins."codex-app-tools@openai-bundled"]
 enabled = true
 
-[plugins."google-drive@openai-curated"]
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[plugins."unified-computer-use@openai-bundled"]
+enabled = true
+
+[plugins."code-review@openai-bundled"]
+enabled = true
+
+[plugins."visualize@openai-bundled"]
 enabled = true
 
 [plugins."documents@openai-primary-runtime"]
@@ -24,13 +42,13 @@ enabled = true
 [plugins."template-creator@openai-primary-runtime"]
 enabled = true
 
-[plugins."browser@openai-bundled"]
-enabled = true
-
 [plugins."computer-use@openai-bundled"]
 enabled = true
 
-[plugins."visualize@openai-bundled"]
+[plugins."github@openai-curated"]
+enabled = true
+
+[plugins."google-drive@openai-curated"]
 enabled = true
 
 [plugins."chrome@openai-bundled"]
@@ -52,15 +70,6 @@ enabled = true
 enabled = true
 
 [plugins."aidd-modernize@helix"]
-enabled = true
-
-[plugins."codex-app-tools@openai-bundled"]
-enabled = true
-
-[plugins."unified-computer-use@openai-bundled"]
-enabled = true
-
-[plugins."code-review@openai-bundled"]
 enabled = true
 
 [mcp_servers.codegraph]
@@ -86,12 +95,3 @@ ref = "main"
 
 [features]
 js_repl = false
-
-[desktop]
-conversationDetailMode = "STEPS_COMMANDS"
-ambient-suggestions-enabled = true
-git-show-sidebar-pr-icons = true
-worktree-keep-count = 10
-git-always-force-push = true
-followUpQueueMode = "queue"
-dock-icon-preference = "codex-system"

@@ -45,7 +45,7 @@ chsh -s /opt/homebrew/bin/fish
 
 | ソフト | 用途 | 設定ファイル |
 |---|---|---|
-| Ghostty (cask) | ターミナル。Solarized Dark、fish 起動 | `config/ghostty/config` |
+| Ghostty (公式アプリを直接導入。brew 管理外) | ターミナル。Solarized Dark、fish 起動 | `config/ghostty/config` |
 | fish | 普段使いのシェル (ログインシェル) | `config/fish/config.fish` |
 | zsh | 互換用に維持 (`zsh-autosuggestions` `zsh-completions` 使用) | `home/.zshrc` `home/.zshenv` |
 | tmux | 端末多重化。prefix は `C-a`、Solarized Dark | `config/tmux/tmux.conf` |
@@ -87,19 +87,15 @@ drawio (cask), libreoffice (cask)
 
 `uv tool list` で確認。現在は harbor と specify-cli。
 
-### VS Code 拡張
-
-Brewfile の `vscode` 行 (約 100 件) に記載。`brew bundle` で導入される。
-
 ## 構成
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `claude/` — Claude Code の `settings.json` とフック (`~/.claude` へリンク)
+- `claude/` — Claude Code の `settings.json` `CLAUDE.md` とフック (`~/.claude` へリンク)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)、`config.shared.toml` (共有部分のみ)
 - `scripts/codex-config.py` — `~/.codex/config.toml` の共有部分を取り出す/マージする
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
-- `Brewfile` — brew / cask / VS Code 拡張
+- `Brewfile` — brew / cask
 - `install.sh` — シンボリックリンクの作成
 
 ## 管理しないもの
@@ -116,6 +112,7 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
 `~/.claude/settings.json` と `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
+`claude/CLAUDE.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
 
 ## メンテナンス
 
