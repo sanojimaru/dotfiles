@@ -12,4 +12,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 # mise は shims 方式 (非対話シェルでもバージョンが解決される)
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.dir/bin:$PNPM_HOME:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 
+# Rancher Desktop 同梱の docker / kubectl 等
+export PATH="$PATH:$HOME/.rd/bin"
+
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
