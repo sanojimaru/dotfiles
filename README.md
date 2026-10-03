@@ -85,9 +85,8 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `claude/` — Claude Code の `settings.json` `CLAUDE.md` とフック (`~/.claude` へリンク)
-- `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)、`config.shared.toml` (共有部分のみ)
-- `scripts/codex-config.py` — `~/.codex/config.toml` の共有部分を取り出す/マージする
+- `claude/` — Claude Code の `CLAUDE.md` とフック (`~/.claude` へリンク)
+- `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask
 - `install.sh` — シンボリックリンクの作成
@@ -98,14 +97,9 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
 
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
-`~/.codex/config.toml` は Codex アプリが常時書き換え、案件のパス (`[projects.*]`) も含むため、リンクせず共有部分だけを管理する。
-
-運用は何もしなくてよい。`git commit` 時の pre-commit フック (`.githooks/`) が共有部分を自動で更新し、`install.sh` が新しい Mac へ自動でマージする。
-手動で行う場合は `python3 scripts/codex-config.py extract|apply`。
-
-共有するのはモデル設定・プラグイン有効化・MCP・マーケットプレイスのみ。`[projects.*]` `[hooks.state]` などの端末固有部分は触らない。
+`~/.claude/settings.json` と `~/.codex/config.toml` `~/.codex/hooks.json` は管理しない。Orca がフックや worktree の信頼設定を書き込み、Claude Code / Codex 自身も常時書き換えるため (各マシンで直接編集する)。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
-`~/.claude/settings.json` と `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
+`codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
 `claude/CLAUDE.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
 
 ## メンテナンス

@@ -29,16 +29,10 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 # Claude Code / Codex (設定の実体だけ。認証情報・履歴は対象外)
 link claude/hooks/inject-core-context.sh  "$HOME/.claude/hooks/inject-core-context.sh"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
-link claude/settings.json                 "$HOME/.claude/settings.json"
 link claude/CLAUDE.md                     "$HOME/.claude/CLAUDE.md"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"
 done
-# config.toml は Codex が書き換えるので、共有部分だけをマージする (端末固有部分は保持)
-python3 "$ROOT/scripts/codex-config.py" apply
-
-# コミット時に codex 設定の共有部分を自動更新するフック
-git -C "$ROOT" config core.hooksPath .githooks
 
 echo "完了。パッケージは: brew bundle --file=$ROOT/Brewfile"
