@@ -27,9 +27,10 @@ VSCODE="$HOME/Library/Application Support/Code/User"
 for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$f"; done
 
 # Claude Code / Codex (設定の実体だけ。認証情報・履歴は対象外)
-link claude/hooks/inject-core-context.sh  "$HOME/.claude/hooks/inject-core-context.sh"
+# 全体指示は 1 ファイルを両方へ (Claude は全体指示としての AGENTS.md を読まないため CLAUDE.md の名前でリンク)
+link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
+link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
-link claude/CLAUDE.md                     "$HOME/.claude/CLAUDE.md"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"

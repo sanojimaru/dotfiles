@@ -85,7 +85,8 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `claude/` — Claude Code の `CLAUDE.md` とフック (`~/.claude` へリンク)
+- `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
+- `claude/` — Claude Code のフック (`~/.claude` へリンク)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask
@@ -100,7 +101,8 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 `~/.claude/settings.json` と `~/.codex/config.toml` `~/.codex/hooks.json` は管理しない。Orca がフックや worktree の信頼設定を書き込み、Claude Code / Codex 自身も常時書き換えるため (各マシンで直接編集する)。
 `~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
 `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
-`claude/CLAUDE.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
+`agents/AGENTS.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
+各プロジェクトの指示は `AGENTS.md` だけを書けばよい (Claude Code も、プロジェクトに CLAUDE.md が無ければ AGENTS.md を読む)。
 
 ## メンテナンス
 
