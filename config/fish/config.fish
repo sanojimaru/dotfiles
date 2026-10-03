@@ -18,6 +18,16 @@ fish_add_path -g $HOME/.rd/bin
 fish_add_path -g /opt/homebrew/bin /opt/homebrew/sbin
 fish_add_path -g $HOME/.local/share/mise/shims $HOME/.local/bin $HOME/.cargo/bin
 
+# testcontainers (Node.js) は /var/run/docker.sock の存在チェックでしか docker を
+# 自動検出しない。この symlink は Docker Desktop 用のパス(~/.docker/run/docker.sock、
+# 存在しない)を指したままなので、Rancher Desktop 使用時は明示的に教える必要がある。
+# Rancher Desktop の socket がある時だけ設定する(Docker Desktop に戻したときに
+# 壊れないように)。
+if test -S $HOME/.rd/docker.sock
+    set -gx DOCKER_HOST unix://$HOME/.rd/docker.sock
+    set -gx TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE /var/run/docker.sock
+end
+
 if status is-interactive
     set -g fish_greeting
 

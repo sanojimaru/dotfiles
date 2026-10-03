@@ -90,7 +90,7 @@
     "ask": [],
     "defaultMode": "auto"
   },
-  "model": "claude-sonnet-5",
+  "model": "opus",
   "hooks": {
     "WorktreeRemove": [
       {
@@ -309,6 +309,7 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "advisorModel": "fable",
+  "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
