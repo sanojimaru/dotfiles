@@ -15,8 +15,6 @@ brew "azure-cli"
 brew "bat"
 # Statistics utility to count lines of code
 brew "cloc"
-# Isolated development environments using Docker
-brew "docker-compose"
 # Modern, maintained replacement for ls
 brew "eza"
 # Simple, fast and user-friendly alternative to find
@@ -45,8 +43,6 @@ brew "icu4c@76"
 brew "ios-deploy"
 # Kubernetes object analysis recommendations for improved reliability and security
 brew "kube-score"
-# Kubernetes command-line interface
-brew "kubernetes-cli"
 # Template-free customization of Kubernetes YAML manifests
 brew "kustomize"
 # Polyglot runtime manager (asdf rust clone)
@@ -109,8 +105,6 @@ cask "claude"
 cask "claude-code"
 # OpenAI's coding agent that runs in your terminal
 cask "codex"
-# App to build and share containerised applications and microservices
-cask "docker-desktop"
 # Online diagram software
 cask "drawio"
 cask "font-hack-nerd-font"
@@ -123,6 +117,8 @@ cask "gcloud-cli"
 cask "libreoffice"
 # Reverse proxy, secure introspectable tunnels to localhost
 cask "ngrok"
+# Kubernetes and container management on the desktop (docker / compose / kubectl は ~/.rd/bin に同梱)
+cask "rancher"
 # Plugin for AWS CLI to start and end sessions that connect to managed instances
 cask "session-manager-plugin"
 # Create, maintain, and interact with Xcode projects at scale

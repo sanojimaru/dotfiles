@@ -67,7 +67,7 @@ chsh -s /opt/homebrew/bin/fish
 
 ### クラウド・インフラ
 
-awscli, aws-sam-cli, session-manager-plugin (cask), azure-cli, gcloud-cli (cask), firebase-cli, docker-compose, docker-desktop (cask), kubernetes-cli, kustomize, kube-score, skaffold, powershell
+awscli, aws-sam-cli, session-manager-plugin (cask), azure-cli, gcloud-cli (cask), firebase-cli, rancher (cask, Rancher Desktop: docker / docker compose / kubectl を同梱), kustomize, kube-score, skaffold, powershell
 
 ### iOS / Swift 開発
 
