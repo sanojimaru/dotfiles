@@ -2,6 +2,7 @@
 [user]
 	name = sanojimaru
 	email = sanojimaru@gmail.com
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIzAu83DI0U740TMcumkWPQtWBZZf7W50hmYUU6FtSC8
 # Please adapt and uncomment the following lines:
 #	name = Hirohide Sano
 #	email = sanojimaru@HirohidenoMacBook-Pro.local
@@ -17,3 +18,9 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !/opt/homebrew/bin/gh auth git-credential
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[commit]
+	gpgsign = true
