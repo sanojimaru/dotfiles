@@ -8,4 +8,7 @@ task = "latest"
 websocat = "1.14.1"
 
 [settings]
-trusted_config_paths = ["/Users/sanojimaru/workspace/helix/.claude/worktrees"]
+trusted_config_paths = [
+  "/Users/sanojimaru/workspace/helix/.claude/worktrees",
+  "/Users/sanojimaru/orca/workspaces",
+]
