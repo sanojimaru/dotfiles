@@ -9,6 +9,6 @@ websocat = "1.14.1"
 
 [settings]
 trusted_config_paths = [
-  "/Users/sanojimaru/workspace/helix/.claude/worktrees",
+  "/Users/sanojimaru/workspace",
   "/Users/sanojimaru/orca/workspaces",
 ]
