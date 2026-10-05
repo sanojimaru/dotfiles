@@ -1,4 +1,4 @@
-# 環境変数と PATH のみ (対話用の設定は .zshrc)。fish 側は config/fish/config.fish に同等の設定がある。
+# 環境変数・PATH と mise activate のみ (対話用の設定は .zshrc)。fish 側は config/fish/config.fish に同等の設定がある。
 
 # ~/.env (API キー等。リポジトリ管理外)
 [ -f "$HOME/.env" ] && { set -a; . "$HOME/.env"; set +a; }
@@ -16,3 +16,7 @@ export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.dir/bin:$PNPM
 export PATH="$PATH:$HOME/.rd/bin"
 
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+# mise activate でプロジェクトの [env] (.env 等) もシェルに読む。fish は Homebrew の vendor_conf.d が
+# 全シェルで activate するので、zsh も .zshenv で揃える。信頼するのはホーム配下の設定だけ (config/mise/config.toml)
+command -v mise >/dev/null && eval "$(mise activate zsh)"

@@ -21,6 +21,7 @@ link config/tmux/tmux.conf     "$HOME/.config/tmux/tmux.conf"
 link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
+link bin/op-env                "$HOME/.local/bin/op-env"
 
 # VS Code (パスに空白を含むので必ず引用)
 VSCODE="$HOME/Library/Application Support/Code/User"
