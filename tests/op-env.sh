@@ -51,12 +51,12 @@ mkdir -p "$WORK/fresh"
 check ".env が無ければ新しく作る" '(cd "$WORK/fresh" && "$OP_ENV" FOO >/dev/null 2>&1) && [ "$(cat "$WORK/fresh/.env")" = "FOO='"'"'foo-new'"'"'" ]'
 check "新しく作った .env も 600" '[ "$(stat -f %Lp "$WORK/fresh/.env")" = 600 ]'
 
-# 同名キーだけ置き換え、他の行 (接頭辞が同じキー・export 付き・コメント) は残す
-printf '# comment\nKEEP=1\nexport FOO=old\nFOO_X=x\n' > .env
+# 同名キーだけ置き換え (複数キーとも)、他の行 (前後に文字が付いたキー・コメント) は残す
+printf '# comment\nKEEP=1\nexport FOO=old\nFOO_X=x\nXFOO=x\nBAR=old\n' > .env
 check "成功で終了する" '"$OP_ENV" FOO BAR >/dev/null'
-check "既存行が残る" '[ "$(grep -c -E "^(# comment|KEEP=1|FOO_X=x)$" .env)" -eq 3 ]'
-check "同名キーが置き換わる" '[ "$(grep -c FOO= .env)" -eq 1 ] && grep -qx "FOO='"'"'foo-new'"'"'" .env'
-check "新しいキーが足される" 'grep -qx "BAR='"'"'bar-val'"'"'" .env'
+check "既存行が残る" '[ "$(grep -c -E "^(# comment|KEEP=1|FOO_X=x|XFOO=x)$" .env)" -eq 4 ]'
+check "1つ目のキーが置き換わる" '[ "$(grep -c -E "^(export )?FOO=" .env)" -eq 1 ] && grep -qx "FOO='"'"'foo-new'"'"'" .env'
+check "2つ目のキーも置き換わる" '[ "$(grep -c -E "^BAR=" .env)" -eq 1 ] && grep -qx "BAR='"'"'bar-val'"'"'" .env'
 check ".env が 600" '[ "$(stat -f %Lp .env)" = 600 ]'
 
 # 特殊文字を含む値を zsh の source がそのまま読める
