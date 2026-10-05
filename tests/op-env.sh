@@ -11,14 +11,19 @@ trap 'chmod -R u+rw "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/stub" "$WORK/proj"
 cat > "$WORK/stub/op" <<'EOF'
 #!/bin/sh
-[ -n "$OP_SERVICE_ACCOUNT_TOKEN" ] || { echo "no token" >&2; exit 1; }
+# 呼び方 (op read op://<vault>/<KEY>/credential) が違えば失敗する
+# トークンが空でも通す (本物の op はデスクトップアプリ連携に切り替わって動きうる)
+[ "${OP_SERVICE_ACCOUNT_TOKEN+set}" = set ] || { echo "no token" >&2; exit 1; }
+[ "$1" = read ] && [ $# -eq 2 ] || { echo "unexpected args: $*" >&2; exit 1; }
 case "$2" in
-  */FOO/*) echo foo-new ;;
-  */BAR/*) echo bar-val ;;
-  */SPECIAL/*) printf '%s' 'a b#c$HOME"q;$(echo x)`id`&\y' ;;
-  */EMPTY/*) printf '' ;;
-  */QUOTE/*) echo "it's" ;;
-  */NL/*) printf 'a\nb' ;;
+  op://Dev/FOO/credential) echo foo-new ;;
+  op://Dev/BAR/credential) echo bar-val ;;
+  op://Other/FOO/credential) echo foo-other ;;
+  op://Dev/SPECIAL/credential) printf '%s' 'a b#c$HOME"q;$(echo x)`id`&= x"' ;;
+  op://Dev/EMPTY/credential) printf '' ;;
+  op://Dev/QUOTE/credential) echo "it's" ;;
+  op://Dev/NL/credential) printf 'a\nb' ;;
+  op://Dev/BSLASH/credential) printf '%s' 'e\' ;;
   *) echo "[ERROR] not found: $2" >&2; exit 1 ;;
 esac
 EOF
@@ -50,17 +55,33 @@ check ".env が 600" '[ "$(stat -f %Lp .env)" = 600 ]'
 export want
 want="$(OP_SERVICE_ACCOUNT_TOKEN=x op read op://Dev/SPECIAL/credential)"
 check "特殊文字の値を zsh が文字どおり読む" '[ "$(zsh -fc "set -a; . ./.env; printf %s \"\$SPECIAL\"")" = "$want" ]'
+if command -v mise >/dev/null; then
+  printf '[env]\n_.file = ".env"\n' > mise.toml
+  check "特殊文字の値を mise が文字どおり読む" '[ "$(MISE_TRUSTED_CONFIG_PATHS="$PWD" mise x -C "$PWD" -- sh -c "printf %s \"\$SPECIAL\"")" = "$want" ]'
+  rm mise.toml
+else
+  echo "skip mise が無い"
+fi
+if command -v fish >/dev/null; then
+  # config.fish の ~/.env 読み込み部分だけを取り出し、このディレクトリの .env に向けて動かす
+  sed -n '/^if test -f \$HOME\/.env/,/^end/p' "$ROOT/config/fish/config.fish" | sed "s|\$HOME/.env|$PWD/.env|g" > "$WORK/loader.fish"
+  check "特殊文字の値を config.fish が文字どおり読む" '[ "$(fish --no-config -c "source $WORK/loader.fish; printf %s \$SPECIAL")" = "$want" ]'
+else
+  echo "skip fish が無い"
+fi
+
+check "OP_ENV_VAULT で読む vault を変えられる" 'OP_ENV_VAULT=Other "$OP_ENV" FOO >/dev/null && grep -qx "FOO='"'"'foo-other'"'"'" .env'
 
 # 失敗するときは .env を変えず、一時ファイルも残さない
 cp .env "$WORK/before"
-for key in NOPE EMPTY QUOTE NL; do
-  check "$key は exit 1" '! "$OP_ENV" FOO "$key" 2>/dev/null'
+for key in NOPE EMPTY QUOTE NL BSLASH; do
+  check_rc "$key は exit 1" 1 "$OP_ENV" FOO "$key"
   check "$key で .env が変わらない" 'cmp -s .env "$WORK/before"'
 done
 check "一時ファイルが残らない" '[ -z "$(ls -A | grep op-env || true)" ]'
 
 chmod 000 .env
-check "読めない .env では exit 1" '! "$OP_ENV" FOO 2>/dev/null'
+check_rc "読めない .env では exit 1" 1 "$OP_ENV" FOO
 chmod 600 .env
 check "読めない .env を変えない" 'cmp -s .env "$WORK/before"'
 
@@ -68,6 +89,21 @@ check "読めない .env を変えない" 'cmp -s .env "$WORK/before"'
 check_rc "引数なしは exit 2" 2 "$OP_ENV"
 check_rc "不正なキー名は exit 2" 2 "$OP_ENV" 'A|B'
 check_rc "トークンが無ければ exit 1" 1 env OP_ENV_TOKEN_FILE=/nonexistent "$OP_ENV" FOO
+: > "$WORK/empty-token"
+check_rc "トークンが空なら exit 1" 1 env OP_ENV_TOKEN_FILE="$WORK/empty-token" "$OP_ENV" FOO
+
+# シンボリックリンクの .env はリンクを残したままリンク先に書く
+mkdir -p "$WORK/shared" "$WORK/linked"
+printf 'KEEP=1\n' > "$WORK/shared/.env"
+ln -s "$WORK/shared/.env" "$WORK/linked/.env"
+(cd "$WORK/linked" && "$OP_ENV" FOO >/dev/null)
+check "リンクが残る" '[ -L "$WORK/linked/.env" ]'
+check "リンク先に書く" 'grep -qx "FOO='"'"'foo-new'"'"'" "$WORK/shared/.env" && grep -qx KEEP=1 "$WORK/shared/.env"'
+check "リンク先も 600" '[ "$(stat -f %Lp "$WORK/shared/.env")" = 600 ]'
+check "リンク先のディレクトリに一時ファイルが残らない" '[ -z "$(ls -A "$WORK/shared" | grep op-env || true)" ]'
+ln -s "$WORK/nowhere/.env" "$WORK/dangling.env"
+mkdir -p "$WORK/dangling" && mv "$WORK/dangling.env" "$WORK/dangling/.env"
+check_rc "リンク先が無ければ exit 1" 1 sh -c 'cd "$1" && "$2" FOO' _ "$WORK/dangling" "$OP_ENV"
 
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]

@@ -8,7 +8,7 @@ task = "latest"
 websocat = "1.14.1"
 
 [settings]
+# ホーム配下の mise.toml はすべて信頼する (.zshenv / fish の mise activate が未信頼エラーを出さないように)
 trusted_config_paths = [
-  "/Users/sanojimaru/workspace",
-  "/Users/sanojimaru/orca/workspaces",
+  "/Users/sanojimaru",
 ]
