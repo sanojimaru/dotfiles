@@ -20,25 +20,35 @@ umask 077
 tmp="$(mktemp .env.op-env.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
 
-# 既存の .env から、これから書くキーの行だけ除いて引き継ぐ
-if [ -f .env ]; then
-  grep -v -E "^(export[[:space:]]+)?($(IFS='|'; echo "$*"))=" .env > "$tmp" || true
+# 既存の .env から、これから書くキーの行だけ除いて引き継ぐ (grep は該当行なしで 1、読めないと 2 を返す)
+if [ -e .env ]; then
+  rc=0
+  grep -a -v -E "^(export[[:space:]]+)?($(IFS='|'; echo "$*"))=" .env > "$tmp" || rc=$?
+  [ "$rc" -le 1 ] || { echo "op-env: .env を読めない — 変更していない" >&2; exit 1; }
 fi
 
-missing=()
+# 値はシングルクォートで囲んで書く (zsh の `. .env`・mise・config.fish がどれも文字どおりに読む)。
+# シングルクォートと改行はその形で表せないので書かない。
+missing=() empty=() unquotable=()
+nl=$'\n'
 for key in "$@"; do
   # 失敗時の op のメッセージには値が含まれないので、そのまま出す
-  if value="$(op read "op://$vault/$key/credential")"; then
-    printf '%s=%s\n' "$key" "$value" >> "$tmp"
-  else
+  if ! value="$(op read "op://$vault/$key/credential")"; then
     missing+=("$key")
+  elif [ -z "$value" ]; then
+    empty+=("$key")
+  elif [[ "$value" == *"'"* || "$value" == *"$nl"* ]]; then
+    unquotable+=("$key")
+  else
+    printf "%s='%s'\n" "$key" "$value" >> "$tmp"
   fi
 done
 
-if [ ${#missing[@]} -gt 0 ]; then
-  echo "op-env: 読めなかったキー (vault: $vault): ${missing[*]} — .env は変更していない" >&2
-  exit 1
-fi
+failed=0
+[ ${#missing[@]} -eq 0 ] || { echo "op-env: 読めなかったキー (vault: $vault): ${missing[*]}" >&2; failed=1; }
+[ ${#empty[@]} -eq 0 ] || { echo "op-env: 値が空のキー: ${empty[*]}" >&2; failed=1; }
+[ ${#unquotable[@]} -eq 0 ] || { echo "op-env: シングルクォートか改行を含むため書けないキー: ${unquotable[*]}" >&2; failed=1; }
+[ "$failed" -eq 0 ] || { echo "op-env: .env は変更していない" >&2; exit 1; }
 
 mv "$tmp" .env
 chmod 600 .env

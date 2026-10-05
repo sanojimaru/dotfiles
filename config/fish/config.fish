@@ -2,7 +2,8 @@
 if test -f $HOME/.env
     for line in (string match -rv '^\s*(#|$)' < $HOME/.env)
         set -l kv (string split -m1 = -- (string replace -r '^export\s+' '' -- $line))
-        test (count $kv) -eq 2; and set -gx $kv[1] (string trim -c '"\'' -- $kv[2])
+        # 値を囲む引用符 (op-env はシングルクォートで書く) を1組だけ外す
+        test (count $kv) -eq 2; and set -gx $kv[1] (string replace -r '^([\'"])(.*)\1$' '$2' -- $kv[2])
     end
 end
 
