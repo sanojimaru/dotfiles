@@ -12,8 +12,12 @@ mkdir -p "$WORK/stub" "$WORK/proj"
 cat > "$WORK/stub/op" <<'EOF'
 #!/bin/sh
 # 呼び方 (op read op://<vault>/<KEY>/credential) が違えば失敗する
-# トークンが空でも通す (本物の op はデスクトップアプリ連携に切り替わって動きうる)
-[ "${OP_SERVICE_ACCOUNT_TOKEN+set}" = set ] || { echo "no token" >&2; exit 1; }
+# トークンはファイルの中身 (dummy) でなければ失敗する。ただし空は通す (本物の op はデスクトップアプリ連携に
+# 切り替わって動きうるので、op-env 側で止める必要がある)
+case "${OP_SERVICE_ACCOUNT_TOKEN-unset}" in
+  dummy | "") ;;
+  *) echo "unexpected token" >&2; exit 1 ;;
+esac
 [ "$1" = read ] && [ $# -eq 2 ] || { echo "unexpected args: $*" >&2; exit 1; }
 case "$2" in
   op://Dev/FOO/credential) echo foo-new ;;
@@ -42,6 +46,11 @@ check_rc() { # check_rc <名前> <期待する終了コード> <コマンド...>
   if [ "$rc" -eq "$want_rc" ]; then ok "$name"; else ng "$name (rc=$rc)"; fi
 }
 
+# .env がまだ無いディレクトリでは新しく作る
+mkdir -p "$WORK/fresh"
+check ".env が無ければ新しく作る" '(cd "$WORK/fresh" && "$OP_ENV" FOO >/dev/null 2>&1) && [ "$(cat "$WORK/fresh/.env")" = "FOO='"'"'foo-new'"'"'" ]'
+check "新しく作った .env も 600" '[ "$(stat -f %Lp "$WORK/fresh/.env")" = 600 ]'
+
 # 同名キーだけ置き換え、他の行 (接頭辞が同じキー・export 付き・コメント) は残す
 printf '# comment\nKEEP=1\nexport FOO=old\nFOO_X=x\n' > .env
 check "成功で終了する" '"$OP_ENV" FOO BAR >/dev/null'
@@ -53,7 +62,7 @@ check ".env が 600" '[ "$(stat -f %Lp .env)" = 600 ]'
 # 特殊文字を含む値を zsh の source がそのまま読める
 "$OP_ENV" SPECIAL >/dev/null
 export want
-want="$(OP_SERVICE_ACCOUNT_TOKEN=x op read op://Dev/SPECIAL/credential)"
+want="$(OP_SERVICE_ACCOUNT_TOKEN=dummy op read op://Dev/SPECIAL/credential)"
 check "特殊文字の値を zsh が文字どおり読む" '[ "$(zsh -fc "set -a; . ./.env; printf %s \"\$SPECIAL\"")" = "$want" ]'
 if command -v mise >/dev/null; then
   printf '[env]\n_.file = ".env"\n' > mise.toml
