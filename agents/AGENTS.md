@@ -20,14 +20,17 @@ Claude Code (`~/.claude/CLAUDE.md`) と Codex (`~/.codex/AGENTS.md`) の両方�
 - 鍵の生成・`ssh-add`・キーチェーン登録はしない
 - IdentityAgent: `~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`
 
-## APIキー（1Password CLI）
-- APIキーは1Password の `Personal` vault に登録済み。アイテム名は環境変数名と同じ。フィールドは `credential`
-  - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `TYPESAFE_API_KEY`（Typesafe AI。jevプラグインが読む）
-- キーの値を `.env`・コード・会話・ログに書かない。必ず `op` 経由で実行時に渡す
-- コマンドに渡すとき: `op run --env-file=<(printf 'OPENAI_API_KEY=op://Personal/OPENAI_API_KEY/credential\n') -- <コマンド>`（必要なキーだけ列挙する）
-- 単発で参照するとき: `op read "op://Personal/<アイテム名>/credential"`
-- 確認で値を出すときは長さだけにする（例: `${#OPENAI_API_KEY}`）
-- `op` はデスクトップアプリ連携のため、エージェントのサンドボックス内では接続できない。サンドボックス外での実行が必要
+## APIキー
+- 作業はリモートが基本で `op` のGUI認証が通らないため、エージェントは1Passwordの Service Account 経由でキーを取り出し、ローカルの `.env` に置いて使う
+- 全プロジェクト共通のキー（`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `TYPESAFE_API_KEY` 等）は `~/.env` に置く。シェル起動時に読み込まれる。足りなければ `cd ~ && op-env <キー名>` で書き足す
+- プロジェクト固有のキーは、エージェントが自分で `op-env KEY1 KEY2 ...` を実行してプロジェクトルートの `.env` に書く。読む先は `op://Dev/<キー名>/credential`（`Dev` vault、アイテム名は環境変数名と同じ）。`op-env` は既存の `.env` の同名キーだけを置き換え、600 にする
+- `.env` は `mise.toml` の `[env]` に `_.file = ".env"` を書いて読み込む。mise shims 経由のコマンドとシェルには自動で入る。shims を通らないコマンドは `mise x -- <コマンド>` で実行する
+- キー名だけを並べた `.env.example` をコミットする。`.env` はコミットしない（グローバル gitignore で除外済み）
+- `op-env` が「読めなかったキー」を返したら、値を探したり作ったりせず、そのキー名を利用者へ伝えて止まる（`Dev` vault への登録は利用者がする）。会話に値を貼ってもらわない
+- キーの値をコード・会話・ログ・コミットに出さない。`.env` やトークンファイルを `cat` 等で表示しない。キー名の確認は `cut -d= -f1 .env`、値の有無の確認は長さだけ（例: `${#OPENAI_API_KEY}`）
+- `OP_SERVICE_ACCOUNT_TOKEN` をシェルに export しない（手元の `op` が Service Account に切り替わり `Personal` vault を読めなくなる）。トークンは `op-env` だけが `~/.config/op/service-account-token` から読む
+- `op-env` は 1Password へのネットワーク接続が要る。サンドボックス内で接続できないときはサンドボックス外で実行する
+- クラウド環境（手元のMacでない実行環境）ではトークンも `.env` も無いので、その環境の設定で環境変数を渡す
 
 ## バージョン管理
 - 言語ランタイム・CLIのバージョンはOSワイドで `mise` が管理する（正本: `~/dotfiles/config/mise/config.toml`、`~/.config/mise/config.toml` へリンク）

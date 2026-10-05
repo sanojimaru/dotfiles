@@ -33,7 +33,7 @@ echo /opt/homebrew/bin/fish | sudo tee -a /etc/shells
 chsh -s /opt/homebrew/bin/fish
 ```
 
-手動で用意するもの: `~/.env` (API キー。下記「管理しないもの」参照)、`gh auth login`、各クラウド CLI のログイン。
+手動で用意するもの: `~/.config/op/service-account-token` (下記「Service Account の準備」参照。`~/.env` もこれで作れる)、`gh auth login`、各クラウド CLI のログイン。
 
 ## 管理しているソフトウェア
 
@@ -85,6 +85,7 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
+- `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
 - `claude/` — Claude Code のフック (`~/.claude` へリンク)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
@@ -96,6 +97,7 @@ drawio (cask), libreoffice (cask)
 
 API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
+プロジェクト固有のキーは 1Password の `Dev` vault に置き、エージェントが `op-env KEY...` (Service Account 経由) で各プロジェクトの `.env` に書き出す。`.env` は `mise.toml` の `[env] _.file = ".env"` で読み込み、グローバル gitignore で除外する (キー名だけの `.env.example` をコミット)。リモート作業では `op` の GUI 認証が通らないため Service Account を使う。
 
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
 `~/.claude/settings.json` と `~/.codex/config.toml` `~/.codex/hooks.json` は管理しない。Orca がフックや worktree の信頼設定を書き込み、Claude Code / Codex 自身も常時書き換えるため (各マシンで直接編集する)。
@@ -103,6 +105,18 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
 `agents/AGENTS.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
 各プロジェクトの指示は `AGENTS.md` だけを書けばよい (Claude Code も、プロジェクトに CLAUDE.md が無ければ AGENTS.md を読む)。
+
+## Service Account の準備
+
+エージェントが GUI 認証なしでキーを取り出すための準備。Mac の前で 1 回だけ行う。
+
+1. 1Password に `Dev` vault を作り、エージェントに渡してよいキーを入れる (アイテム名は環境変数名、値はフィールド `credential`)。まず `ANTHROPIC_API_KEY` `OPENAI_API_KEY` `TYPESAFE_API_KEY` を入れる。Service Account は `Personal` vault を読めないため
+2. `Dev` だけを読み取り専用で読める Service Account を作り、トークンを保存する (画面にもクリップボードにも出さない):
+   `mkdir -p ~/.config/op && (umask 077; op service-account create agent --vault Dev:read_items --raw > ~/.config/op/service-account-token)`
+3. 確認: `cd /tmp && op-env ANTHROPIC_API_KEY && cut -d= -f1 .env && rm .env`
+
+`~/.env` も `cd ~ && op-env ANTHROPIC_API_KEY OPENAI_API_KEY TYPESAFE_API_KEY` で作り直せる (他のキーの行は残る)。
+トークンが漏れたら、1Password で Service Account を削除して作り直す。
 
 ## メンテナンス
 
