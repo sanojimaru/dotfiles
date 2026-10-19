@@ -98,7 +98,7 @@ drawio (cask), libreoffice (cask)
 
 API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
-プロジェクト固有のキーは 1Password の `Dev` vault に置き、エージェントが `op-env KEY...` (Service Account 経由) で各プロジェクトの `.env` に書き出す。`.env` は `mise.toml` の `[env] _.file = ".env"` で読み込み、グローバル gitignore で除外する (キー名だけの `.env.example` をコミット)。リモート作業では `op` の GUI 認証が通らないため Service Account を使う。
+プロジェクト固有のキーは 1Password の `Dev` vault に置き、エージェントが `op-env KEY...` (Service Account 経由) で各プロジェクトの `.env` に書き出す。アイテム名と変数名が違うときや `username` などのフィールドは `op-env NAME=ITEM/FIELD` で読む。`.env` は `mise.toml` の `[env] _.file = ".env"` で読み込み、グローバル gitignore で除外する (キー名だけの `.env.example` をコミット)。リモート作業では `op` の GUI 認証が通らないため Service Account を使う。
 
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
 `~/.claude/settings.json` と `~/.codex/config.toml` `~/.codex/hooks.json` は管理しない。Orca がフックや worktree の信頼設定を書き込み、Claude Code / Codex 自身も常時書き換えるため (各マシンで直接編集する)。

@@ -24,6 +24,7 @@ Claude Code (`~/.claude/CLAUDE.md`) と Codex (`~/.codex/AGENTS.md`) の両方�
 - 作業はリモートが基本で `op` のGUI認証が通らないため、エージェントは1Passwordの Service Account 経由でキーを取り出し、ローカルの `.env` に置いて使う
 - 全プロジェクト共通のキー（`ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `TYPESAFE_API_KEY` 等）は `~/.env` に置く。シェル起動時に読み込まれる。足りなければ `cd ~ && op-env <キー名>` で書き足す
 - プロジェクト固有のキーは、エージェントが自分で `op-env KEY1 KEY2 ...` を実行してプロジェクトルートの `.env` に書く。読む先は `op://Dev/<キー名>/credential`（`Dev` vault、アイテム名は環境変数名と同じ）。`op-env` は既存の `.env` の同名キーだけを置き換え、値をシングルクォートで囲んで書き、600 にする。値が空・シングルクォートや改行やバックスラッシュを含むキーは書かずに止まる。`.env` がシンボリックリンクならリンク先に書く
+- アイテム名が環境変数名と違うときや、`credential` 以外のフィールド（`username` など）を読むときは `op-env NAME=ITEM/FIELD` と書く（`FIELD` を省くと `credential`）。例: helix-saas の管理画面のログインに使う Google の OAuth クライアントは `op-env IDP_CLIENT_ID=GCP_HELIX_IDP_CLIENT_ID IDP_CLIENT_SECRET=GCP_HELIX_IDP_CLIENT_SECRET`。トークンを読んで `op read` を直接打たない
 - `.env` は `mise.toml` の `[env]` に `_.file = ".env"` を書いて読み込む。zsh・fish はどちらも `mise activate` しているので、プロジェクトに `cd` したシェルには自動で入る。シェルを通さずに起動するコマンドで値が要るときは `mise x -- <コマンド>` で実行する
 - キー名だけを並べた `.env.example` をコミットする。`.env` はコミットしない（グローバル gitignore で除外済み）
 - `op-env` が「読めなかったキー」を返したら、値を探したり作ったりせず、そのキー名を利用者へ伝えて止まる（`Dev` vault への登録は利用者がする）。会話に値を貼ってもらわない

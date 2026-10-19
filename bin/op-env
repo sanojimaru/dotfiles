@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # 1Password の Service Account でキーを読み、カレントディレクトリの .env に書く (既存の同名キーは置き換える)。
-# 使い方: op-env KEY [KEY...]   — op://$OP_ENV_VAULT/<KEY>/credential を読む (vault の既定は Dev)
+# 使い方: op-env KEY [KEY...]   — op://$OP_ENV_VAULT/<KEY>/credential を読み、KEY として書く (vault の既定は Dev)
+#         op-env NAME=ITEM[/FIELD] — op://$OP_ENV_VAULT/<ITEM>/<FIELD> (FIELD の既定は credential) を読み、NAME として書く。
+#                                    アイテム名と環境変数名が違うときや、username など credential 以外のフィールドを読むときに使う
 # トークンは ~/.config/op/service-account-token (600) に置く。OP_SERVICE_ACCOUNT_TOKEN をグローバルに
 # export しないのは、手元で使う op (デスクトップアプリ連携・Personal vault) が Service Account 側に切り替わるため。
 set -euo pipefail
 
-[ $# -gt 0 ] || { echo "usage: op-env KEY [KEY...]" >&2; exit 2; }
-for key in "$@"; do
-  [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "op-env: キー名が不正: $key" >&2; exit 2; }
+[ $# -gt 0 ] || { echo "usage: op-env KEY|NAME=ITEM[/FIELD] ..." >&2; exit 2; }
+ident='[A-Za-z_][A-Za-z0-9_]*'
+names=() refs=()
+for arg in "$@"; do
+  if [[ "$arg" =~ ^($ident)$ ]]; then
+    names+=("$arg") refs+=("$arg/credential")
+  elif [[ "$arg" =~ ^($ident)=($ident)(/([A-Za-z0-9_-]+))?$ ]]; then
+    names+=("${BASH_REMATCH[1]}") refs+=("${BASH_REMATCH[2]}/${BASH_REMATCH[4]:-credential}")
+  else
+    echo "op-env: キー名が不正: $arg" >&2; exit 2
+  fi
 done
 
 token_file="${OP_ENV_TOKEN_FILE:-$HOME/.config/op/service-account-token}"
@@ -31,7 +41,7 @@ trap 'rm -f "$tmp"' EXIT
 # 既存の .env から、これから書くキーの行だけ除いて引き継ぐ (grep は該当行なしで 1、読めないと 2 を返す)
 if [ -e "$target" ]; then
   rc=0
-  grep -a -v -E "^(export[[:space:]]+)?($(IFS='|'; echo "$*"))=" "$target" > "$tmp" || rc=$?
+  grep -a -v -E "^(export[[:space:]]+)?($(IFS='|'; echo "${names[*]}"))=" "$target" > "$tmp" || rc=$?
   [ "$rc" -le 1 ] || { echo "op-env: .env を読めない — 変更していない" >&2; exit 1; }
 fi
 
@@ -40,10 +50,11 @@ fi
 # fish へ渡すときに `\\` が `\` になる) ので、これらを含む値は書かない。
 missing=() empty=() unquotable=()
 nl=$'\n'
-for key in "$@"; do
+for i in "${!names[@]}"; do
+  key="${names[$i]}"
   # 失敗時の op のメッセージには値が含まれないので、そのまま出す
-  if ! value="$(op read "op://$vault/$key/credential")"; then
-    missing+=("$key")
+  if ! value="$(op read "op://$vault/${refs[$i]}")"; then
+    missing+=("$key (${refs[$i]})")
   elif [ -z "$value" ]; then
     empty+=("$key")
   elif [[ "$value" == *"'"* || "$value" == *"$nl"* || "$value" == *\\* ]]; then
@@ -61,4 +72,4 @@ failed=0
 
 mv "$tmp" "$target"
 chmod 600 "$target"
-echo "op-env: .env に書いた: $*"
+echo "op-env: .env に書いた: ${names[*]}"

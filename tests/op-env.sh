@@ -11,7 +11,7 @@ trap 'chmod -R u+rw "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/stub" "$WORK/proj"
 cat > "$WORK/stub/op" <<'EOF'
 #!/bin/sh
-# 呼び方 (op read op://<vault>/<KEY>/credential) が違えば失敗する
+# 呼び方 (op read op://<vault>/<ITEM>/<FIELD>) が違えば失敗する
 # トークンはファイルの中身 (dummy) でなければ失敗する。ただし空は通す (本物の op はデスクトップアプリ連携に
 # 切り替わって動きうるので、op-env 側で止める必要がある)
 case "${OP_SERVICE_ACCOUNT_TOKEN-unset}" in
@@ -28,6 +28,8 @@ case "$2" in
   op://Dev/QUOTE/credential) echo "it's" ;;
   op://Dev/NL/credential) printf 'a\nb' ;;
   op://Dev/BSLASH/credential) printf '%s' 'e\' ;;
+  op://Dev/ITEM/credential) echo item-secret ;;
+  op://Dev/ITEM/username) echo item-user ;;
   *) echo "[ERROR] not found: $2" >&2; exit 1 ;;
 esac
 EOF
@@ -78,6 +80,15 @@ if command -v fish >/dev/null; then
 else
   echo "skip fish が無い"
 fi
+
+# NAME=ITEM[/FIELD] で、アイテム名と違う変数名に、credential 以外のフィールドも書ける
+printf 'CID=old\n' > "$WORK/fresh/.env"
+check "NAME=ITEM/FIELD でそのフィールドを NAME に書く" '(cd "$WORK/fresh" && "$OP_ENV" CID=ITEM/username CSEC=ITEM >/dev/null 2>&1) && grep -qx "CID='"'"'item-user'"'"'" "$WORK/fresh/.env" && [ "$(grep -c "^CID=" "$WORK/fresh/.env")" -eq 1 ]'
+check "NAME=ITEM は credential を読む" 'grep -qx "CSEC='"'"'item-secret'"'"'" "$WORK/fresh/.env"'
+check "アイテム名の変数は書かない" '! grep -q "^ITEM=" "$WORK/fresh/.env"'
+for bad in 'A=' '=B' 'A=B/' 'A=B/c d' 'A=B/c/d' 'A=B-C'; do
+  check_rc "不正な指定 $bad は exit 2" 2 "$OP_ENV" "$bad"
+done
 
 check "OP_ENV_VAULT で読む vault を変えられる" 'OP_ENV_VAULT=Other "$OP_ENV" FOO >/dev/null && grep -qx "FOO='"'"'foo-other'"'"'" .env'
 
