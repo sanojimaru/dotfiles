@@ -96,7 +96,7 @@ drawio (cask), libreoffice (cask)
 
 ## 管理しないもの
 
-API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。
+API キー等は `~/.env` に置き (`OPENAI_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。`ANTHROPIC_API_KEY` はシェルにあると Claude Code が API 課金で動くので、`~/.env` にもプロジェクトの `.env` にもこの名前で置かない (アプリ用は `op-env APP_ANTHROPIC_API_KEY=ANTHROPIC_API_KEY` のように別名で書き出す)。
 `.zshenv` と `config.fish` が起動時に読み込む。`.ssh` `.aws` `.npmrc` `.claude/.credentials.json` なども対象外。
 プロジェクト固有のキーは 1Password の `Dev` vault に置き、エージェントが `op-env KEY...` (Service Account 経由) で各プロジェクトの `.env` に書き出す。アイテム名と変数名が違うときや `username` などのフィールドは `op-env NAME=ITEM/FIELD` で読む。`.env` は `mise.toml` の `[env] _.file = ".env"` で読み込み、グローバル gitignore で除外する (キー名だけの `.env.example` をコミット)。リモート作業では `op` の GUI 認証が通らないため Service Account を使う。
 
@@ -114,9 +114,9 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `ANTHROPIC_API_KEY` `TYPES
 1. 1Password に `Dev` vault を作り、エージェントに渡してよいキーを入れる (アイテム名は環境変数名、値はフィールド `credential`)。まず `ANTHROPIC_API_KEY` `OPENAI_API_KEY` `TYPESAFE_API_KEY` を入れる。Service Account は `Personal` vault を読めないため
 2. `Dev` だけを読み取り専用で読める Service Account を作り、トークンを保存する (画面にもクリップボードにも出さない):
    `mkdir -p ~/.config/op && (umask 077; op service-account create agent --vault Dev:read_items --raw > ~/.config/op/service-account-token)`
-3. 確認: `cd /tmp && op-env ANTHROPIC_API_KEY && cut -d= -f1 .env && rm .env`
+3. 確認: `cd /tmp && op-env OPENAI_API_KEY && cut -d= -f1 .env && rm .env`
 
-`~/.env` も `cd ~ && op-env ANTHROPIC_API_KEY OPENAI_API_KEY TYPESAFE_API_KEY` で作り直せる (他のキーの行は残る)。
+`~/.env` も `cd ~ && op-env OPENAI_API_KEY TYPESAFE_API_KEY` で作り直せる (他のキーの行は残る)。
 トークンが漏れたら、1Password で Service Account を削除して作り直す。
 
 ## メンテナンス
