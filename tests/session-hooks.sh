@@ -35,6 +35,8 @@ check "引用符の中の \$(...) も止める"       2 "$(run require-orca-nest
 check "env を前に付けても止める"            2 "$(run require-orca-nested.sh "$(bash_json 'env FOO=1 claude -p hi')")"
 check "2 行目の起動も止める"                2 "$(run require-orca-nested.sh "$(bash_json $'echo a\nclaude -p hi')")"
 check "\\ で折り返した起動も止める"         2 "$(run require-orca-nested.sh "$(bash_json $'claude --model sonnet \\\n  -p "hi"')")"
+check "ヒアドキュメントを流し込む起動も止める" 2 "$(run require-orca-nested.sh "$(bash_json $'cat <<\'EOF\' | claude -p\nreview\nEOF')")"
+check "' の中の \" に引きずられず止める"   2 "$(run require-orca-nested.sh "$(bash_json $'tr -d \'"\' < f; codex exec "review"')")"
 check "付いていない方の起動を止める"        2 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "a"; claude -p "b"')")"
 check "orca-nested 付きは通す"              0 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "hi"')")"
 check "\\ で折り返した orca-nested は通す"  0 "$(run require-orca-nested.sh "$(bash_json $'orca-nested \\\n  claude -p "hi"')")"
