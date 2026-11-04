@@ -1,17 +1,11 @@
 #!/bin/bash
-# PreToolUse (Bash) フック: Orca の中で claude -p・codex exec を orca-nested なしで起動するのを止める。
+# PreToolUse (Bash) フック: Orca の中で orca-nested なしの claude -p・codex exec を見つけたら、止めずに Claude へ警告する。
+# 文字列で見るだけなので、メッセージの中の "claude -p" にも反応する。止めないので実害は無い。
 set -u
 [ -n "${ORCA_PANE_KEY-}" ] || exit 0
 command -v jq >/dev/null || { echo "jq が無いので require-orca-nested.sh が効いていない" >&2; exit 1; }
 cmd=$(jq -r '.tool_input.command // empty')
-# 行末の \ の折り返しをつなぎ、起動ではない文字列 (ヒアドキュメントの本文・左から順に対にした引用符の中。コミットメッセージなど。"$(...)" は残す) を消してから、
-# ; & | 改行で区切ったコマンドごとに、入れ子の起動があって orca-nested が無いかを見る
-printf '%s\n' "$cmd" | perl -0777 -pe '
-  s/\\\n//g;
-  s/(<<-?[ \t]*([\x27"]?)(\w+)\2[^\n]*\n).*?\n[ \t]*\3[ \t]*(?:\n|\z)/$1/gs;
-  s/("(?:\\.|[^"\\])*"|\x27[^\x27]*\x27)/my $q = $1; ($q =~ m{^"} && $q =~ m{\$\(|`}) ? $q : ""/gse;
-' | tr ';&|' '\n\n\n' |
-  grep -E '(^|[(`[:space:]])(claude[[:space:]]([^[:space:]]+[[:space:]]+)*(-p|--print)|codex[[:space:]]+exec)([[:space:]]|$)' |
-  grep -vq 'orca-nested' || exit 0
-echo "入れ子の claude -p・codex exec は orca-nested を付けて実行して (例: orca-nested claude -p \"...\")。ORCA_ の環境変数を受け継ぐと、入れ子の終わりを Orca がワーカーのターンの終わりと取り違えるから。" >&2
-exit 2
+printf '%s' "$cmd" | grep -Eq 'claude[^;&|]*[[:space:]](-p|--print)([[:space:]]|$)|codex[[:space:]]+exec' || exit 0
+printf '%s' "$cmd" | grep -q 'orca-nested' && exit 0
+jq -cn '{hookSpecificOutput: {hookEventName: "PreToolUse", additionalContext:
+  "入れ子の claude -p・codex exec は orca-nested を付けて実行して (例: orca-nested claude -p \"...\")。ORCA_ の環境変数を受け継ぐと、入れ子の終わりを Orca がワーカーのターンの終わりと取り違えるから。ただの文字列なら無視してよい。"}}'

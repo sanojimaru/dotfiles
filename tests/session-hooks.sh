@@ -23,28 +23,22 @@ check "orca-nested は空白を含む引数をそのまま渡す" "a b|c|" "$out
 check "orca-nested はコマンドの終了コードを返す" 7 "$rc"
 rc=0; "$ROOT/bin/orca-nested" 2>/dev/null || rc=$?; check "orca-nested は引数なしで失敗する" 2 "$rc"
 
-# require-orca-nested
-bash_json() { jq -cn --arg c "$1" '{tool_input:{command:$c}}'; }
+# require-orca-nested: 止めずに (exit 0)、警告を additionalContext で返す
+warn() { # warn <コマンド>  → 警告を返したら warn、返さなければ none
+  jq -cn --arg c "$1" '{tool_input:{command:$c}}' | "$ROOT/claude/hooks/require-orca-nested.sh" |
+    jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1 && echo warn || echo none
+}
 export ORCA_PANE_KEY=x
-check "Orca の中の claude -p を止める"      2 "$(run require-orca-nested.sh "$(bash_json 'cd a && claude -p "hi"')")"
-check "--print も止める"                    2 "$(run require-orca-nested.sh "$(bash_json 'claude --print "hi"')")"
-check "Orca の中の codex exec を止める"     2 "$(run require-orca-nested.sh "$(bash_json 'codex exec "hi"')")"
-check "フラグの後ろの -p も止める"          2 "$(run require-orca-nested.sh "$(bash_json 'claude --model sonnet -p "hi"')")"
-check "\$(...) の中も止める"                2 "$(run require-orca-nested.sh "$(bash_json 'x=$(claude -p hi)')")"
-check "引用符の中の \$(...) も止める"       2 "$(run require-orca-nested.sh "$(bash_json 'out="$(claude -p hi)"')")"
-check "env を前に付けても止める"            2 "$(run require-orca-nested.sh "$(bash_json 'env FOO=1 claude -p hi')")"
-check "2 行目の起動も止める"                2 "$(run require-orca-nested.sh "$(bash_json $'echo a\nclaude -p hi')")"
-check "\\ で折り返した起動も止める"         2 "$(run require-orca-nested.sh "$(bash_json $'claude --model sonnet \\\n  -p "hi"')")"
-check "ヒアドキュメントを流し込む起動も止める" 2 "$(run require-orca-nested.sh "$(bash_json $'cat <<\'EOF\' | claude -p\nreview\nEOF')")"
-check "' の中の \" に引きずられず止める"   2 "$(run require-orca-nested.sh "$(bash_json $'tr -d \'"\' < f; codex exec "review"')")"
-check "付いていない方の起動を止める"        2 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "a"; claude -p "b"')")"
-check "orca-nested 付きは通す"              0 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "hi"')")"
-check "\\ で折り返した orca-nested は通す"  0 "$(run require-orca-nested.sh "$(bash_json $'orca-nested \\\n  claude -p "hi"')")"
-check "引用符の中の claude -p は通す"       0 "$(run require-orca-nested.sh "$(bash_json 'git commit -m "hook: claude -p を止める"')")"
-check "ヒアドキュメントの中は通す"          0 "$(run require-orca-nested.sh "$(bash_json $'git commit -F - <<\'EOF\'\nhook: claude -p を止める\nEOF')")"
-check "対話の claude は通す"                0 "$(run require-orca-nested.sh "$(bash_json 'claude --version')")"
+check "claude -p に警告する"               warn "$(warn 'cd a && claude -p "hi"')"
+check "フラグの後ろの -p にも警告する"     warn "$(warn 'claude --model sonnet -p "hi"')"
+check "--print にも警告する"               warn "$(warn 'claude --print "hi"')"
+check "codex exec にも警告する"            warn "$(warn 'codex exec "hi"')"
+check "orca-nested 付きには警告しない"     none "$(warn 'orca-nested claude -p "hi"')"
+check "対話の claude には警告しない"       none "$(warn 'claude --version')"
+rc=0; echo '{"tool_input":{"command":"claude -p hi"}}' | "$ROOT/claude/hooks/require-orca-nested.sh" >/dev/null || rc=$?
+check "止めない"                           0    "$rc"
 unset ORCA_PANE_KEY
-check "Orca の外は通す"                     0 "$(run require-orca-nested.sh "$(bash_json 'claude -p "hi"')")"
+check "Orca の外では警告しない"            none "$(warn 'claude -p "hi"')"
 
 # block-default-branch-edit
 git init -q -b main "$WORK/repo"
