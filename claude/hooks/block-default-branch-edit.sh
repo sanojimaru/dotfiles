@@ -3,6 +3,7 @@
 set -u
 path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
 [ -n "$path" ] || exit 0
+[ -e "$path" ] && path=$(realpath "$path") # ~/.claude/CLAUDE.md など、リンク先のリポジトリで判定する
 dir=$(dirname "$path")
 while [ ! -d "$dir" ]; do dir=$(dirname "$dir"); done
 branch=$(git -C "$dir" symbolic-ref --short -q HEAD 2>/dev/null) || exit 0

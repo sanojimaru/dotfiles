@@ -24,6 +24,8 @@ bash_json() { jq -cn --arg c "$1" '{tool_input:{command:$c}}'; }
 export ORCA_PANE_KEY=x
 check "Orca の中の claude -p を止める"      2 "$(run require-orca-nested.sh "$(bash_json 'cd a && claude -p "hi"')")"
 check "Orca の中の codex exec を止める"     2 "$(run require-orca-nested.sh "$(bash_json 'codex exec "hi"')")"
+check "フラグの後ろの -p も止める"       2 "$(run require-orca-nested.sh "$(bash_json 'claude --model sonnet -p "hi"')")"
+check "付いていない方の起動を止める"       2 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "a"; claude -p "b"')")"
 check "orca-nested 付きは通す"             0 "$(run require-orca-nested.sh "$(bash_json 'orca-nested claude -p "hi"')")"
 check "文字列の中の claude -p は通す"      0 "$(run require-orca-nested.sh "$(bash_json "grep 'claude -p' f")")"
 check "対話の claude は通す"               0 "$(run require-orca-nested.sh "$(bash_json 'claude --version')")"
@@ -38,6 +40,8 @@ edit_json() { jq -cn --arg p "$1" '{tool_input:{file_path:$p}}'; }
 check "既定のブランチのファイルを止める"   2 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/repo/a.txt")")"
 check "まだ無いディレクトリでも止める"     2 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/repo/new/dir/a.txt")")"
 check "gitignore されたファイルは通す"     0 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/repo/ignored.txt")")"
+ln -s "$WORK/repo/a.txt" "$WORK/link.txt"; touch "$WORK/repo/a.txt"
+check "リンク先が既定のブランチなら止める" 2 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/link.txt")")"
 check "リポジトリの外は通す"               0 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/a.txt")")"
 git -C "$WORK/repo" switch -q -c feature
 check "作業用ブランチは通す"               0 "$(run block-default-branch-edit.sh "$(edit_json "$WORK/repo/a.txt")")"
