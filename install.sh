@@ -22,6 +22,7 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
+link bin/orca-nested           "$HOME/.local/bin/orca-nested"
 
 # VS Code (パスに空白を含むので必ず引用)
 VSCODE="$HOME/Library/Application Support/Code/User"
@@ -32,6 +33,9 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
 link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
+for h in block-default-branch-edit require-orca-nested; do
+  link "claude/hooks/$h.sh" "$HOME/.claude/hooks/$h.sh"
+done
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"

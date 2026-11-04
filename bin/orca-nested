@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Orca の中から claude -p・codex exec などを入れ子で起動するときに通す: orca-nested claude -p "..."
+# ORCA_ で始まる環境変数を外してから実行する。受け継ぐと、入れ子の終わりを Orca がワーカーのターンの終わりと取り違える。
+set -euo pipefail
+[ $# -gt 0 ] || { echo "使い方: orca-nested <コマンド> [引数...]" >&2; exit 2; }
+unset_args=()
+for name in $(compgen -e); do
+  case "$name" in ORCA_*) unset_args+=(-u "$name") ;; esac
+done
+exec env ${unset_args[@]+"${unset_args[@]}"} "$@"
