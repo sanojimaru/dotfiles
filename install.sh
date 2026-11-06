@@ -33,9 +33,7 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
 link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
-for h in block-default-branch-edit require-orca-nested; do
-  link "claude/hooks/$h.sh" "$HOME/.claude/hooks/$h.sh"
-done
+link claude/hooks/require-orca-nested.sh "$HOME/.claude/hooks/require-orca-nested.sh"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"
