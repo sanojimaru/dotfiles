@@ -85,10 +85,10 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く)
-- `tests/` — 自作コマンドのテスト (`tests/op-env.sh`。本物の `op` は呼ばない)
+- `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す)
+- `tests/` — 自作コマンドのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
-- `claude/` — Claude Code のフック (`~/.claude` へリンク)
+- `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `block-default-branch-edit.sh` は `Edit|Write|NotebookEdit`、`require-orca-nested.sh` は `Bash`。後者は止めずに Claude へ警告する)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask
