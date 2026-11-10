@@ -131,7 +131,8 @@ cd ~/dotfiles && brew bundle dump --force
 
 ## Claude / Codex の週の使用率
 
-`agent-usage` で、両方の週枠の使用率・リセット日時・最終取得日時を表示する。
+`agent-usage` で、両方の週枠・5時間枠の使用率・リセット日時・最終取得日時を表示する。
+週の使用率を優先し、差が5ポイント以内なら両方で比較できる短い期間の使用率を比べる。
 取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
 取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
 Codex は `CODEX_HOME`（既定 `~/.codex`）の `sessions/` から、イベントの日時が最も新しい使用率の記録を 1 件だけ読む。
@@ -144,7 +145,7 @@ Claude の statusLine が毎回このコマンドを実行するので、リン�
 Claude の保存は `./install.sh` の後、`agent-usage --install-claude-statusline` で有効にする。
 既存の Orca statusLine コマンドを `~/.claude/agent-usage/delegate.json` へ保存し、
 受け取った入力をそのまま元コマンドへ渡す。Orca は独自の statusLine コマンドを保持する。
-Claude の次の応答から週枠を `~/.claude/agent-usage/claude.json` に保存する。
+Claude の次の応答から週枠を `~/.claude/agent-usage/claude.json`、5時間枠を `claude-five-hour.json` に保存する。
 保存に失敗しても元コマンドへの受け渡しは続ける。
 `CLAUDE_CONFIG_DIR` 指定時はそのディレクトリを使う。会話本文は保存しない。
 

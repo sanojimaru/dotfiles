@@ -50,6 +50,23 @@ class UsageTest(unittest.TestCase):
             self.assertEqual((self.state / 'claude.json').read_text(), cached)
         self.assertIn('Claude（週）: 68%', self.run_cli())
 
+    def test_short_windows_are_saved_independently_and_not_replaced_by_zero(self):
+        self.delegate()
+        payload = json.dumps({'rate_limits': {'five_hour': {
+            'used_percentage': 12, 'resets_at': self.reset}}}).encode()
+        self.run_cli('--claude-statusline', payload=payload)
+        self.assertIn('Claude（5時間）: 12%', self.run_cli())
+        self.assertIn('Claude（週）: 取得不可', self.run_cli())
+        self.run_cli('--claude-statusline', payload=b'{}')
+        self.assertIn('Claude（5時間）: 12%', self.run_cli())
+        event = self.event(23, self.now)
+        event['payload']['rate_limits']['secondary'] = {
+            'used_percent': 8, 'window_minutes': 300, 'resets_at': self.reset}
+        self.save(self.home / '.codex/sessions/both.jsonl', event)
+        out = self.run_cli()
+        self.assertIn('Codex（週）: 23%', out)
+        self.assertIn('Codex（5時間）: 8%', out)
+
     def claude_payload(self, used, reset):
         return json.dumps({'rate_limits': {'seven_day': {
             'used_percentage': used, 'resets_at': reset}}}).encode()
@@ -110,7 +127,10 @@ class UsageTest(unittest.TestCase):
 
     def test_codex_uses_event_time_and_only_the_newest_snapshot(self):
         root = self.home / '.codex/sessions'
-        self.save(root / 'older-event.jsonl', self.event(30, self.now - 50))
+        event = self.event(30, self.now - 50)
+        event['payload']['rate_limits']['secondary'] = {
+            'used_percent': 9, 'window_minutes': 300, 'resets_at': self.reset}
+        self.save(root / 'older-event.jsonl', event)
         self.save(root / 'newer-event.jsonl', self.event(31, self.now - 5))
         empty = self.event(0, self.now - 1)
         empty['payload']['rate_limits']['primary'] = None
@@ -120,6 +140,9 @@ class UsageTest(unittest.TestCase):
         os.utime(root / 'newer-event.jsonl', (self.now - 10, self.now - 10))
         out = self.run_cli()
         self.assertIn('Codex（週）: 31%', out)
+        self.assertIn('Codex（5時間）: 取得不可', out)
+        self.assertIn('この枠なし', out)
+        self.assertNotIn('9%', out)
 
     def test_missing_stale_and_expired_are_explicit(self):
         out = self.run_cli()
