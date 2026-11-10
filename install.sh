@@ -14,6 +14,14 @@ link() { # link <repo内の相対パス> <リンク先の絶対パス>
   ln -s "$src" "$dst"; echo "link    $dst"
 }
 
+copy() { # copy <repo内の相対パス> <配置先の絶対パス>。worktree を消しても動くよう実体を置く
+  local src="$ROOT/$1" dst="$2" tmp
+  mkdir -p "$(dirname "$dst")"
+  tmp="$(mktemp "$(dirname "$dst")/.install.XXXXXX")"
+  cp "$src" "$tmp" && chmod 755 "$tmp" && mv -f "$tmp" "$dst" || { rm -f "$tmp"; return 1; }
+  echo "copy    $dst"
+}
+
 for f in .zshrc .zshenv .gitconfig .vimrc; do link "home/$f" "$HOME/$f"; done
 link config/ghostty/config     "$HOME/.config/ghostty/config"
 link config/fish/config.fish   "$HOME/.config/fish/config.fish"
@@ -23,6 +31,7 @@ link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
 link bin/orca-nested           "$HOME/.local/bin/orca-nested"
+copy bin/agent-usage           "$HOME/.local/bin/agent-usage"
 
 # VS Code (パスに空白を含むので必ず引用)
 VSCODE="$HOME/Library/Application Support/Code/User"
