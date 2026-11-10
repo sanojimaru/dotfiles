@@ -128,3 +128,18 @@ cd ~/dotfiles && brew bundle dump --force
 ```
 
 設定ファイルはシンボリックリンクなので、`~` 側を編集すればそのままリポジトリに反映される。
+
+## Claude / Codex の週の使用率
+
+`agent-usage` で、両方の週枠の使用率・リセット日時・最終取得日時を表示する。
+取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
+取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
+Codex は `CODEX_HOME`（既定 `~/.codex`）の `sessions/` から、イベントの日時が最も新しい使用率の記録を 1 件だけ読む。
+その記録で提供されていない枠は、古い記録から補わずに取得不可と表示する。
+Claude は `~/.claude/agent-usage/claude.json`（`CLAUDE_CONFIG_DIR` 指定時はそのディレクトリ）に保存された値を読む。
+
+`agent-usage` は、ほかのコマンドと違ってリンクでなく実体を `~/.local/bin/agent-usage` へコピーする。
+リンク元の worktree を消してもコマンドが残るようにするため。
+`bin/agent-usage` を変えたら、`~/dotfiles` を更新してから `./install.sh` を実行し直して入れ替える。
+
+検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`python3 tests/agent-usage.py`。

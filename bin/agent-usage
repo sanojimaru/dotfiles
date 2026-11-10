@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Claude/Codex の週枠を比較する。ネットワークや認証情報は使わない。"""
+import argparse
+from datetime import datetime, timezone
+import json
+import math
+import os
+from pathlib import Path
+import sys
+import time
+
+
+def claude_dir():
+    return Path(os.environ.get('CLAUDE_CONFIG_DIR') or Path.home() / '.claude')
+
+
+def state_dir():
+    return claude_dir() / 'agent-usage'
+
+
+def read_json(path):
+    return json.loads(path.read_text())
+
+
+def number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def window(value, percent_key):
+    if not isinstance(value, dict):
+        return None
+    used, reset = value.get(percent_key), value.get('resets_at')
+    if number(used) and 0 <= used <= 100 and number(reset) and reset > 0:
+        return {'used_percent': used, 'resets_at': reset}
+    return None
+
+
+def timestamp(value):
+    if not isinstance(value, str):
+        raise ValueError('timestamp is missing')
+    parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    if parsed.tzinfo is None:
+        raise ValueError('timestamp has no timezone')
+    return parsed.timestamp()
+
+
+def reversed_lines(path, chunk=1 << 16):
+    with path.open('rb') as stream:
+        stream.seek(0, os.SEEK_END)
+        position, rest = stream.tell(), b''
+        while position > 0:
+            size = min(chunk, position)
+            position -= size
+            stream.seek(position)
+            lines = (stream.read(size) + rest).split(b'\n')
+            rest = lines.pop(0)
+            yield from reversed(lines)
+        yield rest
+
+
+def snapshot(line):
+    """Return (observed_at, rate_limits) for a usable Codex token_count event, else None."""
+    if b'"rate_limits"' not in line:
+        return None
+    try:
+        event = json.loads(line)
+        payload = event.get('payload', {})
+        limits = payload.get('rate_limits')
+        if event.get('type') != 'event_msg' or payload.get('type') != 'token_count':
+            return None
+        if not isinstance(limits, dict) or limits.get('limit_id') not in (None, 'codex'):
+            return None
+        # A snapshot without any usable window is not a valid observation.
+        if not any(window(limits.get(key), 'used_percent') for key in ('primary', 'secondary')):
+            return None
+        return timestamp(event.get('timestamp')), limits
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def codex_usage():
+    root = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex') / 'sessions'
+    files, unreadable = [], False
+    for path in root.rglob('*.jsonl'):
+        try:
+            files.append((path.stat().st_mtime, path))
+        except OSError:
+            unreadable = True
+    best = None
+    # Only each file's last snapshot is read. mtime orders and prunes the files;
+    # event timestamps decide which snapshot is newest.
+    for mtime, path in sorted(files, reverse=True):
+        if best and mtime < best[0] - 60:
+            break
+        try:
+            found = next(filter(None, map(snapshot, reversed_lines(path))), None)
+        except OSError:
+            unreadable = True
+            continue
+        if found and (not best or found[0] > best[0]):
+            best = found
+    latest = {}
+    if best:
+        # Windows are told apart by length, not by primary/secondary position.
+        for key in ('primary', 'secondary'):
+            raw = best[1].get(key)
+            minutes = raw.get('window_minutes') if isinstance(raw, dict) else None
+            record = window(raw, 'used_percent')
+            if record and number(minutes) and 0 < minutes <= 10080:
+                latest[minutes] = {**record, 'observed_at': best[0]}
+    return latest, best and best[0], '一部のログを読めません' if unreadable else None
+
+
+def date_text(value):
+    return datetime.fromtimestamp(value, timezone.utc).astimezone().isoformat(timespec='seconds')
+
+
+def show(name, record, error, max_age):
+    if not record:
+        print(f'{name}: 取得不可 | 最終取得: 不明 | {error or "枠の記録なし"}')
+        return
+    observed = record['observed_at']
+    age = time.time() - observed
+    reasons = []
+    if age > max_age:
+        reasons.append(f'古い値（{max_age // 60}分超）')
+    if record['resets_at'] <= time.time():
+        reasons.append('リセット日時経過')
+    if age < -60:
+        reasons.append('取得日時が未来')
+    if error:
+        reasons.append(error)
+    state = ' / '.join(reasons) or '取得済み'
+    print(f'{name}: {record["used_percent"]:g}% | リセット: {date_text(record["resets_at"])}'
+          f' | 最終取得: {date_text(observed)} | {state}')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--max-age-minutes', type=int, default=15, help='古い値と表示する経過分数（既定: 15）')
+    args = parser.parse_args()
+    if args.max_age_minutes <= 0:
+        parser.error('--max-age-minutes は正の整数にしてください')
+    for label, filename in [('Claude（週）', 'claude.json')]:
+        record, error = None, None
+        try:
+            raw = read_json(state_dir() / filename)
+            record = window(raw, 'used_percent')
+            if record is None or not number(raw.get('observed_at')):
+                raise ValueError('保存された値が不正です')
+            record['observed_at'] = raw['observed_at']
+        except (OSError, ValueError, TypeError, AttributeError) as exc:
+            record, error = None, str(exc)
+        show(label, record, error, args.max_age_minutes * 60)
+    records, observed, error = codex_usage()
+    # A window absent from the newest snapshot is missing; older snapshots are not mixed in.
+    missing = f'最新の記録（{date_text(observed)}）にこの枠なし' if observed else None
+    record = records.get(10080)
+    show('Codex（週）', record, error if record else error or missing, args.max_age_minutes * 60)
+    return 0
+
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except (OSError, ValueError, OverflowError) as exc:
+        print(f'agent-usage: {exc}', file=sys.stderr)
+        sys.exit(1)
