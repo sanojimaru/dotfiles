@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Claude/Codex の週枠を比較する。ネットワークや認証情報は使わない。"""
 import argparse
+import fcntl
 from datetime import datetime, timezone
 import json
 import math
 import os
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import time
 
 
@@ -22,6 +25,19 @@ def read_json(path):
     return json.loads(path.read_text())
 
 
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(dir=path.parent, prefix='.agent-usage-')
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(value, stream)
+            stream.write('\n')
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
 def number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -33,6 +49,69 @@ def window(value, percent_key):
     if number(used) and 0 <= used <= 100 and number(reset) and reset > 0:
         return {'used_percent': used, 'resets_at': reset}
     return None
+
+
+def save_claude(limits):
+    state_dir().mkdir(parents=True, exist_ok=True)
+    # Concurrent sessions render at once; serialize the read-compare-write.
+    with open(state_dir() / '.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        for key, filename in [('seven_day', 'claude.json')]:
+            record = window(limits.get(key), 'used_percentage')
+            if not record:
+                continue
+            try:
+                saved = read_json(state_dir() / filename)
+            except (OSError, ValueError):
+                saved = {}
+            # Assume a redraw with an older reset, or a lower value in the same reset, is an
+            # idle session's old sample; only a later reset starts a new window.
+            if isinstance(saved, dict) and number(saved.get('resets_at')) and number(saved.get('used_percent')):
+                if saved['resets_at'] > record['resets_at'] or (
+                        saved['resets_at'] == record['resets_at'] and saved['used_percent'] > record['used_percent']):
+                    continue
+            write_json(state_dir() / filename, {**record, 'observed_at': time.time()})
+
+
+def capture():
+    payload = sys.stdin.buffer.read()
+    try:
+        limits = json.loads(payload).get('rate_limits') or {}
+        # Missing/null windows must not erase the last successful observation.
+        if not os.environ.get('CLAUDE_JOB_DIR'):
+            save_claude(limits)
+    except (ValueError, AttributeError, TypeError, OSError):
+        pass
+    # Cache failures must not interrupt Orca's statusline or change its input/output.
+    try:
+        command = read_json(state_dir() / 'delegate.json')['command']
+        return subprocess.run(['/bin/sh', '-c', command], input=payload).returncode
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(f'agent-usage: Orca コマンドを実行できません: {error}', file=sys.stderr)
+        return 1
+
+
+def install():
+    settings_path = claude_dir() / 'settings.json'
+    settings = read_json(settings_path)
+    status_line = settings.get('statusLine') if isinstance(settings, dict) else None
+    if not isinstance(status_line, dict):
+        raise ValueError('statusLine が設定されていません。既存の設定は変更しません')
+    command = status_line.get('command', '')
+    wrapper = '"$HOME/.local/bin/agent-usage" --claude-statusline'
+    if command == wrapper:
+        print('agent-usage: statusLine は設定済みです')
+        return 0
+    # Only replace the known Orca setup; leave other user statuslines alone.
+    if not isinstance(command, str) or 'agent-hooks/claude-statusline.' not in command:
+        raise ValueError('Orca 管理の statusLine がありません。既存の設定は変更しません')
+    if not (Path.home() / '.local/bin/agent-usage').is_file():
+        raise ValueError('先に agent-usage を ~/.local/bin へリンクしてください')
+    write_json(state_dir() / 'delegate.json', {'command': command})
+    settings['statusLine'] = {**status_line, 'command': wrapper}
+    write_json(settings_path, settings)
+    print('agent-usage: 元の Orca コマンドを保存し、使用率の保存を有効にしました')
+    return 0
 
 
 def timestamp(value):
@@ -137,8 +216,15 @@ def show(name, record, error, max_age):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--claude-statusline', action='store_true', help='stdin を保存し Orca へ渡す')
+    modes.add_argument('--install-claude-statusline', action='store_true', help='既存の Orca statusLine をラップする')
     parser.add_argument('--max-age-minutes', type=int, default=15, help='古い値と表示する経過分数（既定: 15）')
     args = parser.parse_args()
+    if args.claude_statusline:
+        return capture()
+    if args.install_claude_statusline:
+        return install()
     if args.max_age_minutes <= 0:
         parser.error('--max-age-minutes は正の整数にしてください')
     for label, filename in [('Claude（週）', 'claude.json')]:
