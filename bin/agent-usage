@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude/Codex の週枠を比較する。ネットワークや認証情報は使わない。"""
+"""Claude/Codex の週枠・短期枠を比較する。ネットワークや認証情報は使わない。"""
 import argparse
 import fcntl
 from datetime import datetime, timezone
@@ -56,7 +56,7 @@ def save_claude(limits):
     # Concurrent sessions render at once; serialize the read-compare-write.
     with open(state_dir() / '.lock', 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        for key, filename in [('seven_day', 'claude.json')]:
+        for key, filename in [('seven_day', 'claude.json'), ('five_hour', 'claude-five-hour.json')]:
             record = window(limits.get(key), 'used_percentage')
             if not record:
                 continue
@@ -227,7 +227,7 @@ def main():
         return install()
     if args.max_age_minutes <= 0:
         parser.error('--max-age-minutes は正の整数にしてください')
-    for label, filename in [('Claude（週）', 'claude.json')]:
+    for label, filename in [('Claude（週）', 'claude.json'), ('Claude（5時間）', 'claude-five-hour.json')]:
         record, error = None, None
         try:
             raw = read_json(state_dir() / filename)
@@ -241,8 +241,10 @@ def main():
     records, observed, error = codex_usage()
     # A window absent from the newest snapshot is missing; older snapshots are not mixed in.
     missing = f'最新の記録（{date_text(observed)}）にこの枠なし' if observed else None
-    record = records.get(10080)
-    show('Codex（週）', record, error if record else error or missing, args.max_age_minutes * 60)
+    for minutes in sorted(set(records) | {10080, 300}, reverse=True):
+        label = '週' if minutes == 10080 else f'{minutes / 60:g}時間'
+        record = records.get(minutes)
+        show(f'Codex（{label}）', record, error if record else error or missing, args.max_age_minutes * 60)
     return 0
 
 
