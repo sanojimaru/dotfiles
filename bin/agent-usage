@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude/Codex の週枠・短期枠を比較する。ネットワークや認証情報は使わない。"""
+"""Claude/Codex の週枠・短期枠を比較する。Orca の使用率とローカルの記録を読む。"""
 import argparse
 import fcntl
 from datetime import datetime, timezone
@@ -123,6 +123,52 @@ def timestamp(value):
     return parsed.timestamp()
 
 
+def orca_usage():
+    """Read the host's cached usage once; failures leave local readers available."""
+    command = os.environ.get('ORCA_CLI_COMMAND') or 'orca'
+    try:
+        result = subprocess.run([command, 'account', 'list', '--json'],
+                                capture_output=True, text=True, timeout=5, check=True)
+        limits = json.loads(result.stdout)['result']['rateLimits']
+    except (OSError, ValueError, KeyError, TypeError, AttributeError,
+            subprocess.SubprocessError):
+        return {}
+    records = {}
+    for provider in ('claude', 'codex'):
+        raw = limits.get(provider) if isinstance(limits, dict) else None
+        if not isinstance(raw, dict) or raw.get('status') != 'ok' or raw.get('error'):
+            continue
+        try:
+            updated = raw.get('updatedAt')
+            if not number(updated) or updated <= 0:
+                continue
+            observed = updated / 1000
+            date_text(observed)
+        except (OSError, ValueError, OverflowError):
+            continue
+        windows = {}
+        for key in ('weekly', 'session'):
+            value = raw.get(key)
+            if not isinstance(value, dict):
+                continue
+            try:
+                minutes = value.get('windowMinutes')
+                if not number(minutes) or not 0 < minutes <= 10080:
+                    continue
+                reset = value.get('resetsAt')
+                record = window({'used_percent': value.get('usedPercent'),
+                                 'resets_at': reset / 1000 if number(reset) else None},
+                                'used_percent')
+                if record:
+                    date_text(record['resets_at'])
+                    windows[minutes] = {**record, 'observed_at': observed}
+            except (OSError, ValueError, OverflowError):
+                continue
+        if windows:
+            records[provider] = windows
+    return records
+
+
 def reversed_lines(path, chunk=1 << 16):
     with path.open('rb') as stream:
         stream.seek(0, os.SEEK_END)
@@ -194,9 +240,9 @@ def date_text(value):
     return datetime.fromtimestamp(value, timezone.utc).astimezone().isoformat(timespec='seconds')
 
 
-def show(name, record, error, max_age):
+def show(name, record, error, max_age, source):
     if not record:
-        print(f'{name}: 取得不可 | 最終取得: 不明 | {error or "枠の記録なし"}')
+        print(f'{name}: 取得不可 | 最終取得: 不明 | 出典: {source} | {error or "枠の記録なし"}')
         return
     observed = record['observed_at']
     age = time.time() - observed
@@ -211,7 +257,7 @@ def show(name, record, error, max_age):
         reasons.append(error)
     state = ' / '.join(reasons) or '取得済み'
     print(f'{name}: {record["used_percent"]:g}% | リセット: {date_text(record["resets_at"])}'
-          f' | 最終取得: {date_text(observed)} | {state}')
+          f' | 最終取得: {date_text(observed)} | 出典: {source} | {state}')
 
 
 def main():
@@ -227,24 +273,39 @@ def main():
         return install()
     if args.max_age_minutes <= 0:
         parser.error('--max-age-minutes は正の整数にしてください')
-    for label, filename in [('Claude（週）', 'claude.json'), ('Claude（5時間）', 'claude-five-hour.json')]:
-        record, error = None, None
+    orca = orca_usage()
+    claude, claude_errors = {}, {}
+    for filename, minutes in [('claude.json', 10080), ('claude-five-hour.json', 300)]:
         try:
             raw = read_json(state_dir() / filename)
             record = window(raw, 'used_percent')
             if record is None or not number(raw.get('observed_at')):
                 raise ValueError('保存された値が不正です')
-            record['observed_at'] = raw['observed_at']
+            claude[minutes] = {**record, 'observed_at': raw['observed_at']}
         except (OSError, ValueError, TypeError, AttributeError) as exc:
-            record, error = None, str(exc)
-        show(label, record, error, args.max_age_minutes * 60)
-    records, observed, error = codex_usage()
-    # A window absent from the newest snapshot is missing; older snapshots are not mixed in.
-    missing = f'最新の記録（{date_text(observed)}）にこの枠なし' if observed else None
-    for minutes in sorted(set(records) | {10080, 300}, reverse=True):
-        label = '週' if minutes == 10080 else f'{minutes / 60:g}時間'
-        record = records.get(minutes)
-        show(f'Codex（{label}）', record, error if record else error or missing, args.max_age_minutes * 60)
+            claude_errors[minutes] = str(exc)
+    codex, observed, error = codex_usage()
+    for provider, name, local, errors in (
+            ('claude', 'Claude', claude, claude_errors),
+            ('codex', 'Codex', codex, {})):
+        remote = orca.get(provider, {})
+        # Select a whole snapshot so missing windows are not filled with older samples.
+        use_orca = bool(remote) and max(r['observed_at'] for r in remote.values()) >= max(
+            (r['observed_at'] for r in local.values()), default=0)
+        records = remote if use_orca else local
+        source = 'Orca' if use_orca else ('Claude statusLine' if provider == 'claude' else 'Codex sessions')
+        if not use_orca:
+            source += '（Orca より新しい記録）' if remote else '（Orca 取得不可）'
+        for minutes in sorted(set(records) | {10080, 300}, reverse=True):
+            label = '週' if minutes == 10080 else f'{minutes / 60:g}時間'
+            reason = errors.get(minutes) if provider == 'claude' else error
+            if use_orca:
+                reason = 'Orca の最新の記録にこの枠なし'
+            elif provider == 'codex' and minutes not in records and not reason and observed:
+                reason = f'最新の記録（{date_text(observed)}）にこの枠なし'
+            show(f'{name}（{label}）', records.get(minutes),
+                 None if use_orca and minutes in records else reason,
+                 args.max_age_minutes * 60, source)
     return 0
 
 
