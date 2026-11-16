@@ -135,9 +135,10 @@ cd ~/dotfiles && brew bundle dump --force
 週の使用率を優先し、差が5ポイント以内なら両方で比較できる短い期間の使用率を比べる。
 取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
 取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
-Claude・Codex とも `orca account list --json` の使用率を優先し、出典と Orca の最終取得日時を表示する。
+Claude・Codex とも `orca account list --json` と従来の記録の最終取得日時を比べ、新しい取得元の使用率と出典を表示する。
+同じ日時なら Orca を使う。取得元はサービスごとに選び、最新の記録に無い枠を別の取得元から補わない。
 `ORCA_CLI_COMMAND` があればその実行ファイルを使い、なければ `orca` を使う。
-Orca が無い・5秒以内に応答しない・値が不正な枠は、Claude は statusLine の保存値、Codex はセッションログに戻る。
+Orca が無い・5秒以内に応答しない・サービスの使用率を読めないときは、Claude は statusLine の保存値、Codex はセッションログに戻る。
 Codex のログは `CODEX_HOME`（既定 `~/.codex`）の `sessions/` から、イベントの日時が最も新しい使用率の記録を 1 件だけ読む。
 その記録で提供されていない枠は、古い記録から補わずに取得不可と表示する。
 

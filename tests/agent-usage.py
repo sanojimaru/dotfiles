@@ -27,7 +27,7 @@ class UsageTest(unittest.TestCase):
         self.env['ORCA_CLI_COMMAND'] = str(self.orca)
         self.state = self.home / '.claude/agent-usage'
         self.state.mkdir(parents=True)
-        self.now = time.time()
+        self.now = int(time.time())
         self.reset = self.now + 3600
 
     def run_cli(self, *args, payload=b''):
@@ -49,8 +49,8 @@ class UsageTest(unittest.TestCase):
     def orca_limits(self):
         return {'result': {'rateLimits': {
             provider: {'status': 'ok', 'error': None, 'updatedAt': self.now * 1000,
-                       'weekly': {'usedPercent': weekly, 'resetsAt': self.reset * 1000},
-                       'session': {'usedPercent': short, 'resetsAt': self.reset * 1000}}
+                       'weekly': {'usedPercent': weekly, 'resetsAt': self.reset * 1000, 'windowMinutes': 10080},
+                       'session': {'usedPercent': short, 'resetsAt': self.reset * 1000, 'windowMinutes': 300}}
             for provider, weekly, short in [('claude', 41, 63), ('codex', 40, 0)]}}}
 
     def test_orca_usage_has_source_and_original_timestamps(self):
@@ -72,7 +72,7 @@ class UsageTest(unittest.TestCase):
         self.save(self.state / 'claude.json', {'used_percent': 5,
                   'observed_at': self.now, 'resets_at': self.reset})
         self.save(self.home / '.codex/sessions/usage.jsonl', self.event(39, self.now))
-        for body in ('exit 1', 'echo invalid', 'echo null', 'echo "{}"', 'sleep 10'):
+        for body in ('exit 1', 'echo invalid', 'echo null', 'echo "{}"', 'exec sleep 10'):
             with self.subTest(body=body):
                 self.orca.write_text('#!/bin/sh\n' + body + '\n')
                 out = self.run_cli()
@@ -94,14 +94,14 @@ class UsageTest(unittest.TestCase):
                 value['result']['rateLimits']['claude'].update(change)
                 self.orca_response(value)
                 out = self.run_cli()
-                self.assertIn('Claude（週）: 5%', out)
+                self.assertIn('Claude（週）: ' + ('5%' if any(k in change for k in ('status', 'error', 'updatedAt')) else '取得不可'), out)
                 self.assertIn('Codex（週）: 40%', out)
         value = self.orca_limits()
         value['result']['rateLimits']['claude']['weekly'] = None
         self.orca_response(value)
         self.assertIn('Claude（5時間）: 63%', self.run_cli())
 
-    def test_codex_missing_orca_session_uses_latest_log(self):
+    def test_codex_missing_orca_session_does_not_mix_older_log(self):
         event = self.event(39, self.now - 10)
         event['payload']['rate_limits']['secondary'] = {
             'used_percent': 8, 'window_minutes': 300, 'resets_at': self.reset}
@@ -112,8 +112,42 @@ class UsageTest(unittest.TestCase):
         out = self.run_cli()
         self.assertIn('Codex（週）: 40%', out)
         line = next(line for line in out.splitlines() if line.startswith('Codex（5時間）'))
-        self.assertIn(': 8%', line)
-        self.assertIn('出典: Codex sessions（Orca 取得不可）', line)
+        self.assertIn(': 取得不可', line)
+        self.assertIn('出典: Orca', line)
+        self.assertIn('この枠なし', line)
+
+    def test_newer_local_snapshot_wins_for_each_provider(self):
+        self.save(self.state / 'claude.json', {'used_percent': 45,
+                  'observed_at': self.now + 1, 'resets_at': self.reset})
+        self.save(self.home / '.codex/sessions/usage.jsonl', self.event(44, self.now + 1))
+        self.orca_response(self.orca_limits())
+        out = self.run_cli()
+        self.assertIn('Claude（週）: 45%', out)
+        self.assertIn('Codex（週）: 44%', out)
+        self.assertEqual(out.count('Orca より新しい記録'), 4)
+        self.assertIn('Claude（5時間）: 取得不可', out)
+
+    def test_bad_timestamp_does_not_discard_other_provider_or_window(self):
+        for field in ('updatedAt', 'weekly'):
+            value = self.orca_limits()
+            raw = value['result']['rateLimits']['claude']
+            if field == 'updatedAt':
+                raw[field] = 1e30
+            else:
+                raw[field]['resetsAt'] = 1e30
+            self.orca_response(value)
+            out = self.run_cli()
+            self.assertIn('Codex（週）: 40%', out)
+            if field == 'weekly':
+                self.assertIn('Claude（5時間）: 63%', out)
+
+    def test_orca_uses_actual_window_duration(self):
+        value = self.orca_limits()
+        value['result']['rateLimits']['codex']['session']['windowMinutes'] = 60
+        self.orca_response(value)
+        out = self.run_cli()
+        self.assertIn('Codex（1時間）: 0%', out)
+        self.assertIn('Codex（5時間）: 取得不可', out)
 
     def test_orca_stale_and_expired_values_remain_explicit(self):
         value = self.orca_limits()
