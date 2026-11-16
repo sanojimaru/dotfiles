@@ -86,9 +86,9 @@ drawio (cask), libreoffice (cask)
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
 - `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す)
-- `tests/` — 自作コマンドのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`)
+- `tests/` — 自作コマンドのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
-- `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `require-orca-nested.sh` は `Bash`。止めずに Claude へ警告する)
+- `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `require-orca-nested.sh` は `Bash`。止めずに Claude へ警告する。`block-heavy-ask-user-question.sh` は `AskUserQuestion`)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask
@@ -161,4 +161,4 @@ statusLine の入力には受け取った日時が無いので、しばらく応
 保存をやめるときは、`delegate.json` の `command` を `settings.json` の
 `statusLine.command` に戻す。Orca を更新した後は使用率表示も確認する。
 
-検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`python3 tests/agent-usage.py`。
+検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`python3 tests/agent-usage.py`。
