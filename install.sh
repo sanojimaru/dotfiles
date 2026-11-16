@@ -43,6 +43,7 @@ link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
 link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
 link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
 link claude/hooks/require-orca-nested.sh "$HOME/.claude/hooks/require-orca-nested.sh"
+link claude/hooks/block-heavy-ask-user-question.sh "$HOME/.claude/hooks/block-heavy-ask-user-question.sh"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"
