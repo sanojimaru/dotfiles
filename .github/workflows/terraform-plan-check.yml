@@ -1,0 +1,29 @@
+name: Terraform plan checker
+
+on:
+  pull_request:
+    paths:
+      - bin/terraform-plan-check
+      - tests/terraform-plan-check.py
+      - install.sh
+      - .github/workflows/terraform-plan-check.yml
+  push:
+    branches: [main]
+    paths:
+      - bin/terraform-plan-check
+      - tests/terraform-plan-check.py
+      - install.sh
+      - .github/workflows/terraform-plan-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python3 tests/terraform-plan-check.py
