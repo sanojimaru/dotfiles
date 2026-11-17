@@ -44,7 +44,7 @@ class PlanCheckTest(unittest.TestCase):
     def test_status_fields_are_required_and_strict_booleans(self):
         for field, values in {'errored': [True, None, 0, 'false'],
                               'complete': [False, None, 1, 'true'],
-                              'applyable': [False, None, 1, 'true']}.items():
+                              'applyable': [None, 1, 'true']}.items():
             for value in values:
                 with self.subTest(field=field, value=value):
                     self.assertEqual(self.run_cli(plan(['create'], **{field: value})).returncode, 1)
@@ -65,11 +65,29 @@ class PlanCheckTest(unittest.TestCase):
             with self.subTest(version=version):
                 self.assertEqual(self.run_cli(plan(['create'], format_version=version)).returncode, expected)
 
-    def test_output_only_plan_is_supported_but_no_changes_is_not_applyable(self):
+    def test_output_only_plan_is_supported(self):
         payload = plan(output_changes={'example': {'actions': ['update']}})
         del payload['resource_changes']
         self.assertEqual(self.run_cli(payload).returncode, 0)
-        self.assertEqual(self.run_cli(plan(applyable=False)).returncode, 1)
+
+    def test_no_changes_has_a_distinct_exit_code(self):
+        for actions in ((), (['no-op'],)):
+            with self.subTest(actions=actions):
+                result = self.run_cli(plan(*actions, applyable=False))
+                self.assertEqual(result.returncode, 3, result.stderr)
+                self.assertIn('apply 不要', result.stdout)
+        self.assertEqual(self.run_cli(plan(['delete'], applyable=False)).returncode, 1)
+
+    def test_drift_only_plan_needs_confirmation_but_normal_repair_can_pass(self):
+        # Terraform 1.17.1 / local_file の外部削除で得た両モードの JSON 構造。
+        drift = [{'change': {'actions': ['delete']}}]
+        for actions in ((), (['no-op'],), (['read'],)):
+            with self.subTest(actions=actions):
+                self.assertEqual(self.run_cli(plan(*actions, resource_drift=drift)).returncode, 1)
+        for actions in (['create'], ['update']):
+            with self.subTest(actions=actions):
+                self.assertEqual(self.run_cli(plan(actions, resource_drift=drift)).returncode, 0)
+        self.assertEqual(self.run_cli(plan(['create'], resource_drift=None)).returncode, 1)
 
     def test_invalid_input_never_succeeds_or_leaks_input(self):
         secret = 'SYNTHETIC_SECRET_DO_NOT_PRINT'

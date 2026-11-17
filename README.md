@@ -169,13 +169,15 @@ statusLine の入力には受け取った日時が無いので、しばらく応
 保存済み plan の状態と操作の種類を判定し、Terraform・クラウド API・apply は呼び出さない。
 確認なしで apply する条件は [agents/AGENTS.md](agents/AGENTS.md) に従い、環境と変更の影響は別に確かめる。
 
-```sh
+bash・zsh で実行する（fish の構文ではない）。
+
+```bash
 set -o pipefail
 terraform show -json "$plan_file" | terraform-plan-check
 ```
 
 `pipefail` は、JSON を出した後に `terraform show` が失敗した場合も成功扱いにしないために付ける。
 Terragrunt でも対象ユニットの `show -json` の出力を同じコマンドへ渡す。
-終了コードは `0` がこの検査に合格、`1` が条件不成立、`2` が入力・引数のエラー。
-変更なしで apply が不要な plan も `1` になるので、その場合は確認を求めず、変更なしと報告する。
+終了コードは `0` がこの検査に合格、`1` が条件不成立、`2` が入力・引数のエラー、`3` が変更なし（apply 不要）。
+リソースの追加・更新がなく drift がある plan は、JSON で refresh-only と通常 plan を区別できないため `1` にする。
 JSON の内容は表示・保存しない。必要な判定フィールドが無い旧バージョンの出力は通さない。
