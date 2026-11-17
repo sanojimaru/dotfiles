@@ -132,7 +132,7 @@ cd ~/dotfiles && brew bundle dump --force
 ## Claude / Codex の週の使用率
 
 `agent-usage` で、両方の週枠・5時間枠の使用率・リセット日時・最終取得日時を表示する。
-モデルを選ぶ際の取得・振り分けのルールは [agents/AGENTS.md](agents/AGENTS.md#ワーカーのモデルは作業の種類と使用量で選ぶ) に従う。
+モデルを選ぶ際の取得・振り分けのルールは [agents/AGENTS.md](agents/AGENTS.md#issue-を渡すエージェントとモデルは作業の中心と使用量で選ぶ) に従う。
 取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
 取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
 Claude・Codex とも `orca account list --json` と従来の記録の最終取得日時を比べ、新しい取得元の使用率と出典を表示する。
