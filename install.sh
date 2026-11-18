@@ -30,7 +30,6 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
-link bin/terraform-plan-check  "$HOME/.local/bin/terraform-plan-check"
 link bin/orca-nested           "$HOME/.local/bin/orca-nested"
 copy bin/agent-usage           "$HOME/.local/bin/agent-usage"
 
