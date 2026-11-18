@@ -161,23 +161,4 @@ statusLine の入力には受け取った日時が無いので、しばらく応
 保存をやめるときは、`delegate.json` の `command` を `settings.json` の
 `statusLine.command` に戻す。Orca を更新した後は使用率表示も確認する。
 
-検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`python3 tests/agent-usage.py`、`python3 tests/terraform-plan-check.py`。
-
-## Terraform plan の判定
-
-`./install.sh` で `terraform-plan-check` を `~/.local/bin` へリンクする。Python 3 の標準ライブラリだけで動く。
-保存済み plan の状態と操作の種類を判定し、Terraform・クラウド API・apply は呼び出さない。
-確認なしで apply する条件は [agents/AGENTS.md](agents/AGENTS.md) に従い、環境と変更の影響は別に確かめる。
-
-bash・zsh で実行する（fish の構文ではない）。
-
-```bash
-set -o pipefail
-terraform show -json "$plan_file" | terraform-plan-check
-```
-
-`pipefail` は、JSON を出した後に `terraform show` が失敗した場合も成功扱いにしないために付ける。
-Terragrunt でも対象ユニットの `show -json` の出力を同じコマンドへ渡す。
-終了コードは `0` がこの検査に合格、`1` が条件不成立、`2` が入力・引数のエラー、`3` が変更なし（apply 不要）。
-リソースの追加・更新がなく drift がある plan は、JSON で refresh-only と通常 plan を区別できないため `1` にする。
-JSON の内容は表示・保存しない。必要な判定フィールドが無い旧バージョンの出力は通さない。
+検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`python3 tests/agent-usage.py`。
