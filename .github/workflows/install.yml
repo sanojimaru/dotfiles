@@ -1,0 +1,16 @@
+name: Install
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: bash tests/install.sh
