@@ -22,6 +22,26 @@ copy() { # copy <repo内の相対パス> <配置先の絶対パス>。worktree �
   echo "copy    $dst"
 }
 
+# 共通スキルは他のツールも管理する場所へ配るため、同名の既存スキルを退避・上書きしない。
+# 全件を先に確かめ、衝突する名前があればリンクを変更する前に止める。
+for skill in "$ROOT"/agents/skills/*; do
+  [ -f "$skill/SKILL.md" ] || continue
+  name="$(basename "$skill")"
+  for legacy in "$ROOT/codex/skills/$name" "$HOME/.codex/skills/$name"; do
+    if [ -e "$legacy" ] || [ -L "$legacy" ]; then
+      echo "error   共通スキル $name が Codex 専用スキルと衝突: $legacy" >&2
+      exit 1
+    fi
+  done
+  for dst in "$HOME/.agents/skills/$name" "$HOME/.claude/skills/$name"; do
+    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$skill" ]; then continue; fi
+    if [ -e "$dst" ] || [ -L "$dst" ]; then
+      echo "error   共通スキル $name の配置先が使用中: ${dst}（上書きしません）" >&2
+      exit 1
+    fi
+  done
+done
+
 for f in .zshrc .zshenv .gitconfig .vimrc; do link "home/$f" "$HOME/$f"; done
 link config/ghostty/config     "$HOME/.config/ghostty/config"
 link config/fish/config.fish   "$HOME/.config/fish/config.fish"
@@ -47,6 +67,12 @@ link claude/hooks/block-heavy-ask-user-question.sh "$HOME/.claude/hooks/block-he
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"
+done
+for skill in "$ROOT"/agents/skills/*; do
+  [ -f "$skill/SKILL.md" ] || continue
+  name="$(basename "$skill")"
+  link "agents/skills/$name" "$HOME/.agents/skills/$name"
+  link "agents/skills/$name" "$HOME/.claude/skills/$name"
 done
 
 echo "完了。パッケージは: brew bundle --file=$ROOT/Brewfile"

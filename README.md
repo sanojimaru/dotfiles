@@ -86,8 +86,9 @@ drawio (cask), libreoffice (cask)
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
 - `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す)
-- `tests/` — 自作コマンドのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`)
+- `tests/` — 自作コマンドとインストールのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`tests/install.sh`)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
+- `agents/skills/<スキル名>/SKILL.md` — 共通スキル。`./install.sh` がスキルのディレクトリを `~/.claude/skills/<スキル名>` と `~/.agents/skills/<スキル名>`（Codex）へリンクする。追加したら再実行し、新しいセッションで使う。例: `agents/skills/issue-planning/SKILL.md`。配置先に別のファイル・リンクがある場合や Codex 専用スキルと同名の場合は、既存のものを保ち、エラーで止まるので名前を分ける
 - `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `require-orca-nested.sh` は `Bash`。止めずに Claude へ警告する。`block-heavy-ask-user-question.sh` は `AskUserQuestion`)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
@@ -102,7 +103,7 @@ API キー等は `~/.env` に置き (`OPENAI_API_KEY` `TYPESAFE_API_KEY` `OBSIDI
 
 `~/.codex/.env` は GUI 版 codex が直接読むため残す (`OBSIDIAN_MCP_API_KEY` は両方に置く)。
 `~/.claude/settings.json` と `~/.codex/config.toml` `~/.codex/hooks.json` は管理しない。Orca がフックや worktree の信頼設定を書き込み、Claude Code / Codex 自身も常時書き換えるため (各マシンで直接編集する)。
-`~/.claude` の skills は、ツール管理か別リポジトリのリンクなので対象外。
+`~/.claude/skills` と `~/.agents/skills` のうち、`agents/skills/` から配るもの以外は対象外。Orca 管理の `orchestration`・`orca-cli` などの既存リンクは変更しない。
 `codex/skills/proposal-*` は社内向けの名称・ブランド素材を含む (意図して公開)。
 `agents/AGENTS.md` はリポジトリが公開のため、API キー・トークン・社内固有名などを書かない。
 各プロジェクトの指示は `AGENTS.md` だけを書けばよい (Claude Code も、プロジェクトに CLAUDE.md が無ければ AGENTS.md を読む)。
