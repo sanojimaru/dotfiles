@@ -83,3 +83,19 @@ touch "$REPO/agents/skills/proposal-slide-image-deck/SKILL.md"
 expect_conflict
 check_link "$TEST_HOME/.codex/skills/proposal-slide-image-deck" "$REPO/codex/skills/proposal-slide-image-deck"
 echo "ok   Codex 専用スキルと同名なら停止する"
+
+# 後ろのスキルで衝突しても、前のスキルやほかの設定は途中まで配らない。
+rm -r "$REPO/agents/skills/proposal-slide-image-deck"
+mkdir -p "$REPO/agents/skills/aaa-first" "$REPO/agents/skills/zzz-conflict"
+touch "$REPO/agents/skills/aaa-first/SKILL.md" "$REPO/agents/skills/zzz-conflict/SKILL.md"
+TEST_HOME="$TMP/conflict home"
+mkdir -p "$TEST_HOME/.claude/skills/zzz-conflict"
+printf 'keep\n' >"$TEST_HOME/.zshrc"
+expect_conflict
+[ "$(cat "$TEST_HOME/.zshrc")" = keep ]
+[ ! -e "$TEST_HOME/.dotfiles_backup" ]
+[ ! -e "$TEST_HOME/.codex/AGENTS.md" ]
+for base in .claude .agents; do
+  [ ! -L "$TEST_HOME/$base/skills/aaa-first" ]
+done
+echo "ok   後ろのスキルの衝突でも、スキル・設定とも変更前に止まる"

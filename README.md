@@ -95,6 +95,8 @@ drawio (cask), libreoffice (cask)
 - `Brewfile` — brew / cask
 - `install.sh` — シンボリックリンクの作成
 
+共通スキルのリンク先は checkout の絶対パスなので、`./install.sh` は削除しない `~/dotfiles` で実行する。別の checkout へ移す場合やスキルを削除・改名した場合は、両配置先の `readlink` で dotfiles 内の旧スキルへのリンクであることを確かめ、そのリンクだけを手で削除してから再実行する。壊れたリンクも自動では上書きしないため、ほかのツールが管理するリンクを巻き込まずに復旧できる。共通スキルが衝突すると、スキル以外も含めインストール全体が変更前に止まる。
+
 ## 管理しないもの
 
 API キー等は `~/.env` に置き (`OPENAI_API_KEY` `TYPESAFE_API_KEY` `OBSIDIAN_MCP_API_KEY`)、リポジトリには含めない。`ANTHROPIC_API_KEY` はシェルにあると Claude Code が API 課金で動くので、`~/.env` にもプロジェクトの `.env` にもこの名前で置かない (アプリ用は `op-env APP_ANTHROPIC_API_KEY=ANTHROPIC_API_KEY` のように別名で書き出す)。
