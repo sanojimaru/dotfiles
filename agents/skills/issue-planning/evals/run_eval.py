@@ -5,6 +5,8 @@
   run_eval.py trial  <case> --cond with|without --agent claude|codex [--repo ipe-1]
   run_eval.py batch  <case,case,...> --n 3 [--cond with,without] [--agent claude] [--repos ipe-1,ipe-2] [--out DIR]
   run_eval.py report <DIR...>
+  run_eval.py labels <DIR...> --out DIR                 判定器の較正のために、返事を人が yes/no を付けられる形（labels.md）に出す
+  run_eval.py agreement <human.json> <answers.json>     人のラベルと判定器の一致率（90% 以上で使う）
 
 固定の評価用リポジトリ（非公開の `ipe-N`）を使い回す。種が立っていれば使い回し、試行の後は、エージェントが変えたものだけを戻す
 （戻せないときだけ、Issue を全部削除して種を立て直す）。
@@ -26,6 +28,7 @@ from pathlib import Path
 
 from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, LEAK, REAL_GH, REAL_ORCA, SKILL_DIR, OWNER,
                     STRIP_ENV, WALL_SECONDS, gh)
+from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
 from seed import ensure_seed, orca_state, restore, snapshot, subst
 
@@ -317,6 +320,8 @@ def main():
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
+    p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
+    p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
     args = ap.parse_args()
     args.f(args)
