@@ -1,0 +1,168 @@
+{
+  "id": "S1a-A1",
+  "split": "dev",
+  "section": "S1a",
+  "prompt": "次は何をする？",
+  "note": "親のセッションの生死は代役の worker-list の liveness だけが持つ（GitHub は作成日時を偽装できないので、コメントの本文に日付を書く）",
+  "seed": {
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない困りごと（事実と証拠だけ）"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "会議の記録を Claude Code から探せるようにする",
+        "body": "## 困りごと\n\n会議の記録を Claude Code から探せない。\n\n## 完了の状態（MVP まで）\n\n- [ ] 利用者として、Claude Code から会議 1 件を検索して中身を読める\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. 会議 1 件を取り込む] --> B[2. 検索コマンド]\n    B --> C[3. 検索結果の表示]\n```\n\nEpic の Run id: `run_ipe0001`\n",
+        "comments": [
+          "観測（<<date-2d>>）: 子 2 本が閉じた。次の子（検索結果の表示）を立てる前の見直しはまだ。"
+        ]
+      },
+      {
+        "key": "c1",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "会議 1 件を取り込む",
+        "body": "## 受け入れ条件\n- [ ] 会議 1 件を取り込む\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- 会議 1 件を取り込む（PR をマージ済み）\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      },
+      {
+        "key": "c2",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "会議の検索コマンドを作る",
+        "body": "## 受け入れ条件\n- [ ] 会議の検索コマンドを作る\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- 会議の検索コマンドを作る（PR をマージ済み）\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      },
+      {
+        "key": "b1",
+        "labels": [
+          "backlog"
+        ],
+        "title": "週次の定例の議事録が、毎回手作業で共有されている",
+        "body": "定例の議事録を、毎週、担当者が会議の後に手で関係者へ送っている。送り忘れる週があり、欠席した人が決定を知らないまま次の週を迎えている。"
+      },
+      {
+        "key": "b2",
+        "labels": [
+          "backlog"
+        ],
+        "title": "新しく入った人が、アカウントの申請先が分からず 1 週間止まる",
+        "body": "入社時に必要なアカウントの申請先が、人によって違う答えで案内されている。直近の 2 人が申請先を探して 1 週間ほど作業を始められなかった。"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe0001",
+    "run_objective": "Epic: 会議の記録を Claude Code から探せるようにする",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-meeting-search"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "epic",
+        "liveness": "exited",
+        "state": "succeeded"
+      }
+    ]
+  },
+  "expect": {
+    "summary": "親が exited の Epic を見つけ、Epic にコメントを書いてから、新しい親を 1 回だけ起こす。返事に立て直したことと次の候補（おすすめと理由）がある",
+    "checks": [
+      {
+        "id": "rebuilt-once",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 1,
+        "worktree_of": "epic",
+        "success": true
+      },
+      {
+        "id": "comment-before-start",
+        "type": "comment_before_call",
+        "issue": "epic",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ]
+      },
+      {
+        "id": "others-unchanged",
+        "type": "unchanged",
+        "issues": [
+          "c1",
+          "c2",
+          "b1",
+          "b2"
+        ]
+      },
+      {
+        "id": "epic-open",
+        "type": "state",
+        "issue": "epic",
+        "state": "open"
+      }
+    ],
+    "judge": [
+      {
+        "id": "reply-rebuilt",
+        "q": "この返事は、止まっていた親のセッションを立て直した（新しく起こした）ことを利用者に伝えているか"
+      },
+      {
+        "id": "reply-next",
+        "q": "この返事は、次に着手する候補を、おすすめとその理由を付けて示しているか"
+      }
+    ]
+  },
+  "oracle": [
+    [
+      "gh",
+      "issue",
+      "comment",
+      "<<epic>>",
+      "--body",
+      "親のセッションが止まっていたので、新しい親を起こします。"
+    ],
+    [
+      "orca",
+      "orchestration",
+      "run-use",
+      "--id",
+      "run_ipe0001"
+    ],
+    [
+      "orca",
+      "orchestration",
+      "task-create",
+      "--spec",
+      "親のセッションを担当する"
+    ],
+    [
+      "orca",
+      "orchestration",
+      "worker-start",
+      "--task",
+      "task_new0001",
+      "--worktree",
+      "issue:<<epic>>",
+      "--agent",
+      "claude",
+      "--keep-open"
+    ]
+  ]
+}
