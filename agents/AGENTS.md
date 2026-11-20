@@ -20,6 +20,7 @@ Claude Code (`~/.claude/CLAUDE.md`) と Codex (`~/.codex/AGENTS.md`) の両方�
 - IdentityAgent: `~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock`
 
 ## APIキー
+- 新しい worktree では、必要な環境変数が `mise` 経由で使えるかを値を表示せず確認する。不足する場合は、`op-env` や利用者への再登録依頼の前に、元の worktree の `.env`・`.env.local` を確認する。既存のキーがあれば必要なキーだけを作業先の `.env` に引き継ぎ、他のキーを保持し、権限を600にして読み込みを確認する。Git管理外の環境ファイルは worktree に自動で引き継がれないため。
 - 作業はリモートが基本で `op` のGUI認証が通らないため、エージェントは1Passwordの Service Account 経由でキーを取り出し、ローカルの `.env` に置いて使う
 - 全プロジェクト共通のキー（`OPENAI_API_KEY` / `TYPESAFE_API_KEY` 等）は `~/.env` に置く。シェル起動時に読み込まれる。足りなければ `cd ~ && op-env <キー名>` で書き足す。アプリが使う Anthropic のキーは、`~/.env` にもプロジェクトの `.env` にも `ANTHROPIC_API_KEY` 以外の名前で置く（例: `op-env APP_ANTHROPIC_API_KEY=ANTHROPIC_API_KEY`）。この名前でシェルにあると、Claude Code は非対話（`-p`）では必ず、対話では一度承認するとそれ以後、サブスクではなくそのキーで動き、API の従量課金になるから
 - プロジェクト固有のキーは、エージェントが自分で `op-env KEY1 KEY2 ...` を実行してプロジェクトルートの `.env` に書く。読む先は `op://Dev/<キー名>/credential`（`Dev` vault、アイテム名は環境変数名と同じ）。`op-env` は既存の `.env` の同名キーだけを置き換え、値をシングルクォートで囲んで書き、600 にする。値が空・シングルクォートや改行やバックスラッシュを含むキーは書かずに止まる。`.env` がシンボリックリンクならリンク先に書く
