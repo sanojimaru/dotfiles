@@ -1,0 +1,140 @@
+{
+  "id": "S3-A1",
+  "split": "test",
+  "section": "S3",
+  "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当します。<!--skill-->`issue-planning` の親の手順を読んでから始めてください。<!--/skill-->",
+  "seed": {
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "title": "会議の記録を Claude Code から探せない",
+        "body": "## 困りごと\n会議の記録を Claude Code から探せません。\n\n## 分かっている事実\n1. 担当者はサポート定例の記録をテキストで保存しています。\n2. 先週分の会議 1 件を例として使えます。\n3. 定例に出られなかった担当者は、「返金の承認」の決定を探しています。",
+        "type": "Feature"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_19f7add5b736",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-meeting-search"
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "summary": "MVP 1 つと最小の 1 本から始める依存グラフを Epic に記録し、拡張は backlog に分け、Run id を記録して合意を求める。子はまだ立てない。",
+    "checks": [
+      {
+        "id": "no-children",
+        "type": "issues",
+        "count": 0,
+        "fields": {
+          "parent": "epic"
+        }
+      },
+      {
+        "id": "one-or-more-backlog",
+        "type": "issues",
+        "minimum": 1,
+        "new": true,
+        "labels": ["backlog"],
+        "fields": {
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "started-linked-workers",
+        "type": "workers",
+        "count": 0,
+        "issues": {
+          "new": true
+        }
+      }
+    ],
+    "judge": [
+      {
+        "id": "one-mvp",
+        "q": "Epic の本文で、利用者が Claude Code から会議 1 件を検索して結果を確認する MVP 一つに完了の状態が絞られており、使う流れと観測できる確認項目があるか。",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": ["body"]
+      },
+      {
+        "id": "walking-skeleton",
+        "q": "Epic の Mermaid の依存グラフに、会議を 1 件用意して Claude Code の検索から読むところまで通す最初の子があり、未合意の技術設計を固定していないか。",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": ["body"]
+      },
+      {
+        "id": "backlog-and-run",
+        "q": "Epic に Run id run_19f7add5b736 があり、識別可能な拡張または対象外の各項目が新しい、対応する backlog Issue にリンクされているか。",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "issues",
+            "issues": {
+              "issue": "epic"
+            },
+            "fields": ["body"]
+          },
+          {
+            "source": "issues",
+            "issues": {
+              "new": true,
+              "labels": ["backlog"]
+            },
+            "fields": ["title", "body"]
+          }
+        ]
+      },
+      {
+        "id": "agreement",
+        "q": "目的・MVP の完了の状態・利用者の全体の流れをこの場に示し、実装を始める前に利用者の合意を求めているか。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      ["orca", "orchestration", "run-create", "--objective", "会議の記録を Claude Code から探せるようにする"],
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --label backlog --title \"古い定例を横断して確認できない\" --body \"定例に欠席すると、担当者は同じ決定が他の週でも出たかを記録を一件ずつ開いて調べています。\")\nbh=${url##*/}\nbody=$(printf \"%s\" \"$2\" | sed \"s/BACKLOG/$bh/g\")\ngh issue edit \"$1\" --body \"$body\"",
+        "plan-epic",
+        "<<epic>>",
+        "## 困りごと\n会議の記録を Claude Code から探せません。\n\n## 分かっている事実\n1. 担当者はサポート定例の記録をテキストで保存しています。\n2. 先週分の会議 1 件を例として使えます。\n3. 定例に出られなかった担当者は、「返金の承認」の決定を探しています。\n\n## 完了の状態\n利用者として、Claude Code から先週のサポート定例 1 件を検索し、決定とその根拠を読みたいです。\n- [ ] 「返金の承認」で検索すると、先週の定例の該当箇所と会議名を確認できる。\n\n利用者の流れ:\n```mermaid\nflowchart LR\n  Q[会議の話題を入力する] --> M[結果から会議を選ぶ] --> R[決定の箇所を読む]\n```\n\n## 計画（案）\n```mermaid\nflowchart LR\n  A[定例 1 件を登録して Claude Code から検索し本文を読む] --> B[決定の該当箇所と会議名を探せる表示にする]\n```\n\n## 対象外\n複数の定例をまとめて検索する場合は #BACKLOG を参照します。\n\nRun id: `run_19f7add5b736`"
+      ]
+    ],
+    "reply": "目的は、定例を欠席した担当者が会議の決定を Claude Code から探せるようにすることです。最初は先週のサポート定例 1 件を対象に、「返金の承認」で検索して会議名と該当箇所が読めれば完了です。話題を入力し、結果から会議を選び、決定箇所を読む流れを想定しています。この目的・完了の状態・流れで進めてよいですか？"
+  },
+  "bad": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "議事録を保存する",
+        "議事録を保存できる。",
+        "<<epic>>",
+        "meeting-storage",
+        "議事録の保存を実装してください。"
+      ]
+    ],
+    "reply": "会議の保存方法を決めてから取り掛かります。"
+  }
+}
