@@ -19,8 +19,10 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -30,7 +32,8 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
                     STRIP_ENV, WALL_SECONDS, gh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
-from seed import ensure_seed, orca_state, pr_state, restore, snapshot, subst
+from holdout import load_holdout
+from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_repo, snapshot, subst
 
 
 def make_workdir(repo, case, nums, cond, agent, root):
@@ -91,15 +94,29 @@ def run_codex(prompt, clone, env, cond, out):
     home.mkdir()
     (home / "AGENTS.md").write_text(draft_for(cond))
     (home / "auth.json").symlink_to(Path.home() / ".codex/auth.json")
+    user_home = out / "codex-user"
+    user_home.mkdir()
+    gh_config = os.environ.get("GH_CONFIG_DIR") or str(Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "gh")
+    # HOME を変えると mise の shim が元のランタイムを見つけないため、評価の代役に必要な実体を固定する。
+    bindir = out / "bin"
+    (bindir / "python3").symlink_to(sys.executable)
+    jq = shutil.which("jq")
+    if jq and "mise/shims" in jq:
+        try:
+            install = Path(subprocess.check_output(["mise", "where", "jq"], text=True).strip())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            raise RuntimeError("Codex の評価で使う jq の実体が見つかりません") from exc
+        jq = next((str(p) for p in (install / "bin/jq", install / "jq") if p.is_file()), None)
+    if not jq:
+        raise RuntimeError("Codex の評価で使う jq の実体が見つかりません")
+    (bindir / "jq").symlink_to(jq)
     # Codex は `zsh -lc` でコマンドを実行し、ログインシェルの設定が PATH を作り直して代役の gh・orca を外す。
     # ZDOTDIR を空の設定に向け、PATH の先頭へ代役を戻す（利用者の設定は読まれないので、本番との差になる）
     zdot = out / "zdotdir"
     zdot.mkdir()
     for name in (".zshenv", ".zprofile", ".zshrc"):
-        (zdot / name).write_text(f'export PATH="{Path(env["PATH"].split(os.pathsep)[0])}:$PATH"\n')
-    if (Path.home() / ".agents/skills/issue-planning").exists():
-        raise RuntimeError("~/.agents/skills/issue-planning があると、Codex の無の条件にもスキルが入る。外してから流す")
-    env = dict(env, CODEX_HOME=str(home), ZDOTDIR=str(zdot))
+        (zdot / name).write_text(f'export PATH={shlex.quote(str(bindir))}:"$PATH"\n')
+    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
     last = out / "last-message.txt"
     argv = ["codex", "exec", "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-C", str(clone),
             "--dangerously-bypass-approvals-and-sandbox", "-o", str(last), prompt]
@@ -163,12 +180,20 @@ def parse_codex(transcript):
     return {"skill_reads": reads, "cost": {"usd": None, "usage": usage}}
 
 
-def load_case(name):
-    return json.loads((HERE / "cases" / f"{name}.json").read_text())
+def load_cases(names, holdout_repo):
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names):
+        raise ValueError("ケース名には英数字・ハイフン・アンダースコアだけを使ってください")
+    if holdout_repo:
+        return load_holdout(holdout_repo, names)
+    return [json.loads((HERE / "cases" / f"{name}.json").read_text()) for name in names]
 
 
 def prepare(case, repo, cond, agent, out):
-    nums, _ = ensure_seed(repo, case)
+    if case.get("split") == "test":
+        reset_repo(repo)
+        nums = seed_repo(repo, case)  # test の種を共有の repo-state.json に記録しない。
+    else:
+        nums, _ = ensure_seed(repo, case)
     clone, bindir, state = make_workdir(repo, case, nums, cond, agent, out)
     log = out / "calls.jsonl"
     log.write_text("")
@@ -180,12 +205,12 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
     out.mkdir(parents=True, exist_ok=True)
     try:
         nums, clone, bindir, state, log, before = prepare(case, repo, cond, agent, out)
-    except RuntimeError as e:  # 種の作成の失敗は、エージェントの失敗ではなく、やり直す対象
+        env = agent_env(bindir, state, log, repo)
+        res = (run_claude if agent == "claude" else run_codex)(case["prompt"], clone, env, cond, out)
+    except RuntimeError as e:  # 種や起動の失敗はエージェントの失敗に数えない。
         rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": True, "run": {"seconds": 0}, "error": str(e)}
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
-    env = agent_env(bindir, state, log, repo)
-    res = (run_claude if agent == "claude" else run_codex)(case["prompt"], clone, env, cond, out)
     parsed = (parse_claude if agent == "claude" else parse_codex)(out / "transcript.jsonl")
     res.update({k: v for k, v in parsed.items() if k != "reply" or agent == "claude"})
     try:
@@ -212,42 +237,60 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
 
 
 def trial(case, repo, cond, agent, out, use_judge=True):
+    rec = None
     try:
-        return _trial(case, repo, cond, agent, out, use_judge)
+        rec = _trial(case, repo, cond, agent, out, use_judge)
     finally:
-        restore(repo)  # エージェントが変えたものだけを戻す。戻せなければ、次の試行が全部立て直す
+        try:
+            clean_trial(case, repo)
+        except RuntimeError as exc:
+            if rec is None:
+                raise
+            rec.update(infra_failure=True, error=f"試行後の種を削除できませんでした: {exc}")
+            (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
+    return rec
+
+
+def clean_trial(case, repo):
+    if case.get("split") == "test":
+        reset_repo(repo)
+    else:
+        restore(repo)
 
 
 def cmd_check(args):
     """配線の確認: 採点器が null・oracle・bad に正しく答えるか（#88 7.3 の 4）。"""
-    case = load_case(args.case)
+    case, = load_cases([args.case], args.holdout_repo)
     rows = []
     for kind in ("null", "oracle", "bad"):
         steps = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
         if steps is None:
             continue
         out = Path(tempfile.mkdtemp(prefix=f"ipe-check-{kind}-"))
-        nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out)
-        env = agent_env(bindir, state, log, args.repo)
-        for step in steps:
-            argv = [subst(a, nums) for a in step]
-            subprocess.run(argv, env=env, cwd=clone, capture_output=True, text=True)
-        ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": snapshot(args.repo)}
-        g = grade(case, ctx, "", "claude", out, use_judge=False)
-        restore(args.repo)
+        try:
+            nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out)
+            env = agent_env(bindir, state, log, args.repo)
+            for step in steps:
+                argv = [subst(a, nums) for a in step]
+                subprocess.run(argv, env=env, cwd=clone, capture_output=True, text=True)
+            ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": snapshot(args.repo)}
+            g = grade(case, ctx, "", "claude", out, use_judge=False)
+        finally:
+            clean_trial(case, args.repo)
+            shutil.rmtree(out, ignore_errors=True)
         rows.append({"kind": kind, "pass_code": g["pass_code"], "checks": g["checks"], "fail_on_any": g["fail_on_any"]})
-        shutil.rmtree(out, ignore_errors=True)
     print(json.dumps(rows, ensure_ascii=False, indent=2))
 
 
 def cmd_trial(args):
     out = Path(args.out or tempfile.mkdtemp(prefix="ipe-trial-")).resolve()
-    rec = trial(load_case(args.case), args.repo, args.cond, args.agent, out)
+    case, = load_cases([args.case], args.holdout_repo)
+    rec = trial(case, args.repo, args.cond, args.agent, out)
     print(json.dumps({"out": str(out), **{k: rec[k] for k in ("case", "cond", "infra_failure")}, "grade": rec.get("grade"), "run": rec["run"]}, ensure_ascii=False, indent=2))
 
 
 def cmd_batch(args):
-    cases = [load_case(c) for c in args.cases.split(",")]
+    cases = load_cases(args.cases.split(","), args.holdout_repo)
     conds = args.cond.split(",")
     repos = args.repos.split(",")
     out_root = Path(args.out or Path.home() / ".cache/issue-planning-eval" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
@@ -320,12 +363,17 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
     p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
     p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
     args = ap.parse_args()
+    if args.cmd in ("trial", "batch") and args.holdout_repo and not args.out:
+        ap.error("holdout の試行ログは --out で非共有ディレクトリを指定してください")
     args.f(args)
 
 
