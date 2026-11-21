@@ -52,7 +52,7 @@ def make_workdir(repo, case, nums, cond, agent, root):
         seed_git(repo_clone, "worktree", "add", "--quiet", "-b", wt["name"], str(checkout))
         if committed := spec.get("committed"):
             seed_commit(checkout, committed, "Update documentation")
-        seed_git(repo_clone, "update-ref", f"refs/remotes/origin/{wt['name']}", "HEAD")
+        seed_git(checkout, "update-ref", f"refs/remotes/origin/{wt['name']}", "HEAD")
         seed_git(checkout, "branch", f"--set-upstream-to=origin/{wt['name']}")
         wt["path"] = str(checkout)
         wt["checkout"] = True
@@ -178,7 +178,7 @@ def run_codex(prompt, clone, env, cond, out, history=None, followup=None):
     env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
 
     def launch(text, path, session_id=None, warmup=False, timeout=WALL_SECONDS):
-        last = out / ("history-last.txt" if warmup else "last-message.txt")
+        last = out / ("last-message.txt" if path.name == "transcript.jsonl" else f"{path.stem}-last.txt")
         argv = ["codex", "exec", *(["resume"] if session_id else []),
                 "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-o", str(last)]
         guard = ["--sandbox", "read-only"] if warmup else ["--dangerously-bypass-approvals-and-sandbox"]
@@ -214,15 +214,17 @@ def run_session(agent, prompt, history, out, launch, followup):
     first_path = out / "first-transcript.jsonl"
     first = launch(prompt, first_path, session_id=session_id, timeout=WALL_SECONDS - warm_seconds)
     first_session, first_reply, _ = session_reply(agent, first_path, first)
+    next_text, first_calls = followup()
+    first_evidence = {"first_reply": first_reply, "first_calls": first_calls}
     if first["returncode"]:
         first_path.rename(transcript)
-        return first
+        return {**first, **first_evidence, "seconds": warm_seconds + first["seconds"]}
     if not (first_session or session_id):
         first_path.rename(transcript)
-        return {**first, "history_error": "追いの一言を送るセッションを再開できませんでした"}
-    next_text, first_calls = followup()
+        return {**first, **first_evidence, "seconds": warm_seconds + first["seconds"],
+                "history_error": "追いの一言を送るセッションを再開できませんでした"}
     scored = launch(next_text, transcript, session_id=first_session or session_id, timeout=WALL_SECONDS - warm_seconds - first["seconds"])
-    return {**scored, "seconds": warm_seconds + first["seconds"] + scored["seconds"], "first_reply": first_reply, "first_calls": first_calls}
+    return {**scored, **first_evidence, "seconds": warm_seconds + first["seconds"] + scored["seconds"]}
 
 
 def warm_session(agent, history, out, launch):
@@ -341,11 +343,16 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
     parsed = (parse_claude if agent == "claude" else parse_codex)(out / "transcript.jsonl")
-    if "first_reply" in res:
+    if (out / "first-transcript.jsonl").exists():
         parse = parse_claude if agent == "claude" else parse_codex
         first = parse(out / "first-transcript.jsonl")
         parsed["skill_reads"] = first["skill_reads"] + parsed["skill_reads"]
-        if agent == "codex" and first["cost"]["usage"] and parsed["cost"]["usage"]:
+        if agent == "claude":
+            for key in ("usd", "turns"):
+                amounts = [cost.get(key) for cost in (first["cost"], parsed["cost"])]
+                if any(value is not None for value in amounts):
+                    parsed["cost"][key] = sum(value or 0 for value in amounts)
+        elif first["cost"]["usage"] and parsed["cost"]["usage"]:
             usage = parsed["cost"]["usage"]
             for key, value in first["cost"]["usage"].items():
                 usage[key] = usage.get(key, 0) + value
@@ -411,6 +418,8 @@ def clean_trial(case, repo):
 def cmd_check(args):
     """配線の確認: 採点器が null・oracle・bad に正しく答えるか（#88 7.3 の 4）。"""
     case, = load_cases([args.case], args.split)
+    if args.split == "test" and case.get("bad") is None:
+        raise ValueError(f"{args.case} の test に誤った手本 (bad) がありません")
     rows = []
     for kind in ("null", "oracle", "bad"):
         sample = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]

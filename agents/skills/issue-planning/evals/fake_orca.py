@@ -52,6 +52,11 @@ def selector_hits(sel, w):
             "branch": w["name"]}.get(kind) == (val.removeprefix("refs/heads/") if kind == "branch" else val)
 
 
+def current_worktree(state):
+    cwd = os.getcwd()
+    return next((w for w in state["worktrees"] if cwd == w["path"] or cwd.startswith(w["path"] + os.sep)), state["worktrees"][0])
+
+
 def worktrees(state):
     return [
         {
@@ -62,7 +67,7 @@ def worktrees(state):
             "branch": f"refs/heads/{w['name']}",
             "displayName": w["name"],
             "linkedIssue": w.get("issue"),
-            "isMainWorktree": w.get("issue") is None,
+            "isMainWorktree": w is state["worktrees"][0],
         }
         for w in state["worktrees"]
     ]
@@ -72,7 +77,7 @@ def workers(state):
     by_issue = {w["issue"]: w for w in state["worktrees"] if w.get("issue")}
     out = []
     for i, w in enumerate(state["workers"]):
-        wt = by_issue.get(w["issue"], w.get("worktree", {}))
+        wt = w.get("worktree") or by_issue.get(w["issue"], {})
         row = {
             "dispatchId": w.get("dispatch_id", f"ctx_fake{i:04d}"),
             "taskId": w.get("task_id", f"task_fake{i:04d}"),
@@ -163,7 +168,7 @@ def dispatch(argv, started):
     elif cmd in ("inbox", "check", "ask", "reply", "send"):
         mail(cmd, argv, state, state_path)
     elif cmd == "task-create":
-        if "--spec" not in argv and "--spec-file" not in argv:
+        if not (opt(argv, "--spec") or opt(argv, "--spec-file")):
             fail("invalid_args", "task-create requires --spec or --spec-file")
         state["seq"] = state.get("seq", 0) + 1
         task = f"task_new{state['seq']:04d}"
@@ -171,28 +176,30 @@ def dispatch(argv, started):
         save(state_path, state)
         ok({"taskId": task, "status": "ready"})
     elif cmd == "worker-start":
-        if "--spec" in argv or "--spec-file" in argv:  # 本物は、--spec を渡すと Task を作って起動する
+        if opt(argv, "--spec") or opt(argv, "--spec-file"):  # 本物は、--spec を渡すと Task を作って起動する
             state["seq"] = state.get("seq", 0) + 1
             state.setdefault("tasks", []).append(f"task_new{state['seq']:04d}")
             argv = argv + ["--task", state["tasks"][-1]]
         if opt(argv, "--task") not in state.get("tasks", []):
             fail("task_not_found", f"Task {opt(argv, '--task')} does not exist. Create it with task-create first.")
         sel = opt(argv, "--worktree")
-        if sel and sel != "current" and not any(selector_hits(sel, w) for w in state["worktrees"]):
+        wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w)), None)
+        if wt is None:
             fail("worktree_not_found", f"No worktree matches {sel}")
         state["seq"] = state.get("seq", 0) + 1
-        wt = next((w for w in state["worktrees"] if sel and selector_hits(sel, w)), None)
-        if wt and wt.get("issue"):  # 起こした親は、以後の worker-list に live で出る
-            state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
-                                     "agent": opt(argv, "--agent"), "worktree": wt,
-                                     "dispatch_id": f"ctx_new{state['seq']:04d}", "task_id": opt(argv, "--task")})
+        state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
+                                 "agent": opt(argv, "--agent"), "worktree": wt,
+                                 "dispatch_id": f"ctx_new{state['seq']:04d}", "task_id": opt(argv, "--task")})
         save(state_path, state)
         ok({"dispatchId": f"ctx_new{state['seq']:04d}", "taskId": opt(argv, "--task"), "state": "ready", "liveness": "live"})
     elif argv[:2] == ["worktree", "create"]:
         name, issue = opt(argv, "--name"), opt(argv, "--issue")
         if not name:
             fail("invalid_args", "worktree create requires --name")
-        wt = {"name": name, "issue": int(issue) if issue else None, "has_parent": "--no-parent" not in argv,
+        if issue not in (None, "null") and not issue.isdecimal():
+            fail("invalid_args", "worktree create --issue requires a number or null")
+        wt = {"name": name, "issue": int(issue) if issue and issue != "null" else None,
+              "has_parent": not {"--no-parent", "--no-parent=true"}.intersection(argv),
               "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"}
         state["worktrees"].append(wt)
         if opt(argv, "--agent") and opt(argv, "--prompt"):
@@ -204,7 +211,7 @@ def dispatch(argv, started):
     elif argv[:2] == ["worktree", "rm"]:
         selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
         wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
-        if wt is None or wt["issue"] is None:
+        if wt is None or wt is state["worktrees"][0]:
             fail("worktree_not_found", f"No removable worktree matches {selector}")
         state["worktrees"].remove(wt)
         save(state_path, state)

@@ -85,9 +85,27 @@ def check(argv):
     return None
 
 
+def api_fields(argv, input_body):
+    fields = {}
+    for i, arg in enumerate(argv):
+        following = argv[i + 1] if i + 1 < len(argv) else ""
+        if arg == "--input" or arg.startswith("--input="):
+            path = arg.split("=", 1)[1] if "=" in arg else following
+            fields.update(json.loads(input_body if path == "-" else Path(path).read_text()))
+        flag = re.fullmatch(r"(-[fF]|--(?:raw-)?field)(?:=)?(.*)", arg)
+        if flag:
+            key, equals, value = (flag[2] or following).partition("=")
+            if equals:
+                if flag[1] in ("-F", "--field") and value.startswith("@"):
+                    value = input_body if value == "@-" else Path(value[1:]).read_text()
+                fields[key] = value
+    return fields
+
+
 def issue_event(argv, endpoint, input_body):
-    if argv[:2] == ["issue", "create"] or (re.fullmatch(r"repos/[^/]+/[^/]+/issues", endpoint) and
-                                           ("POST" in argv or any(arg.startswith("title=") for arg in argv))):
+    api_issues = re.fullmatch(r"repos/[^/]+/[^/]+/issues(?:/(\d+)(/comments)?)?", endpoint)
+    fields = api_fields(argv, input_body) if api_issues else {}
+    if argv[:2] == ["issue", "create"] or (api_issues and not api_issues[1] and "title" in fields):
         return {"event": "created"}
     if argv[:2] in (["issue", "comment"], ["issue", "edit"]):
         for i, arg in enumerate(argv[2:], 2):
@@ -107,19 +125,13 @@ def issue_event(argv, endpoint, input_body):
     if argv[:2] == ["issue", "close"] and (issue := re.search(r"(?:^#?|/issues/)(\d+)$", argv[2])):
         reason = "NOT_PLANNED" if "not planned" in argv[3:] or "--reason=not planned" in argv[3:] else "COMPLETED"
         return {"event": "closed", "issue": int(issue[1]), "state_reason": reason}
-    match = re.search(r"/issues/(\d+)(/comments)?$", endpoint)
-    if match:
-        fields = {value.split("=", 1)[0]: value.split("=", 1)[1] for value in argv if re.match(r"^(body|state|state_reason)=", value)}
-        if "--input" in argv:
-            path = argv[argv.index("--input") + 1]
-            raw = input_body if path == "-" else Path(path).read_text()
-            fields.update(json.loads(raw))
-        if match[2] and "body" in fields:
+    if api_issues and api_issues[1]:
+        if api_issues[2] and "body" in fields:
             return {"comment_body": fields["body"]}
         if fields.get("state") == "closed":
-            return {"event": "closed", "issue": int(match[1]), "state_reason": fields.get("state_reason", "completed").upper()}
-        if not match[2] and "body" in fields:
-            return {"event": "updated", "issue": int(match[1]), "body": fields["body"]}
+            return {"event": "closed", "issue": int(api_issues[1]), "state_reason": fields.get("state_reason", "completed").upper()}
+        if not api_issues[2] and "body" in fields:
+            return {"event": "updated", "issue": int(api_issues[1]), "body": fields["body"]}
     return {}
 
 
@@ -130,11 +142,12 @@ def main():
     started = time.time()
     reason = check(argv)
     endpoint = api_path(argv) if argv[:1] == ["api"] else ""
-    rc = deny(reason) if reason else replay(argv, REPO, endpoint)
     input_body = None
+    if not reason and any((argv[0] == "api" and arg.endswith("=@-")) or arg in ("--input=-", "--body-file=-") or
+                           (arg == "-" and argv[i - 1] in ("--input", "--body-file", "-F")) for i, arg in enumerate(argv[1:], 1)):
+        input_body = sys.stdin.read()
+    rc = deny(reason) if reason else replay(argv, REPO, endpoint)
     if rc is None:
-        if any(a == "-" and argv[i - 1] in ("--input", "--body-file", "-F") for i, a in enumerate(argv[1:], 1)):
-            input_body = sys.stdin.read()
         rc = subprocess.run([GH_REAL] + argv, input=input_body, text=True,
                             env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1")).returncode
     extra = issue_event(argv, endpoint, input_body) if rc == 0 else {}

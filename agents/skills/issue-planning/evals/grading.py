@@ -79,8 +79,8 @@ def event_times(event, ctx):
         return [c.get("end", c["ts"]) for c in ctx["calls"] if is_comment_on(c, n)]
     if event["event"] == "linked":
         targets = {str(k) for k, _ in matching_issues(event["targets"], ctx)}
-        return [c["end"] for c in ctx["calls"] if c.get("event") == "updated" and c.get("issue") == n and
-                targets.intersection(re.findall(r"(?:#|/issues/)(\d+)\b", c["body"]))]
+        return [c["end"] for c in ctx["calls"] if ((c.get("event") == "updated" and c.get("issue") == n) or is_comment_on(c, n)) and
+                targets.intersection(re.findall(r"(?:#|/issues/)(\d+)\b", c.get("body", c.get("comment_body", ""))))]
     return [c["ts"] for c in ctx["calls"] if c.get("event") == event["event"] and c.get("issue") == n]
 
 
