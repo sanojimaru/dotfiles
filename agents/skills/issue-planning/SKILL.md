@@ -41,7 +41,7 @@ orca orchestration inbox --terminal run:<Run の id> --limit 50 --json
 orca worktree list --json
 ```
 
-Run の objective は `<owner>/<repo>#<番号> ` で始まる（S2・S3）。一覧の番号で Run を選ぶ。親を立て直すために窓口が作った Run（`... の親を立て直す`）は、Epic の Run ではない。どの Run の objective にも番号が無い Issue と、同じ番号の Epic の Run が 2 つ以上ある Issue だけ、本文の Run id を読む。`run-list` と `worker-list` は、`nextCursor` が返ったら続きも読む。
+Run の objective は `<owner>/<repo>#<番号> ` で始まる（S2・S3）。一覧の番号で Run を選ぶ。親を起こす・立て直すために窓口が作った Run（`... の親を起こす`・`... の親を立て直す`）は、Epic の Run ではない。どの Run の objective にも番号が無い Issue と、同じ番号の Epic の Run が 2 つ以上ある Issue だけ、本文の Run id を読む。`run-list` と `worker-list` は、`nextCursor` が返ったら続きも読む。
 
 候補は次のどれかに当たるもの。
 
@@ -50,11 +50,11 @@ Run の objective は `<owner>/<repo>#<番号> ` で始まる（S2・S3）。一
 - 単独タスクの worker が、`worker_done` を出さずに（`outcome` が `succeeded`・`failed` でない）`exited`・`lost` になっている。
 - 単独タスクの Run の受信箱に、未読の `worker_done`・`question` がある。前の窓口のセッションが受けていない。ワーカーは Issue を閉じてから `worker_done` を送るので、Issue が閉じていても、objective に番号がある Run の受信箱は確かめる。
 
-Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。どの Run の `worker-list` でも、その worktree で動く worker が親にあたる。窓口が立て直した親は、窓口の Run（`... の親を立て直す`）に出る。以前の手順で立て直した親は、Epic の Run に出る。S2 で `worktree create --agent` で起こした親は、どの Run の worker でもないので、`worker-list` に出ない。
+Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。どの Run の `worker-list` でも、その worktree で動く worker が親にあたる。同じ worktree の worker が複数の Run に出ているときは、すべて集めてから判断する（起こした Run に止まった親、立て直した Run に新しい親が出る）。窓口が S2 で起こした親と立て直した親は、窓口の Run（`... の親を起こす`・`... の親を立て直す`）に出る。以前の手順で立て直した親は、Epic の Run に出る。古い起こし方（`worktree create --agent`）で起こされた親は、どの Run の worker でもないので `worker-list` に出ず、下の「worker が見つからない」親として扱う。
 
 - `liveness` が `live` の親は、次の子を立てる途中か、子の質問を処理中。手を出さない。二重に起こすと、2 つの親が同じ Epic を進める
 - `exited`・`lost` の親は、止まっている。立て直す
-- `unverifiable` の親と、worker が見つからない Epic の親は、止まったと決められない（親がまだ動いているかもしれない）。立て直さず、Epic にその旨と見つけたこと（未読の通知など）をコメントし、返事で利用者に確かめる
+- `unverifiable` の親と、worker が見つからない Epic の親（古い起こし方の親を含む）は、止まったと決められない（親がまだ動いているかもしれない）。立て直さず、Epic にその旨と見つけたこと（未読の通知など）をコメントし、返事で利用者に確かめる
 
 本文とコメントは、立て直す・確かめる Issue だけ `gh issue view <番号> --json body,comments` で読む。
 
@@ -102,8 +102,26 @@ gh issue list --label backlog --state open --limit 500 --json number,title,paren
 今は着手しないと決まったら、利用者の言葉、分かっている事実や根拠、困る人を `backlog` の Issue に残し、URL を返す。不明なことは未確認とし、解決策は書かない。既に同じ要望が `backlog` にあれば、新しい Issue を立てず、その Issue を使う。探すときは `gh issue list --label backlog --state open --limit 500 --json number,title` の題名で絞り、似た Issue だけ本文を読む。着手する場合は必要な内容を書き足し、`backlog` ラベルを外して作業に合う type にする。
 
 - 作業時間が 4 時間以内で閉じるなら Task（単独タスク）にする。1 時間未満の作業は、依存関係の近い次のストーリーと束ねる。1 時間と 4 時間は仮の値とする。窓口が coordinator としてワーカーを起動する。
-- 4 時間を超え、利用者が使える変化が 1 つなら Epic（type: Feature）にする。困りごとと確認した事実だけを書き、`orca worktree create --name <番号>-epic-<slug> --issue <番号> --no-parent --agent <エージェント> --prompt <引き継ぎ>` で親に渡す。引き継ぎに Epic の番号とこのスキルの親の手順を読むことを書く。親は Run を作って id を Issue に記録し、目的・完了の状態・計画は調べてから書く。
-- 複数の Epic にまたがるならマイルストーン Issue（type なし）を立て、利用者の言葉と成功の条件を利用者と合意する。成功の条件に向かう最小の変化を最初の Epic として sub-issue にし、親に渡す。残りの候補は、分かった時点で `backlog` の sub-issue にする。
+- 4 時間を超え、利用者が使える変化が 1 つなら Epic（type: Feature）にする。困りごとと確認した事実だけを書き、[Epic の親を起こす](#epic-の親を起こす)手順で親に渡す。親は Run を作って id を Issue に記録し、目的・完了の状態・計画は調べてから書く。
+- 複数の Epic にまたがるならマイルストーン Issue（type なし）を立て、利用者の言葉と成功の条件を利用者と合意する。成功の条件に向かう最小の変化を最初の Epic として sub-issue にし、同じ手順で親に渡す。残りの候補は、分かった時点で `backlog` の sub-issue にする。
+
+## Epic の親を起こす
+
+窓口は、自分の Run から親を起こす。親は S3 の手順 2 で自分の Epic の Run を作り、coordinator になる。窓口は Epic の Run を作らない。窓口が作った Run で親を起こすと、親はその Run の worker になり、その Run の coordinator になれない（`worker_cannot_coordinate_own_run`）。親は利用者と直接話すので、`--keep-open` でセッションを残す。
+
+worktree は、`--agent` と `--prompt` を付けずに作る。付けると、親が窓口の Run の worker にならず、窓口が `worker-list` で親の生死を確かめられない。
+
+```sh
+orca worktree create --name <番号>-epic-<slug> --issue <番号> --no-parent --json
+orca orchestration run-create --objective "<owner>/<repo>#<番号> の親を起こす" --json
+gh issue comment <番号> --body-file <spec の一時ファイル>
+orca orchestration worker-start --run <窓口の Run の id> --spec-file <spec の一時ファイル> \
+  --worktree path:<worktree の絶対パス> --agent <エージェント> --model <モデル> --effort high --keep-open
+```
+
+spec は、Epic の番号と、このスキルの親の手順（上の「Epic の親が読む節」）を読むことを書く。ワーカーを起動する前に、spec の全文を Epic にコメントする。窓口の Run の id は本文に書かない。親が S3 の手順 2 で Epic の Run を作り、本文に Run の id を書く。
+
+親が子を待つか、計画の承認を待ってターンを終えたときに届く `stopReason`: `finished` の escalation は、窓口の確認（1）の立て直しと同じく、対応しない。`exited`・`lost` は対応する。
 
 ## 単独タスクのワーカーを起動する
 
@@ -134,7 +152,7 @@ Issue と利用者の決定から答えられるなら、利用者に聞き直�
 
 1. 元のワーカーが済ませた範囲と、元の Run の id を同じ Issue にコメントする。元のワーカーには、単独タスクの実装を続けず、Issue を閉じないことを伝える。返信に送る本文だけを別のコメントに書き、そのまま `reply` の本文に使う。
 2. Issue の type を Task から Feature に変え、利用者が確認できる完了の状態と、調査を受けて見直せる計画案を本文に書く。本文の元の Run の id は消す（元の Run の id は手順 1 のコメントに残っている）。Epic の Run の id は、親が S3 で書く。親が書く前に止まっても、立て直した親が元の単独タスクの Run を Epic の Run と取り違えないため。元の質問で分かった事実と、利用者と合意済みの範囲は引き継ぐ。
-3. `orca worktree create --name <番号>-epic-<slug> --issue <番号> --no-parent` で別の worktree を作る。窓口は Epic の Run を作らない。窓口が作った Run で親を起こすと、親はその Run の worker になり、その Run の coordinator になれない（`worker_cannot_coordinate_own_run`）。親を起こすための窓口の Run を `run-create --objective "<owner>/<repo>#<番号> の親を起こす"` で作り、親に送る spec を同じ Issue にコメントしてから、その Run と `path:<worktree の絶対パス>` を指定し、`worker-start --effort high --keep-open` で Epic の親を起こす。窓口の Run の id は本文に書かない。親が S3 の手順 2 で Epic の Run を作り、本文の Run の id を置き換える。親には Epic の番号と、このスキルの親の手順を読むことを伝える。親は利用者との相談を受けるので、セッションを残す。親が子を待ってターンを終えたときに届く `stopReason`: `finished` の escalation は、窓口の確認（1）の立て直しと同じく、対応しない。
+3. [Epic の親を起こす](#epic-の親を起こす)手順で、別の worktree を作って親を起こす。親に送る spec は同じ Issue にコメントする。親には Epic の番号と、このスキルの親の手順を読むことを伝える。
 
 Epic へ引き継いだ後、元の Run の終了通知を受けても単独タスクを起こし直さない。元のワーカーが終了し、下の片付けの条件がすべてそろったことを確認できた場合にだけ、元の worktree を消す。未反映の変更があれば worktree を残し、パスと残りを Epic の親に引き継ぐ。
 
