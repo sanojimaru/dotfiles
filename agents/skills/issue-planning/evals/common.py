@@ -15,7 +15,7 @@ JUDGE_MODEL = {"claude": ("codex", CODEX_MODEL), "codex": ("claude", "claude-son
 CLAUDE_TOOLS = "Bash,Read,Write,Edit,Glob,Grep,Skill"
 WALL_SECONDS = 40 * 60
 BUDGET_USD = 3
-STRIP_ENV = re.compile(r"^(CLAUDECODE|CLAUDE_CODE_.*|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_AGENT_SDK_VERSION|ORCA_.*)$")
+STRIP_ENV = re.compile(r"^(CLAUDECODE|CLAUDE_CODE_.*|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_AGENT_SDK_VERSION|ORCA_.*|IPE_HOLDOUT_TOKEN)$")
 
 
 def real_gh():
