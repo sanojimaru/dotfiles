@@ -62,10 +62,21 @@ def make_workdir(repo, case, nums, cond, agent, root):
     if clone != repo_clone:
         with (repo_clone / ".git/info/exclude").open("a") as exclude:
             exclude.write("\n/.claude/skills/\n/.agents/skills/\n")
-    if case["split"] == "test":
-        push_repo = root / "push.git"
-        seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(push_repo))
-        seed_git(repo_clone, "remote", "set-url", "--push", "origin", str(push_repo))
+    prs = pr_state(case, nums, repo)
+    local_branches = {wt["name"] for wt in orca["worktrees"] if wt.get("checkout")}
+    local_prs = [pr for pr in prs if case["split"] == "dev" and pr["headRefName"] in local_branches]
+    for pr in local_prs:
+        pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
+        if pr["state"] == "MERGED":
+            seed_git(repo_clone, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
+                     "merge", "--no-edit", "--no-gpg-sign", pr["headRefOid"])
+            pr["mergeCommit"] = {"oid": seed_git(repo_clone, "rev-parse", "HEAD").strip()}
+    if case["split"] == "test" or local_prs:
+        remote = root / "push.git"
+        seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(remote))
+        # dev で PR とローカルのブランチを照合するケースでは、fetch でも種の状態が残るようにする。
+        push_only = ["--push"] if not local_prs else []
+        seed_git(repo_clone, "remote", "set-url", *push_only, "origin", str(remote))
         seed_git(repo_clone, "push", "--all", "origin")
     skills_root = clone / (".claude/skills" if agent == "claude" else ".agents/skills")
     skills_root.mkdir(parents=True)
@@ -85,7 +96,6 @@ def make_workdir(repo, case, nums, cond, agent, root):
     state = root / "orca-state.json"
     state.write_text(json.dumps(orca, ensure_ascii=False))
     shutil.copy(HERE / "pr_replay.py", bindir)
-    prs = pr_state(case, nums, repo)
     for pr in prs:
         if "replay_checks" in pr:
             pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
@@ -138,10 +148,20 @@ def agent_env(bindir, state, log, repo, extra=None):
     return env
 
 
+def isolated_zdotdir(out):
+    # zsh の起動ファイルを分け、利用者の PATH 設定に代役を上書きさせない。
+    zdot = out / "zdotdir"
+    zdot.mkdir()
+    for name in (".zshenv", ".zprofile", ".zshrc"):
+        (zdot / name).write_text(f'export PATH={shlex.quote(str(out / "bin"))}:"$PATH"\n')
+    return str(zdot)
+
+
 def run_claude(prompt, clone, env, cond, out, history=None, followup=None):
     draft = out / "agents-md.md"
     draft.write_text(draft_for(cond))
-    env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1")
+    env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1",
+               CLAUDE_CODE_SHELL="/bin/zsh", ZDOTDIR=isolated_zdotdir(out))
     argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
             "--setting-sources", "project,local", "--strict-mcp-config", "--permission-mode", "bypassPermissions",
             "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD)]
@@ -174,13 +194,7 @@ def run_codex(prompt, clone, env, cond, out, history=None, followup=None):
     if not jq:
         raise RuntimeError("Codex の評価で使う jq の実体が見つかりません")
     (bindir / "jq").symlink_to(jq)
-    # Codex は `zsh -lc` でコマンドを実行し、ログインシェルの設定が PATH を作り直して代役の gh・orca を外す。
-    # ZDOTDIR を空の設定に向け、PATH の先頭へ代役を戻す（利用者の設定は読まれないので、本番との差になる）
-    zdot = out / "zdotdir"
-    zdot.mkdir()
-    for name in (".zshenv", ".zprofile", ".zshrc"):
-        (zdot / name).write_text(f'export PATH={shlex.quote(str(bindir))}:"$PATH"\n')
-    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
+    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=isolated_zdotdir(out), GH_CONFIG_DIR=gh_config)
 
     def launch(text, path, session_id=None, warmup=False, timeout=WALL_SECONDS):
         last = out / ("last-message.txt" if path.name == "transcript.jsonl" else f"{path.stem}-last.txt")

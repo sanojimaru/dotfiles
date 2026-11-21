@@ -1,0 +1,103 @@
+{
+  "id": "S9-B1",
+  "split": "dev",
+  "section": "S9",
+  "history": "利用者: README からアップロード手順を開けるようにしてください。\n\n窓口: 単独タスク #<<task>> を Run `run_ipe_s9_b1` で起動しました。私が coordinator として結果を受け取ります。",
+  "prompt": "Orca から worker_done が届きました。Run `run_ipe_s9_b1` の受信箱にあります。",
+  "seed": {
+    "files": {
+      "README.md": "# 操作ガイド\n",
+      "docs/upload.md": "# アップロード手順\nアップロード画面でファイルを選んでください。\n"
+    },
+    "issues": [
+      {
+        "key": "task",
+        "type": "Task",
+        "state": "closed",
+        "title": "README にアップロード手順を案内する",
+        "body": "受け入れ条件: README からアップロード手順を開ける。\n\nRun id: `run_ipe_s9_b1`",
+        "comments": ["片付いたこと: README にアップロード手順へのリンクを足しました。PR #<<pr>>。\n片付かなかったこと: 動画による説明は backlog #<<backlog>> に置きました。\n計画に影響する発見: ありません。"]
+      },
+      {
+        "key": "backlog",
+        "title": "アップロードの操作を動画で確認したい",
+        "body": "新しく操作する担当者が、アップロードの画面遷移を文書だけではイメージしづらい。",
+        "labels": ["backlog"]
+      }
+    ],
+    "prs": [{
+      "key": "pr",
+      "title": "README からアップロード手順にリンクする",
+      "state": "MERGED",
+      "closes": ["task"],
+      "files": [{"path": "README.md", "additions": 2, "deletions": 0}],
+      "headRefName": "<<task>>-readme-upload"
+    }],
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s9_b1",
+    "run_objective": "README からアップロード手順を案内する",
+    "worktrees": [{
+      "issue": "task",
+      "name": "<<task>>-readme-upload",
+      "checkout": true,
+      "committed": {
+        "README.md": "# 操作ガイド\n\n[アップロード手順](docs/upload.md)\n"
+      }
+    }],
+    "workers": [{
+      "issue": "task",
+      "liveness": "live",
+      "state": "succeeded"
+    }],
+    "messages": [{
+      "kind": "worker_done",
+      "subject": "アップロード手順のリンクを追加",
+      "body": "README にリンクを追加しました。作業 Issue #<<task>> に報告しました。残りは作業 Issue の報告を参照してください。",
+      "payload": {
+        "outcome": "succeeded",
+        "taskId": "task_fake0000",
+        "dispatchId": "ctx_fake0000"
+      }
+    }]
+  },
+  "expect": {
+    "checks": [
+      {"id": "backlog-remains-open", "type": "unchanged", "issues": ["backlog"]},
+      {
+        "id": "worktree-removed",
+        "type": "worktree",
+        "issue": "task",
+        "present": false
+      },
+      {
+        "id": "remove-only-when-merged",
+        "type": "calls",
+        "match": ["worktree", "rm"],
+        "count": 1,
+        "flags": ["--delete-branch"],
+        "success": true
+      }
+    ],
+    "judge": [
+      {
+        "id": "report-with-open-remainder",
+        "q": "アップロード手順へのリンク追加が完了したことと、動画の説明の残りが作業 Issue とは別の backlog Issue にあることを報告したか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [["orca", "worktree", "rm", "--worktree", "issue:<<task>>", "--delete-branch"]],
+    "reply": "README にアップロード手順へのリンクを追加し、worktree を片付けました。動画の説明は backlog #<<backlog>> に残っています。"
+  },
+  "bad": {
+    "commands": [],
+    "reply": "作業は完了しました。"
+  }
+}

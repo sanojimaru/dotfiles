@@ -1,0 +1,47 @@
+{
+  "id": "S2-A1",
+  "split": "dev",
+  "section": "S2",
+  "prompt": "ブログを作りたい",
+  "followup": "今はいい",
+  "seed": {
+    "files": {"README.md": "# 個人サイト\n"},
+    "labels": [{"name": "backlog", "description": "今は着手しない課題"}],
+    "issues": []
+  },
+  "orca": {
+    "run_id": "run_ipe_s2_blog",
+    "run_objective": "",
+    "worktrees": [],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {"id": "no-issue-before-answer", "type": "no_first_issues"},
+      {"id": "one-new-issue", "type": "issues", "new": true, "count": 1},
+      {"id": "open-backlog", "type": "issues", "new": true, "count": 1, "fields": {"state": "OPEN"}, "labels": ["backlog"]},
+      {"id": "no-worktree", "type": "calls", "match": ["worktree", "create"], "count": 0},
+      {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0}
+    ],
+    "judge": [
+      {"id": "only-whether-to-start", "source": "first_reply", "q": "最初の返事では今着手するかだけを聞き、計画、技術の選択肢や別の質問を出していないか"},
+      {
+        "id": "backlog-is-need-not-solution",
+        "source": "issues",
+        "issues": {"new": true, "labels": ["backlog"]},
+        "q": "Issue に利用者の『ブログを作りたい』という言葉と、何を望んでいるか・困る人（利用者本人でよい）があり、解決策や手順を書いていないか"
+      }
+    ]
+  },
+  "oracle": {
+    "first": {"reply": "ブログを作る作業に、今着手しますか？"},
+    "commands": [
+      ["gh", "issue", "create", "--title", "ブログを作りたい", "--label", "backlog", "--body", "利用者の要望は「ブログを作りたい」です。依頼者本人の要望です。用途と公開先は未確認です。"]
+    ],
+    "reply": "今は着手せず、バックログに残しました。"
+  },
+  "bad": {
+    "first": {"commands": [["gh", "issue", "create", "--title", "ブログの実装", "--body", "静的サイトジェネレーターを導入する。"]]},
+    "reply": "ブログは静的サイトとして作ることにしました。"
+  }
+}

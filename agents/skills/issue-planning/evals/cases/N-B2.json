@@ -1,0 +1,29 @@
+{
+  "id": "N-B2",
+  "split": "dev",
+  "section": "N",
+  "prompt": "`orca worktree` の一覧を見せて",
+  "seed": {
+    "issues": [{"key": "task", "type": "Task", "title": "エクスポート設定", "body": "エクスポートの既定の保存先を確認します。"}]
+  },
+  "orca": {
+    "run_id": "run_ipe_n_worktrees",
+    "run_objective": "",
+    "worktrees": [{"issue": "task", "name": "<<task>>-export-settings"}],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {"id": "list-worktrees", "type": "calls", "match": ["worktree", "list"], "minimum": 1, "success": true},
+      {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0},
+      {"id": "no-worktree", "type": "calls", "match": ["worktree", "create"], "count": 0},
+      {"id": "no-issue-changes", "type": "all_issues_unchanged", "fail_on_any": true}
+    ],
+    "judge": [{"id": "answer", "q": "一覧として main と export-settings の worktree を示しているか"}]
+  },
+  "oracle": {
+    "commands": [["orca", "worktree", "list", "--json"]],
+    "reply": "worktree は main と <<task>>-export-settings の 2 件です。"
+  },
+  "bad": {"commands": [["gh", "issue", "comment", "<<task>>", "--body", "現在の worktree を確認します。"]]}
+}
