@@ -1,0 +1,130 @@
+{
+  "id": "S3-A2",
+  "split": "test",
+  "section": "S3",
+  "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当します。<!--skill-->`issue-planning` の親の手順を読んでから始めてください。<!--/skill--> この Epic を渡した窓口の連絡先は dispatch:ctx_window です。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "README の見出しの表記が揺れている",
+        "body": "README の手順と FAQ の見出しで、同じ語が「セットアップ」「セット・アップ」と揺れています。",
+        "type": "Feature"
+      }
+    ],
+    "files": {
+      "README.md": "# チームのツール\n\n## セットアップ\nツールを起動します。\n\n## セット・アップの FAQ\n起動しない場合は担当窓口に連絡してください。\n"
+    }
+  },
+  "orca": {
+    "run_id": "run_f15d12825e3e",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-readme-headings",
+        "checkout": true,
+        "current": true
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "summary": "小さい作業を Epic のまま計画せず Task に変え、窓口宛てにコメントしてから送る。",
+    "checks": [
+      {
+        "id": "converted-task",
+        "type": "issues",
+        "count": 1,
+        "issue": "epic",
+        "fields": {
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "no-child",
+        "type": "issues",
+        "count": 0,
+        "fields": {
+          "parent": "epic"
+        }
+      },
+      {
+        "id": "send",
+        "type": "calls",
+        "match": ["orchestration", "send"],
+        "count": 1,
+        "success": true,
+        "options": {
+          "--to": "dispatch:ctx_window"
+        }
+      },
+      {
+        "id": "send-commented",
+        "type": "comment_matches_message",
+        "issue": "epic",
+        "match": ["orchestration", "send"]
+      }
+    ],
+    "judge": [
+      {
+        "id": "no-epic-plan",
+        "q": "単独作業の観測できる受け入れ条件を記録し、子を含む Epic の計画を立てていないか。",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": ["body"]
+      },
+      {
+        "id": "returns-to-window",
+        "q": "小さいので Task に変更し、窓口に対応を引き取ってほしいと知らせているか。",
+        "source": "orca",
+        "match": ["orchestration", "send"],
+        "success": true
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "edit",
+        "<<epic>>",
+        "--type",
+        "Task",
+        "--body",
+        "## 受け入れ条件\nREADME のセットアップと FAQ の見出しで「セットアップ」の表記が統一されている。"
+      ],
+      ["gh", "issue", "comment", "<<epic>>", "--body", "README の見出し表記 2 件の修正で収まるため、単独タスクに変更しました。窓口で引き取ってください。"],
+      [
+        "orca",
+        "orchestration",
+        "send",
+        "--to",
+        "dispatch:ctx_window",
+        "--subject",
+        "単独タスクとして引き継ぎ",
+        "--body",
+        "README の見出し表記 2 件の修正で収まるため、単独タスクに変更しました。窓口で引き取ってください。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "README の表記を見る",
+        "見出しを列挙します。",
+        "<<epic>>",
+        "readme-headings",
+        "見出しを調べてください。"
+      ]
+    ]
+  }
+}

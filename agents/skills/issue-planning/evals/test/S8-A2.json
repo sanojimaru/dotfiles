@@ -1,0 +1,186 @@
+{
+  "id": "S8-A2",
+  "split": "test",
+  "section": "S8",
+  "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当します。<!--skill-->`issue-planning` の親の手順を読んでから始めてください。<!--/skill--> 前の親のセッションは止まったので、Epic の本文と Issue のコメントから続けてください。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "出荷一覧から倉庫を識別する",
+        "body": "## 完了の状態\n出荷担当者が、一つの出荷明細について倉庫名と社内 ID を一覧で確認できる。\n\n## 計画\n```mermaid\nflowchart LR\n  A[社内 ID を持つ出荷明細 1 件を取得する] --> B[一覧に倉庫名と社内 ID を表示する]\n```\n先行の取得は #<<task>>。Run id: `run_e803297d9e8f`",
+        "type": "Feature"
+      },
+      {
+        "key": "task",
+        "title": "出荷明細 1 件を社内 ID 付きで取得する",
+        "body": "倉庫を識別する社内 ID が出荷明細に含まれること。",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "comments": [
+          "## 片付いたこと\n社内 ID が登録された倉庫 1 件の出荷明細を取得できました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
+      }
+    ],
+    "prs": [
+      {
+        "key": "pr",
+        "title": "社内 ID を出荷明細に含める",
+        "body": "倉庫の社内 ID を取得できる。Closes #<<task>>",
+        "closes": [
+          "task"
+        ],
+        "state": "MERGED",
+        "headRefName": "<<epic>>.<<task>>-warehouse-lookup"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_e803297d9e8f",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-shipping-list"
+      },
+      {
+        "issue": "task",
+        "name": "<<epic>>.<<task>>-warehouse-lookup",
+        "checkout": true
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "succeeded"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "worker_done",
+        "body": "## 片付いたこと\n社内 ID が登録された倉庫 1 件の出荷明細を取得できました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。",
+        "payload": {
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000",
+          "outcome": "succeeded",
+          "exitCode": 0
+        },
+        "subject": "作業完了",
+        "id": "msg_warehouse"
+      }
+    ],
+    "tasks": [
+      "task_fake0000"
+    ]
+  },
+  "expect": {
+    "summary": "Run を再開して閉じた子の報告と状態を照合し、子の worktree を消し、先行が完了した次の作業を起動する。",
+    "checks": [
+      {
+        "id": "run-use",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
+        "minimum": 1,
+        "success": true,
+        "options": {
+          "--id": "run_e803297d9e8f"
+        }
+      },
+      {
+        "id": "finished-worktree-removed",
+        "type": "worktree",
+        "issue": "task",
+        "present": false
+      },
+      {
+        "id": "one-new-child",
+        "type": "issues",
+        "count": 1,
+        "new": true,
+        "fields": {
+          "parent": "epic",
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "started-linked-workers",
+        "type": "workers",
+        "count": 1,
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        }
+      }
+    ],
+    "judge": [
+      {
+        "id": "next-node",
+        "q": "新しい子の内容が、既に終わった取得ではなく、残りの「一覧に倉庫名と社内 ID を表示する」に対応するか。",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        },
+        "fields": [
+          "title",
+          "body"
+        ]
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_e803297d9e8f"
+      ],
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch"
+      ],
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "一覧に倉庫名と社内 ID を表示する",
+        "倉庫の名前と社内 ID を含む明細が一覧の行に表示される。",
+        "<<epic>>",
+        "warehouse-display",
+        "出荷一覧に倉庫名と社内 ID を表示してください。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--worktree",
+        "issue:<<task>>",
+        "--agent",
+        "claude",
+        "--spec",
+        "完了した明細取得をもう一度実行してください。"
+      ]
+    ]
+  }
+}

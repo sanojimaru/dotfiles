@@ -1,0 +1,116 @@
+{
+  "id": "S4-A1",
+  "split": "test",
+  "section": "S4",
+  "prompt": "合意済みの計画です。今の状態から、着手できる作業があれば進めてください。",
+  "history": "親: 受付予約の Epic #<<epic>> で、完了の状態と全体の流れ、依存グラフを提案しました。\n\n利用者: この計画で進めてください。\n\n親: 私がこの Epic の coordinator です。<!--skill-->`issue-planning` の親の手順を読みます。<!--/skill-->",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "来訪予約を番号から検索できるようにする",
+        "body": "## 完了の状態\n当日の受付担当が、受付番号で来訪予約を検索し、予約の担当者を確認できる。\n\n## 計画\n```mermaid\nflowchart LR\n  A[予約 1 件を登録して番号で検索する] --> B[同じ番号の予約を日時で区別する]\n  B --> C[検索結果の担当者を表示する]\n  D[受付窓口の現行手順を採取する]\n```\nA は最小の 1 本。D は同じファイルを触らず、他のノードから参照しない。\n\nRun id: `run_6d8be8353d10`",
+        "type": "Feature"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_6d8be8353d10",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-reception-search"
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "summary": "先行がない A と D の子 Issue とワーカーだけを作る。B と C は先行が済むまで作らない。",
+    "checks": [
+      {
+        "id": "exactly-two-children",
+        "type": "issues",
+        "count": 2,
+        "new": true,
+        "fields": {
+          "parent": "epic",
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "no-other-issue",
+        "type": "issues",
+        "count": 2,
+        "new": true
+      },
+      {
+        "id": "started-linked-workers",
+        "type": "workers",
+        "count": 2,
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        }
+      }
+    ],
+    "judge": [
+      {
+        "id": "only-ready-nodes",
+        "q": "新しい 2 件の子は、A（予約 1 件を登録して番号で検索）と D（受付窓口の現行手順の採取）に対応し、B（日時による区別）と C（担当者の表示）を含まないか。",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        },
+        "fields": ["title", "body"]
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "予約 1 件を登録して番号で検索する",
+        "受付番号で登録した予約 1 件を検索して確認できること。",
+        "<<epic>>",
+        "visit-lookup",
+        "受付番号で予約 1 件を検索できるようにしてください。"
+      ],
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "受付窓口の現行手順を採取する",
+        "担当者に現在の受付の流れを聞き取り、記録する。",
+        "<<epic>>",
+        "reception-workflow",
+        "受付窓口の現行手順を記録してください。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "launch-child",
+        "同じ番号の予約を日時で区別する",
+        "予約の日時を表示する。",
+        "<<epic>>",
+        "visit-dates",
+        "B を実装してください。"
+      ]
+    ]
+  }
+}

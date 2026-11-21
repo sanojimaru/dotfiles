@@ -1,0 +1,124 @@
+{
+  "id": "S5-B1",
+  "split": "test",
+  "section": "S5",
+  "prompt": "Run `run_3e4fe02c26fe` に Orca からワーカーの通知が届きました。",
+  "history": "親: Epic #<<epic>> の計画に沿って #<<task>> のワーカーを起動しました。私が質問や停止の通知を受けます。<!--skill-->通知に対応するときは `issue-planning` の親の手順を読みます。<!--/skill-->",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "運用の引き継ぎで迷わないようにする",
+        "body": "## 完了の状態\n担当者が日々の作業の記録を読み、次の担当へ引き渡せる。\n\nRun id: `run_3e4fe02c26fe`",
+        "type": "Feature"
+      },
+      {
+        "key": "task",
+        "title": "月次集計の列名を揃える",
+        "body": "## 受け入れ条件\n月次集計の列名を揃える。",
+        "type": "Task",
+        "parent": "epic",
+        "comments": [
+          "集計の列見出しを確認中です。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_3e4fe02c26fe",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<epic>>.<<task>>-monthly-labels"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "escalation",
+        "body": "ワーカーが worker_done を送らずターンを終えました。",
+        "payload": {
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000",
+          "stopReason": "turn_ended"
+        },
+        "subject": "ワーカーが報告せず停止"
+      }
+    ],
+    "tasks": [
+      "task_fake0000"
+    ]
+  },
+  "expect": {
+    "summary": "停止した子への再開指示を記録して送るか、利用者に停止を伝える。",
+    "checks": [
+      {
+        "id": "send-commented",
+        "type": "comment_matches_message",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "send"
+        ],
+        "if_called": true
+      }
+    ],
+    "judge": [
+      {
+        "id": "addressed-stop",
+        "q": "停止した子に再開（続けられない場合は理由報告）を指示したか、利用者にこの子の停止と対応が必要であることを伝えたか。ただ放置した、又は完了扱いした場合は no。",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "orca",
+            "match": [
+              "orchestration",
+              "send"
+            ],
+            "success": true,
+            "options": {
+              "--to": "dispatch:ctx_fake0000"
+            }
+          },
+          {
+            "source": "reply"
+          }
+        ]
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "現在の列名の確認と修正を続けてください。続けられなければ、止まっている理由をこの作業 Issue に書いて知らせてください。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "send",
+        "--to",
+        "dispatch:ctx_fake0000",
+        "--subject",
+        "作業を再開",
+        "--body",
+        "現在の列名の確認と修正を続けてください。続けられなければ、止まっている理由をこの作業 Issue に書いて知らせてください。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [],
+    "reply": "作業は完了しました。"
+  }
+}
