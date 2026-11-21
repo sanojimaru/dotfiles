@@ -34,7 +34,11 @@ def seed_repo(repo, case):
     for lab in case["seed"].get("labels", []):  # ラベルは使い回す（作成の回数が GitHub の二次レート制限に効くため）
         if lab["name"] not in have:
             gh("label", "create", lab["name"], "-R", r, "--description", lab.get("description", ""))
-    nums = {pr["key"]: 1_000_000 + i for i, pr in enumerate(case["seed"].get("prs", []), 1)}
+    prs = case["seed"].get("prs", [])
+    keys = [item["key"] for item in [*prs, *case["seed"]["issues"]]]
+    if len(set(keys)) != len(keys):
+        raise ValueError("種の Issue と PR の key は重複できません")
+    nums = {pr["key"]: 1_000_000 + i for i, pr in enumerate(prs, 1)}
     for iss in case["seed"]["issues"]:
         args = ["issue", "create", "-R", r, "--title", subst(iss["title"], nums), "--body", subst(iss["body"], nums)]
         if iss.get("type"):
@@ -62,7 +66,9 @@ def pr_state(case, nums, repo):
         closed = pr.get("closedAt", created) if state != "OPEN" else None
         rows.append({
             "body": "", "baseRefName": "main", "headRefName": pr["key"],
-            "labels": [], "comments": [], "commits": [], "isDraft": False,
+            "author": {"login": OWNER}, "mergedBy": {"login": OWNER} if state == "MERGED" else None,
+            "labels": [], "comments": [], "commits": [], "files": [], "isDraft": False,
+            "reviewDecision": "", "statusCheckRollup": [], "headRefOid": "",
             **{k: subst(v, nums) if isinstance(v, str) else v for k, v in pr.items() if k not in {"key", "closes"}},
             "state": state, "closed": state != "OPEN", "number": number,
             "createdAt": created, "closedAt": closed, "mergedAt": closed if state == "MERGED" else None,
