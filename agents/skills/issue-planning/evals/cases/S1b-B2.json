@@ -55,7 +55,7 @@
       },
       {
         "id": "no-issue-changes",
-        "type": "repo_unchanged"
+        "type": "all_issues_unchanged"
       }
     ],
     "judge": [

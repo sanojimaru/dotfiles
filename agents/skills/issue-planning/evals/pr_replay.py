@@ -18,8 +18,8 @@ def replay(argv, repo, endpoint):
         return None
     if "--help" in argv or "-h" in argv:
         return None
-    records = json.loads(Path(os.environ["IPE_PR_STATE"]).read_text())
     try:
+        records = json.loads(Path(os.environ["IPE_PR_STATE"]).read_text())
         if is_pr:
             return cli(argv[1:], records)
         if not pulls:
@@ -27,7 +27,7 @@ def replay(argv, repo, endpoint):
         return api(argv[1:], path, pulls[1], records)
     except SystemExit as exc:  # argparse の失敗も gh_guard のログに残す。
         return exc.code
-    except ValueError as exc:
+    except (KeyError, OSError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"gh_guard (PR の再生): {exc}", file=sys.stderr)
         return 1
 
@@ -35,12 +35,13 @@ def replay(argv, repo, endpoint):
 def select(records, state, head=None, base=None):
     if state not in {"open", "closed", "merged", "all"}:
         raise ValueError(f"不明な state: {state}")
-    return [
+    matching = [
         pr for pr in records
-        if (state == "all" or pr["state"].lower() == state)
+        if (state == "all" or pr["state"].lower() == state or state == "closed" and pr["closed"])
         and (head is None or pr["headRefName"] == head)
         and (base is None or pr["baseRefName"] == base)
     ]
+    return sorted(matching, key=lambda pr: (pr["createdAt"], pr["number"]), reverse=True)
 
 
 def output(data, jq=None):
@@ -61,28 +62,60 @@ def cli(argv, records):
     parser.add_argument("-B", "--base")
     parser.add_argument("-L", "--limit", type=int, default=30)
     parser.add_argument("-S", "--search")
+    parser.add_argument("-A", "--author")
+    parser.add_argument("-l", "--label", action="append", default=[])
+    parser.add_argument("-c", "--comments", action="store_true")
     parser.add_argument("--json", dest="fields")
     parser.add_argument("-q", "--jq")
     args = parser.parse_intermixed_args(argv)
     if args.command == "view":
         ref = args.selector or subprocess.check_output(["git", "branch", "--show-current"], text=True).strip()
+        if match := re.match(r"^https://github\.com/[^/]+/[^/]+/pull/(\d+)(?:[/?#]|$)", ref):
+            ref = match[1]
+        if re.fullmatch(r"#\d+", ref):
+            ref = ref[1:]
         pr = next((p for p in records if ref in {str(p["number"]), p["url"], p["headRefName"]}), None)
         if pr is None:
             raise ValueError(f"PR {ref} が見つかりません")
         if args.fields:
             return output(project(pr, args.fields), args.jq)
+        if args.comments:
+            for comment in pr["comments"]:
+                print(comment["body"])
+            return 0
         print(f'title:\t{pr["title"]}\nstate:\t{pr["state"]}\nnumber:\t{pr["number"]}\nurl:\t{pr["url"]}\n--\n{pr["body"]}')
         return 0
     results = select(records, args.state, args.head, args.base)
+    if args.author:
+        author = os.environ["GH_GUARD_REPO"].split("/")[0] if args.author == "@me" else args.author
+        results = [p for p in results if p["author"]["login"] == author]
+    if args.label:
+        labels = set(",".join(args.label).split(","))
+        results = [p for p in results if labels <= {label["name"] for label in p["labels"]}]
     if args.search:
-        # ケースでは Issue 番号・SHA・語句で検索する。GitHub の検索構文全体は再現しない。
-        results = [p for p in results if all(term.lower() in json.dumps(p, ensure_ascii=False).lower() for term in shlex.split(args.search))]
+        terms = shlex.split(args.search.lower())
+        results = [p for p in results if all(matches(p, term) for term in terms)]
+    if args.limit <= 0:
+        raise ValueError("--limit は正の整数を指定してください")
     results = results[:args.limit]
     if args.fields:
         return output([project(p, args.fields) for p in results], args.jq)
     for p in results:
         print(f'{p["number"]}\t{p["title"]}\t{p["headRefName"]}\t{p["state"]}\t{p["createdAt"]}')
     return 0
+
+
+def matches(pr, term):
+    if term in ("is:open", "is:closed", "is:merged"):
+        return pr["closed"] if term == "is:closed" else pr["state"].lower() == term[3:]
+    if re.fullmatch(r"(?:closes:|linked:)?#\d+", term):
+        issue = int(term.split("#")[1])
+        return any(ref["number"] == issue for ref in pr["closingIssuesReferences"])
+    if term.isdecimal():
+        return term == str(pr["number"]) or any(term == str(ref["number"]) for ref in pr["closingIssuesReferences"])
+    return any(term in str(value).lower() for value in (
+        pr["title"], pr["body"], pr["headRefName"], (pr["mergeCommit"] or {}).get("oid", ""),
+    ))
 
 
 def project(record, fields):
@@ -99,6 +132,7 @@ def api(argv, endpoint, number, records):
     parser.add_argument("-H", "--header", action="append")
     parser.add_argument("-F", "--field", "-f", "--raw-field", action="append", default=[])
     parser.add_argument("-q", "--jq")
+    parser.add_argument("--cache")  # 種は試行中に変わらない。
     parser.add_argument("--paginate", action="store_true")
     parser.add_argument("--slurp", action="store_true")
     parser.add_argument("--silent", action="store_true")
@@ -115,9 +149,7 @@ def api(argv, endpoint, number, records):
     else:
         state = query.get("state", "open")
         head = query.get("head")
-        rows = select(records, "all" if state == "closed" else state, head.split(":")[-1] if head else None, query.get("base"))
-        if state == "closed":  # REST の closed には merged も入る。
-            rows = [p for p in rows if p["closed"]]
+        rows = select(records, state, head.split(":")[-1] if head else None, query.get("base"))
         data = [rest(p, detail=False) for p in rows]
         if not args.paginate:
             size, page = int(query.get("per_page", "30")), int(query.get("page", "1"))
