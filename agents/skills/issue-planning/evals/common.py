@@ -15,7 +15,7 @@ JUDGE_MODEL = {"claude": ("codex", CODEX_MODEL), "codex": ("claude", "claude-son
 CLAUDE_TOOLS = "Bash,Read,Write,Edit,Glob,Grep,Skill"
 WALL_SECONDS = 40 * 60
 BUDGET_USD = 3
-STRIP_ENV = re.compile(r"^(CLAUDECODE|CLAUDE_CODE_.*|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_AGENT_SDK_VERSION|ORCA_.*)$")
+STRIP_ENV = re.compile(r"^(CLAUDECODE|CLAUDE_CODE_.*|CLAUDE_PID|CLAUDE_EFFORT|CLAUDE_AGENT_SDK_VERSION|ORCA_.*|IPE_HOLDOUT_TOKEN)$")
 
 
 def real_gh():
@@ -39,10 +39,10 @@ def sh(argv, **kw):
     return subprocess.run(argv, capture_output=True, text=True, **kw)
 
 
-def gh(*args, input=None, check=True):
+def gh(*args, input=None, check=True, env=None):
     """評価の準備に使う gh。作成が続くと GitHub の二次レート制限に当たるので、当たったら待って繰り返す。"""
     for attempt in range(8):
-        r = sh([REAL_GH, *args], input=input)
+        r = sh([REAL_GH, *args], input=input, env=env)
         if r.returncode == 0 or not re.search(r"rate limit|abuse|secondary|too quickly", r.stderr, re.I):
             break
         time.sleep(30 * (attempt + 1))
