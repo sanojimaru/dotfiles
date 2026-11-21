@@ -19,8 +19,9 @@ def load_holdout(repo, names):
     if not metadata["private"]:
         raise ValueError("--holdout-repo は非公開リポジトリである必要があります")
     # 通常の GitHub 認証でも読める配置だと、同じ環境でスキルを書く側に test が見える。
-    if gh("api", path, "--jq", ".full_name", check=False).strip() == metadata["full_name"]:
-        raise ValueError("通常の GitHub 認証で holdout を読めます。test 専用のアクセス権を使ってください")
+    probe = gh("api", path, "--include", check=False).split("\n", 1)[0]
+    if not re.fullmatch(r"HTTP/\S+ 404(?: .*)?\r?", probe):
+        raise ValueError("通常の GitHub 認証で holdout が 404 になることを確認できません")
     cases = []
     for name in names:
         encoded = gh("api", f"{path}/contents/cases/{name}.json", "--jq", ".content", env=env)

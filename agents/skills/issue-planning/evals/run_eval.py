@@ -102,7 +102,8 @@ def run_codex(prompt, clone, env, cond, out):
     (bindir / "python3").symlink_to(sys.executable)
     jq = shutil.which("jq")
     if jq and "mise/shims" in jq:
-        jq = subprocess.check_output(["mise", "which", "jq"], text=True).strip()
+        install = Path(subprocess.check_output(["mise", "where", "jq"], text=True).strip())
+        jq = next(str(p) for p in (install / "bin/jq", install / "jq") if p.is_file())
     if jq:
         (bindir / "jq").symlink_to(jq)
     # Codex は `zsh -lc` でコマンドを実行し、ログインシェルの設定が PATH を作り直して代役の gh・orca を外す。
