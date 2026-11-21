@@ -1,6 +1,7 @@
 """判定器の較正: 判定器に渡した証拠を人が yes/no を付けられる形に出し、人のラベルと判定器の一致率を出す（#88 の 3.1。90% 以上で使う）。"""
 import json
 import random
+import re
 from pathlib import Path
 
 from common import HERE
@@ -8,6 +9,11 @@ from common import HERE
 
 def load_case(name):
     return json.loads((HERE / "cases" / f"{name}.json").read_text())
+
+
+def same_question(template, asked):
+    """ケースの問い（<<key>> は試行の番号に置き換わる）と、試行で判定器に渡した問いが同じか。"""
+    return re.fullmatch(re.sub(r"<<[\w\\-]+>>", r"[\\d-]+", re.escape(template)), asked) is not None
 
 
 def quote(text):
@@ -23,6 +29,11 @@ def cmd_labels(args):
         inputs = (r.get("grade") or {}).get("judge_inputs", {})
         r["judged"] = {j: v for j, v in (r.get("grade") or {}).get("judge", {}).items() if inputs.get(j, {}).get("evidence", "").strip()}
     trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["judged"]]
+    for d, r in trials:  # 問いを直す前の試行は、古い問いの答えを今の較正に混ぜてしまう
+        current = {j["id"]: j["q"] for j in load_case(r["case"])["expect"].get("judge", [])}
+        asked = {j: v["q"] for j, v in r["grade"]["judge_inputs"].items()}
+        if stale := sorted(j for j in asked.keys() | current.keys() if j not in current or j not in asked or not same_question(current[j], asked[j])):
+            raise SystemExit(f"{d} の判定の問い {stale} が今のケースと違う。問いを直した後の試行を使ってください")
     random.Random(args.seed).shuffle(trials)  # 条件（有・無）が並びから分からないように混ぜる
     if len(trials) < args.count:
         raise SystemExit(f"判定器の問いがある試行が {len(trials)} 件しかありません（{args.count} 件が要る）。dev の試行を足してください")

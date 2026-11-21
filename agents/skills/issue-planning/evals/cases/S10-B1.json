@@ -133,7 +133,17 @@
           "ask"
         ],
         "success": true,
-        "q": "ask の質問が、Epic の完了の状態（Excel で文字化けしない）に要る課題（BOM）を、計画に入れてほしいという依頼として、判断に要る中身付きで書かれているか"
+        "q": "ask の質問が、Epic の完了の状態（Excel で文字化けしない）に要る課題（BOM）を、Epic の計画に入れてほしいという依頼になっているか"
+      },
+      {
+        "id": "ask-has-material",
+        "source": "orca",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "success": true,
+        "q": "BOM を Epic の計画に入れてほしいと依頼する ask の質問に、親が判断に要る中身（BOM が無いと Excel で文字化けすることなど、課題が何でなぜ完了の状態に要るか）が書かれているか。そのような ask が無ければ no。"
       }
     ]
   },

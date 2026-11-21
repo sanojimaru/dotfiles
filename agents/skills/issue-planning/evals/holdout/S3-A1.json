@@ -88,29 +88,61 @@
     "judge": [
       {
         "id": "one-mvp",
-        "q": "Epic の本文で、利用者が Claude Code から会議 1 件を検索して結果を確認する MVP 一つに完了の状態が絞られており、使う流れと観測できる確認項目があるか。",
         "source": "issues",
         "issues": {
           "issue": "epic"
         },
         "fields": [
           "body"
-        ]
+        ],
+        "q": "Epic の本文で、完了の状態が、利用者が Claude Code から会議 1 件を検索して結果を確認する MVP 一つに絞られているか。"
+      },
+      {
+        "id": "mvp-observable",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文の完了の状態に、観測できる確認項目があるか。"
+      },
+      {
+        "id": "user-flow",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文に、利用者が使う流れ（操作や画面の順）が書かれているか。"
       },
       {
         "id": "walking-skeleton",
-        "q": "Epic の Mermaid の依存グラフに、会議を 1 件用意して Claude Code の検索から読むところまで通す最初の子があり、技術の設計を最初の子に任せているか。未合意の技術の設計（データモデル・API・ライブラリなど）を Epic で決めていれば no。",
         "source": "issues",
         "issues": {
           "issue": "epic"
         },
         "fields": [
           "body"
-        ]
+        ],
+        "q": "Epic の Mermaid の依存グラフに、会議を 1 件用意して Claude Code の検索から読むところまで通す最初の子があるか。"
+      },
+      {
+        "id": "design-left-to-first-child",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文が、技術の設計を決めずに最初の子に任せているか。未合意の技術の設計（データモデル・API・ライブラリなど）を Epic で決めていれば no。"
       },
       {
         "id": "extension-outside-mvp",
-        "q": "新しい backlog の課題が、今回の会議 1 件の検索とは別に延期できる拡張・対象外を記録し、Epic の完了の状態が会議 1 件の検索だけになっているか。拡張を完了の状態に含めていれば no。",
         "source": "combined",
         "parts": [
           {
@@ -135,11 +167,16 @@
               "body"
             ]
           }
-        ]
+        ],
+        "q": "証拠の後半の新しい backlog の課題が、今回の会議 1 件の検索とは別に延期できる拡張・対象外を記録しているか。前半の Epic の完了の状態がその拡張を含んでいれば no。"
+      },
+      {
+        "id": "agreement-material",
+        "q": "返事に、目的・MVP の完了の状態・利用者の全体の流れが、その場に示されているか。"
       },
       {
         "id": "agreement",
-        "q": "目的・MVP の完了の状態・利用者の全体の流れをこの場に示し、実装を始める前に利用者の合意を求めているか。"
+        "q": "返事で、実装を始める前に、目的・MVP の完了の状態・全体の流れへの利用者の合意を求めているか。"
       }
     ]
   },

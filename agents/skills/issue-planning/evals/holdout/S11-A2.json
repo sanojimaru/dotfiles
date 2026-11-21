@@ -146,7 +146,6 @@
     "judge": [
       {
         "id": "failed-reason",
-        "q": "失敗の報告に CI のリリース署名サービスの停止が書かれ、README 修正で解決できず未マージであることが分かるか。",
         "source": "combined",
         "parts": [
           {
@@ -167,7 +166,33 @@
             ],
             "success": true
           }
-        ]
+        ],
+        "q": "失敗の報告に、CI のリリース署名サービスの停止が原因だと書かれているか。"
+      },
+      {
+        "id": "unmerged-reported",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "issues",
+            "issues": {
+              "issue": "task"
+            },
+            "fields": [
+              "comments"
+            ],
+            "new_comments": true
+          },
+          {
+            "source": "orca",
+            "match": [
+              "orchestration",
+              "send"
+            ],
+            "success": true
+          }
+        ],
+        "q": "失敗の報告から、README の修正では解決できず、PR が未マージであることが分かるか。"
       }
     ]
   },

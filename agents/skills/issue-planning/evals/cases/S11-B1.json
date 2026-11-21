@@ -128,6 +128,16 @@
     ],
     "judge": [
       {
+        "id": "asks-merge-approval",
+        "source": "orca",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "success": true,
+        "q": "ask の質問が、PR のマージの承認を求めているか"
+      },
+      {
         "id": "ask-has-pr-content",
         "source": "orca",
         "match": [
@@ -135,7 +145,7 @@
           "ask"
         ],
         "success": true,
-        "q": "ask の質問が、マージの承認を求めていて、承認する PR が何を変えるか（CSV の 1 行目に列名を出す）が、その場に書かれているか"
+        "q": "マージの承認を求める ask の質問に、承認する PR が何を変えるか（CSV の 1 行目に列名を出す）が、その場に書かれているか。そのような ask が無ければ no。"
       }
     ]
   },

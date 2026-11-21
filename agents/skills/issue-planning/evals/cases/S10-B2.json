@@ -112,6 +112,16 @@
         "success": true
       },
       {
+        "id": "ask-commented",
+        "type": "comment_matches_message",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "body_flag": "--question"
+      },
+      {
         "id": "ask-parent",
         "type": "calls",
         "match": [
@@ -171,7 +181,7 @@
           "ask"
         ],
         "success": true,
-        "q": "ask の質問が、注文一覧 API（別の子 Issue の PR）がまだマージされておらず進めないことを、作業 Issue のコメントと同じ内容で coordinator に伝えているか"
+        "q": "ask の質問が、注文一覧 API（別の子 Issue の PR）がまだマージされておらず、この作業を進められないことを、coordinator に伝えているか"
       }
     ]
   },
@@ -183,14 +193,14 @@
         "comment",
         "<<task>>",
         "--body",
-        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れない。"
+        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れません。API のマージを待つか、順序を見直してください。"
       ],
       [
         "orca",
         "orchestration",
         "ask",
         "--question",
-        "注文一覧 API（#<<api>>）が未マージで進めません。API のマージを待つか、順序を見直してください。"
+        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れません。API のマージを待つか、順序を見直してください。"
       ]
     ]
   }

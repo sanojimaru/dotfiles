@@ -87,8 +87,12 @@
     ],
     "judge": [
       {
+        "id": "reports-link-done",
+        "q": "返事で、アップロード手順へのリンク追加が完了したことを報告しているか"
+      },
+      {
         "id": "report-with-open-remainder",
-        "q": "アップロード手順へのリンク追加が完了したことと、動画の説明の残りが作業 Issue とは別の backlog Issue にあることを報告したか"
+        "q": "返事で、動画の説明の残りが、作業 Issue とは別の backlog Issue にあることを報告しているか"
       }
     ]
   },

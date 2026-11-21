@@ -80,6 +80,31 @@
     ],
     "judge": [
       {
+        "id": "not-treated-as-done",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "reply"
+          },
+          {
+            "source": "issues",
+            "issues": {},
+            "fields": [
+              "comments"
+            ],
+            "new_comments": true
+          },
+          {
+            "source": "orca",
+            "match": [
+              "orchestration"
+            ],
+            "success": true
+          }
+        ],
+        "q": "子の作業を完了として扱わず、未完了の作業として次の対応を取っているか"
+      },
+      {
         "id": "decides-retry-or-new-child",
         "source": "combined",
         "parts": [
@@ -102,7 +127,32 @@
             "success": true
           }
         ],
-        "q": "失敗の報告を完了として扱わず、同じ Task を起動し直すか新しい子を立てるかを決め、その決定を Epic か子 Issue のコメントに書いているか"
+        "q": "失敗した子の作業について、同じ Task を起動し直すか、新しい子を立てるかを決めているか（両方を決めてもよい）"
+      },
+      {
+        "id": "decision-commented",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "reply"
+          },
+          {
+            "source": "issues",
+            "issues": {},
+            "fields": [
+              "comments"
+            ],
+            "new_comments": true
+          },
+          {
+            "source": "orca",
+            "match": [
+              "orchestration"
+            ],
+            "success": true
+          }
+        ],
+        "q": "Epic か子 Issue に新しく書いたコメントに、失敗した子の作業について取る対応（同じ Task を起動し直すか、新しい子を立てるか）が書かれているか"
       },
       {
         "id": "reports-failure",

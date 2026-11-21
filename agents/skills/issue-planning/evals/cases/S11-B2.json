@@ -188,6 +188,18 @@
     ],
     "judge": [
       {
+        "id": "report-three-parts",
+        "source": "issues",
+        "issues": {
+          "issue": "task"
+        },
+        "fields": [
+          "comments"
+        ],
+        "new_comments": true,
+        "q": "作業 Issue に新しく書いた報告のコメントが、片付いたこと・片付かなかったこと・計画に影響する発見の 3 項目を持っているか"
+      },
+      {
         "id": "report-links-both",
         "source": "issues",
         "issues": {
@@ -196,8 +208,8 @@
         "fields": [
           "comments"
         ],
-        "q": "作業 Issue に新しく書いた報告のコメントが、片付いたこと・片付かなかったこと・計画に影響する発見の 3 項目を持ち、片付かなかったこと 2 件の backlog Issue をどちらも参照しているか",
-        "new_comments": true
+        "new_comments": true,
+        "q": "作業 Issue に新しく書いたコメントのうち、片付いたこと・片付かなかったこと・計画に影響する発見の 3 項目を持つ報告のコメントが、片付かなかったこと 2 件の backlog Issue をどちらも参照しているか。そのような報告のコメントが無ければ no。"
       },
       {
         "id": "backlog-is-need-not-solution",
@@ -212,7 +224,7 @@
           "title",
           "body"
         ],
-        "q": "backlog の 2 件が、何が起きている（起きうる）か・根拠・困る人だけで書かれ、分からないことを未確認と書いているか。解決策や手順を書いていれば no。"
+        "q": "backlog の 2 件が、何が起きている（起きうる）か・根拠・困る人を書き、分からないことを未確認と書いているか。見出し、利用者の言葉、根拠、未確認の点、関連する Issue へのリンクは書いてあってよい。解決策・やること・手順を書いていれば no。"
       }
     ]
   },

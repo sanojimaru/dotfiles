@@ -101,7 +101,6 @@
       },
       {
         "id": "coordinator-comment",
-        "q": "Issue に新しく書いたコメントが、Task に書き換えたことと、親自身がこの Task の coordinator としてワーカーを起動することを伝えているか。",
         "source": "issues",
         "issues": {
           "issue": "epic"
@@ -109,7 +108,20 @@
         "fields": [
           "comments"
         ],
-        "new_comments": true
+        "new_comments": true,
+        "q": "Issue に新しく書いたコメントが、Task に書き換えたことを伝えているか。"
+      },
+      {
+        "id": "parent-as-coordinator",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "comments"
+        ],
+        "new_comments": true,
+        "q": "Issue に新しく書いたコメントが、親自身がこの Task の coordinator としてワーカーを起動することを伝えているか。"
       }
     ]
   },
