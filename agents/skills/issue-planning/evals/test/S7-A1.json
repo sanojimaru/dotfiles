@@ -103,7 +103,7 @@
     "judge": [
       {
         "id": "csv-backlog-linked",
-        "q": "「前日の来訪者一覧を CSV で取り出す」が開いた backlog Issue になり、その新規番号と既存の他拠点検索 #<<branches>> のリンクが両方 Epic に残っているか。",
+        "q": "新しく作った Issue は、対象外の「前日の来訪者一覧を CSV で取り出す」用途の課題か。他拠点の検索を指す Issue なら no。Issue の状態・ラベル・参照の有無はこの問いでは判定しない。",
         "source": "combined",
         "parts": [
           {
