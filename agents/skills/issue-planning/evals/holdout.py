@@ -83,9 +83,9 @@ def check_hook():
         return 0
     try:
         event = json.load(sys.stdin)
-        if not isinstance(event.get("tool_input"), dict):
+        if not isinstance(event, dict) or "tool_input" not in event:
             raise ValueError
-    except (AttributeError, ValueError):
+    except ValueError:
         print("issue-planning: フックに渡されたツール入力を検査できません。", file=sys.stderr)
         return 2
     if not test_access(event["tool_input"]):
