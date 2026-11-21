@@ -34,7 +34,7 @@ def seed_repo(repo, case):
     for lab in case["seed"].get("labels", []):  # ラベルは使い回す（作成の回数が GitHub の二次レート制限に効くため）
         if lab["name"] not in have:
             gh("label", "create", lab["name"], "-R", r, "--description", lab.get("description", ""))
-    nums = {}
+    nums = {pr["key"]: 1_000_000 + i for i, pr in enumerate(case["seed"].get("prs", []), 1)}
     for iss in case["seed"]["issues"]:
         args = ["issue", "create", "-R", r, "--title", subst(iss["title"], nums), "--body", subst(iss["body"], nums)]
         if iss.get("type"):
@@ -50,6 +50,27 @@ def seed_repo(repo, case):
         if iss.get("state") == "closed":
             gh("issue", "close", str(nums[iss["key"]]), "-R", r, "--reason", "completed")
     return nums
+
+
+def pr_state(case, nums, repo):
+    """両方の PR 読み取りが共有する、`gh pr --json` の形の種。"""
+    rows = []
+    for pr in case["seed"].get("prs", []):
+        number = nums[pr["key"]]
+        state = pr.get("state", "OPEN").upper()
+        created = pr.get("createdAt", f"{datetime.date.today().isoformat()}T00:00:00Z")
+        closed = pr.get("closedAt", created) if state != "OPEN" else None
+        rows.append({
+            "body": "", "baseRefName": "main", "headRefName": pr["key"],
+            "labels": [], "comments": [], "commits": [], "isDraft": False,
+            **{k: subst(v, nums) if isinstance(v, str) else v for k, v in pr.items() if k not in {"key", "closes"}},
+            "state": state, "closed": state != "OPEN", "number": number,
+            "createdAt": created, "closedAt": closed, "mergedAt": closed if state == "MERGED" else None,
+            "mergeCommit": pr.get("mergeCommit"),
+            "url": f"https://github.com/{OWNER}/{repo}/pull/{number}",
+            "closingIssuesReferences": [{"number": nums[key]} for key in pr.get("closes", [])],
+        })
+    return rows
 
 
 def snapshot(repo):
@@ -80,6 +101,7 @@ def orca_state(case, nums, clone):
     return {
         "repo_id": "fake-repo", "run_id": o["run_id"], "run_objective": o["run_objective"], "worktrees": wts,
         "workers": [{"issue": nums[w["issue"]], "liveness": w["liveness"], "state": w["state"]} for w in o["workers"]],
+        "tasks": o.get("tasks", []),
     }
 
 
