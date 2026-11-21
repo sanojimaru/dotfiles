@@ -29,9 +29,14 @@ def replay(argv, repo, endpoint, event, fields=None):
         records = json.loads(Path(os.environ["IPE_PR_STATE"]).read_text())
         if is_pr:
             if argv[0] == "stack" and argv[1:2] in (["sync"], ["view"]):
-                if not any("replay_checks" in pr for pr in records):
+                layers = [pr for pr in records if "replay_checks" in pr]
+                if not layers:
                     raise ValueError("この試行には再生するスタックがありません")
-                print("残りのスタック層はありません。")
+                active = [pr for pr in layers if pr["state"] == "OPEN"]
+                for pr in active:
+                    print(f"#{pr['number']}\t{pr['headRefName']}\t{pr['state']}")
+                if not active:
+                    print("残りのスタック層はありません。")
                 return 0
             if argv[1:2] in (["checks"], ["diff"], ["merge"]):
                 return lifecycle(argv[1:], records, event)
@@ -39,9 +44,12 @@ def replay(argv, repo, endpoint, event, fields=None):
         if not pulls:
             raise ValueError("再生する REST エンドポイントは pulls と pulls/<番号> です")
         if pulls[2]:
-            if api_method(argv) == "PUT":
+            method = api_method(argv) or ("POST" if fields else "GET")
+            if method == "PUT":
                 options = ["--match-head-commit", fields["sha"]] if fields and "sha" in fields else []
                 return lifecycle(["merge", pulls[1], *options], records, event, rest_output=True)
+            if method != "GET":
+                raise ValueError("PR のマージ状況の取得には GET、マージの実行には PUT を指定してください")
             return 0 if find_pr(records, pulls[1])["state"] == "MERGED" else 1
         return api(argv[1:], path, pulls[1], records)
     except SystemExit as exc:  # argparse の失敗も gh_guard のログに残す。
@@ -95,6 +103,9 @@ def lifecycle(argv, records, event, rest_output=False):
     parser.add_argument("-b", "--body")
     parser.add_argument("-F", "--body-file")
     parser.add_argument("-t", "--subject")
+    parser.add_argument("-i", "--interval")
+    parser.add_argument("--color")
+    parser.add_argument("-A", "--author-email")
     for flag in ("--watch", "--required", "--fail-fast", "--name-only", "--patch", "--yes", "-y", "--admin"):
         parser.add_argument(flag, action="store_true")
     parser.add_argument("-m", "--merge", action="store_true")
@@ -109,10 +120,11 @@ def lifecycle(argv, records, event, rest_output=False):
     passed = all(c["bucket"] == "pass" for c in checks)
     if args.command == "checks":
         if args.fields:
-            output([project(c, args.fields) for c in checks], args.jq)
-        else:
-            for check in checks:
-                print(f"{check['name']}\t{check['state']}\t{check.get('description', '')}")
+            return output([project(c, args.fields) for c in checks], args.jq)
+        for check in checks:
+            print(f"{check['name']}\t{check['state']}\t{check.get('description', '')}")
+        if any(c["bucket"] == "pending" for c in checks):
+            return 8
         return int(not passed)
     if args.command == "diff":
         print("\n".join(f["path"] for f in pr["files"]) if args.name_only else pr.get("replay_diff", ""))
