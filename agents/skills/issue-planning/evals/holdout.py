@@ -11,6 +11,8 @@ from common import gh
 def load_holdout(repo, names):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("--holdout-repo は owner/repo で指定してください")
+    if sys.stdin.isatty():
+        raise ValueError("test ケースの読み取り専用トークンは標準入力へリダイレクトしてください")
     token = sys.stdin.readline().strip()
     if not token:
         raise ValueError("test ケースの読み取り専用トークンを標準入力に渡してください")

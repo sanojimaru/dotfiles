@@ -162,7 +162,7 @@ def run_session(agent, prompt, history, out, launch):
     )
     if warm["returncode"] or not session_id or reply.strip().rstrip("。") != marker or used_tools:
         transcript.touch()
-        return {**warm, "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
+        return {**warm, "reply": "", "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
     scored = launch(prompt, transcript, session_id=session_id)
     scored["seconds"] += warm["seconds"]
     return scored
@@ -216,7 +216,7 @@ def parse_codex(transcript):
     for ev in json_events(transcript):
         item = ev.get("item") or {}
         if ev.get("type") == "item.completed" and item.get("type") == "command_execution" and item.get("exit_code") == 0 \
-                and "issue-planning" in item.get("command", "") and "SKILL.md" in item.get("command", "") \
+                and re.search(r"issue-planning/(?:SKILL\.md|references/[\w-]+\.md)\b", item.get("command", "")) \
                 and re.search(r"(^|[\s'\"])(cat|sed|head|tail|less|more|bat|nl|awk)\s", item.get("command", "")):  # ls・find は読み込みではない
             reads.append(item["command"])
         if ev.get("type") == "turn.completed":
@@ -294,10 +294,18 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
 
 
 def trial(case, repo, cond, agent, out, use_judge=True):
+    rec = None
     try:
-        return _trial(case, repo, cond, agent, out, use_judge)
+        rec = _trial(case, repo, cond, agent, out, use_judge)
     finally:
-        clean_trial(case, repo)
+        try:
+            clean_trial(case, repo)
+        except RuntimeError as exc:
+            if rec is None:
+                raise
+            rec.update(infra_failure=True, error=f"試行後の種を削除できませんでした: {exc}")
+            (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
+    return rec
 
 
 def clean_trial(case, repo):
