@@ -1,6 +1,6 @@
 ---
 name: issue-planning
-description: 窓口（デフォルトブランチのセッション）が、次に何に着手するかを決める前、または利用者の依頼を Issue にする前に読む。開いたまま誰も動かしていない Issue（親のセッションが止まった Epic、coordinator が居なくなった単独タスク、報告のコメントが無い閉じた子 Issue、開いた Epic の無いマイルストーン Issue、`backlog` の全件）を `gh` で確かめ、見つけたものを立て直す・書き足す・閉じる手順を持つ。Epic の親は、渡された指示に従って該当する節を読む。質問への回答、調べもの、ファイルの変更、ワーカーとして渡された作業の中では読まない。Orca のコマンドそのもの（`worker-start`・`ask`・`reply` など）は `orchestration`、worktree と terminal の操作は `orca-cli` を読む。
+description: 窓口（デフォルトブランチのセッション）が、次に何に着手するかを決める前、または利用者の依頼を Issue にする前に読む。開いたまま誰も動かしていない Issue（親のセッションが止まった Epic、coordinator が居なくなった単独タスク、報告のコメントが無い閉じた子 Issue、開いた Epic の無いマイルストーン Issue、`backlog` の全件）を `gh` で確かめ、見つけたものを立て直す・書き足す・閉じる手順を持つ。Epic の親は、渡された指示に従って該当する節を読む。Issue の計画や進行と関係ない質問、調べもの、ファイルの変更では読まない。ワーカーは渡された spec を読み、このスキルは読まない。Orca のコマンドそのもの（`worker-start`・`ask`・`reply` など）は `orchestration`、worktree と terminal の操作は `orca-cli` を読む。
 ---
 
 # Epic の親が読む節
@@ -49,7 +49,7 @@ orca orchestration worker-list --run <Run の id> --json | jq '.result.workers[]
 
 1. Epic の本文にある Run の id を取り、Epic に、立て直すことと理由をコメントする。コメントを先に書く。新しい親が Issue から続けられるようにするため
 2. `orca orchestration run-use --id <Run の id>` で Run を再開する
-3. `orca orchestration task-create --spec "<Epic #N の親のセッション（coordinator）を担当する。前の親のセッションは止まった。Epic の本文と Issue のコメントから続ける。>"` で Task を作る
+3. `orca orchestration task-create --spec "<Epic #N の親のセッション（coordinator）を担当する。前の親のセッションは止まった。issue-planning の S8 を読み、Epic の本文と Issue のコメントから続ける。>"` で Task を作る
 4. `orca orchestration worker-start --task <task id> --worktree path:<Epic の worktree の絶対パス> --agent <エージェント> --model <モデル> --keep-open` で新しい親を起こす。worktree の選択子は `issue:<番号>` でなく `path:` にする。ほかのリポジトリに同じ番号の Issue に紐づいた worktree があると、`issue:` は拒否される
 
 ## 2. coordinator が居なくなった単独タスク
