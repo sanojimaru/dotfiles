@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import re
+import sys
 
 from common import gh
 
@@ -10,9 +11,9 @@ from common import gh
 def load_holdout(repo, names):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("--holdout-repo は owner/repo で指定してください")
-    token = os.environ.get("IPE_HOLDOUT_TOKEN")
+    token = sys.stdin.readline().strip()
     if not token:
-        raise ValueError("test ケースを取得するには IPE_HOLDOUT_TOKEN が必要です")
+        raise ValueError("test ケースの読み取り専用トークンを標準入力に渡してください")
     env = dict(os.environ, GH_TOKEN=token)
     path = f"repos/{repo}"
     metadata = json.loads(gh("api", path, env=env))
@@ -25,6 +26,8 @@ def load_holdout(repo, names):
     cases = []
     for name in names:
         encoded = gh("api", f"{path}/contents/cases/{name}.json", "--jq", ".content", env=env)
+        if not encoded.strip():
+            raise ValueError(f"holdout の {name} が空か、GitHub Contents API の 1 MB 制限を超えています")
         case = json.loads(base64.b64decode(encoded))
         if case.get("id") != name or case.get("split") != "test":
             raise ValueError(f"holdout にある {name} の id または split が正しくありません")
