@@ -6,6 +6,7 @@ import re
 import threading
 from pathlib import Path
 
+import fake_gh
 from common import HERE, OWNER, check_eval_repo, gh
 
 # 評価用リポジトリごとに、立ててある種（ケース・番号・読んだときの状態）を覚える。試行の後は、エージェントが変えたものだけを戻す
@@ -62,6 +63,28 @@ def seed_repo(repo, case):
         if iss.get("state") == "closed":
             gh("issue", "close", str(nums[iss["key"]]), "-R", r, "--reason", "completed")
     return nums
+
+
+def seed_local(case, repo):
+    """`seed_repo` と同じ種を、GitHub でなく代役の状態に立てる。(番号, 状態) を返す。"""
+    state = fake_gh.new_state(f"{OWNER}/{repo}", case["seed"].get("labels", []))
+    prs = case["seed"].get("prs", [])
+    keys = [item["key"] for item in [*prs, *case["seed"]["issues"]]]
+    if len(set(keys)) != len(keys):
+        raise ValueError("種の Issue と PR の key は重複できません")
+    nums = {pr["key"]: 1_000_000 + i for i, pr in enumerate(prs, 1)}
+    # 番号は、立てる前に決まる（GitHub と違い、種の中で互いを指す本文を 1 回で書ける）
+    nums.update({iss["key"]: state["next_number"] + i for i, iss in enumerate(case["seed"]["issues"])})
+    for iss in case["seed"]["issues"]:
+        fake_gh.add_issue(state, subst(iss["title"], nums), subst(iss["body"], nums), labels=iss.get("labels", []),
+                          type_=iss.get("type"), parent=nums[iss["parent"]] if iss.get("parent") else None)
+    for iss in case["seed"]["issues"]:
+        issue = fake_gh.find(state, nums[iss["key"]])
+        for body in iss.get("comments", []):
+            fake_gh.add_comment(state, issue, subst(body, nums))
+        if iss.get("state") == "closed":
+            fake_gh.set_state(issue, True)
+    return nums, state
 
 
 def pr_state(case, nums, repo):
