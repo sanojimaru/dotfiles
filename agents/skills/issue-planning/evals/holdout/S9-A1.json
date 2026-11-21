@@ -1,6 +1,6 @@
 {
   "id": "S9-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S9",
   "prompt": "Run `run_ee5f5d0e5e02` に Orca からワーカーの通知が届きました。",
   "history": "利用者: この小さな変更を進めてください。\n\n窓口: 単独タスク #<<task>> のワーカーを起動しました。質問や完了の通知を私が受け取ります。",

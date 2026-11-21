@@ -1,5 +1,6 @@
 """採点: 終状態と呼び出しの記録はコードで、返事は別の会社のモデルの判定器で採点する。"""
 import json
+import math
 import os
 import re
 import subprocess
@@ -8,6 +9,10 @@ from pathlib import Path
 from common import JUDGE_MODEL, STRIP_ENV, sh
 from fake_orca import opt as option, selector_hits
 from seed import subst
+
+# S1 の 1 回あたりの GitHub の予算（GraphQL のポイント。#78 の利用者の決定）。超えた試行は失敗にする。
+S1_SECTIONS = ("S1a", "S1b")
+S1_GRAPHQL_BUDGET = 10
 
 
 def read_calls(log):
@@ -28,6 +33,22 @@ def is_comment_on(call, n):
     method = method or next((re.sub(r"^(--method=|-X=?)", "", x).upper() for x in a if re.match(r"(--method=|-X.)", x)), None)
     has_body = any(re.match(r"(-f|-F|--field|--raw-field|--input)", x) for x in a)  # `-fbody=x`・`--field=body=x` も本文
     return (method or ("POST" if has_body else "GET")) == "POST"
+
+
+def graphql_points(calls):
+    """代役の記録から、本物の GitHub なら使った GraphQL のポイントを見積もる（README の「GitHub の予算」）。"""
+    points = 0
+    for call in calls:
+        argv = call["argv"]
+        if call["tool"] != "gh" or call.get("rc") != 0 or not argv or {"--help", "-h"}.intersection(argv):
+            continue
+        if argv[0] == "api" and "graphql" not in argv:  # REST は GraphQL のポイントを使わない
+            continue
+        if argv[:2] in (["issue", "list"], ["issue", "ls"], ["pr", "list"], ["pr", "ls"]):
+            points += max(1, math.ceil(call.get("rows", 0) / 100))  # 一覧は 100 件で 1 ページ
+        else:
+            points += 1
+    return points
 
 
 def orca_calls(ctx, spec):
@@ -211,15 +232,19 @@ def judge_item(agent, reply, question, out):
 def grade(case, ctx, reply, agent, out, use_judge=True):
     checks = {c["id"]: run_check(c, ctx) for c in case["expect"]["checks"]}
     fail_on_any = [c["id"] for c in case["expect"]["checks"] if c.get("fail_on_any") and not checks[c["id"]]]
-    judge = {}
+    points = graphql_points(ctx["calls"])
+    if case.get("section") in S1_SECTIONS:
+        checks["graphql-budget"] = points <= S1_GRAPHQL_BUDGET
+    judge, judged = {}, {}
     if use_judge:
         for item in case["expect"].get("judge", []):
             content = evidence(item, ctx, reply)
             question = subst(item["q"], ctx["nums"])
             passed = judge_item(agent, content, question, out) if content.strip() else item.get("allow_empty", False)
             judge[item["id"]] = passed
+            judged[item["id"]] = {"q": question, "evidence": content}  # 較正で、人が判定器と同じ証拠を見るため
             if item.get("fail_on_any") and not passed:
                 fail_on_any.append(item["id"])
     pass_code = all(checks.values())
-    return {"checks": checks, "judge": judge, "judge_calibrated": False, "fail_on_any": fail_on_any, "pass_code": pass_code,
-            "pass_all": pass_code and all(v is True for v in judge.values())}
+    return {"checks": checks, "judge": judge, "judge_inputs": judged, "judge_calibrated": False, "fail_on_any": fail_on_any,
+            "pass_code": pass_code, "pass_all": pass_code and all(v is True for v in judge.values()), "graphql_points": points}

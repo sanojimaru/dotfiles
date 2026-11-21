@@ -1,6 +1,6 @@
 {
   "id": "N-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "N",
   "prompt": "`install.sh` は何をしている？",
   "seed": {

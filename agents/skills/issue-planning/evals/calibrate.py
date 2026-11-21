@@ -1,4 +1,4 @@
-"""判定器の較正: 返事を人が yes/no を付けられる形に出し、人のラベルと判定器の一致率を出す（#88 の 3.1。90% 以上で使う）。"""
+"""判定器の較正: 判定器に渡した証拠を人が yes/no を付けられる形に出し、人のラベルと判定器の一致率を出す（#88 の 3.1。90% 以上で使う）。"""
 import json
 import random
 from pathlib import Path
@@ -10,22 +10,30 @@ def load_case(name):
     return json.loads((HERE / "cases" / f"{name}.json").read_text())
 
 
+def quote(text):
+    return "> " + (text or "（空）").replace("\n", "\n> ")
+
+
 def cmd_labels(args):
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     paths = [p for d in args.dir for p in sorted([*Path(d).glob("*/try*/trial.json"), *Path(d).glob("trial.json")])]  # batch の形と、trial --out の形
     trials = [(p.parent, json.loads(p.read_text())) for p in paths]
-    trials = [(d, r) for d, r in trials if not r["infra_failure"]]
+    trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["grade"].get("judge_inputs")]
     random.Random(args.seed).shuffle(trials)  # 条件（有・無）が並びから分からないように混ぜる
-    lines, answers = ["# 判定器の較正: 返事に yes/no を付ける", "",
-                      "返事ごとに、問いに yes か no で答えてください。判定器の答えは別のファイル（answers.json）にあり、ここには出していません。", ""], {}
+    trials = trials[:args.count]
+    lines, answers = ["# 判定器の較正: 判定器の証拠に yes/no を付ける", "",
+                      "問いごとに、判定器に渡したものと同じ証拠を読み、yes か no を human.json に書いてください。判定器の答えは別のファイル（answers.json）にあり、ここには出していません。", ""], {}
     for i, (d, r) in enumerate(trials, 1):
         case = load_case(r["case"])
         key = f"L{i:02d}"
-        lines += [f"## {key}", "", "> " + r["reply"].replace("\n", "\n> "), ""]
+        lines += [f"## {key}", ""]
         for j in case["expect"].get("judge", []):
-            lines.append(f"- [ ] {key}/{j['id']}: {j['q']}（yes / no）")
-        lines.append("")
+            if j["id"] not in r["grade"]["judge_inputs"]:
+                continue
+            item = r["grade"]["judge_inputs"][j["id"]]
+            lines += [f"### {key}/{j['id']}", "", f"問い: {item['q']}（yes / no）", "",
+                      f"判定器に渡した証拠（{j.get('source', 'reply')}）:", "", quote(item["evidence"]), ""]
         answers[key] = {"trial": str(d), "case": r["case"], "cond": r["cond"], "judge": r["grade"]["judge"]}
     (out / "labels.md").write_text("\n".join(lines))
     (out / "answers.json").write_text(json.dumps(answers, ensure_ascii=False, indent=2))

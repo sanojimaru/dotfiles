@@ -1,19 +1,20 @@
-"""スキルの開発中に test ケースを参照しないためのフックと会話記録の検査。"""
+"""スキルの開発中に評価データセット（evals/holdout/）を参照しないためのフックと会話記録の検査。"""
 import json
 import os
 import re
 import subprocess
 import sys
 
-TEST_PATH = "agents/skills/issue-planning/evals/test"
-TEST_EXCLUDE = f"!/{TEST_PATH}/"
-ACCESS = re.compile(r"(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[^\w.-]))")
+HOLDOUT_PATH = "agents/skills/issue-planning/evals/holdout"
+HOLDOUT_EXCLUDE = f"!/{HOLDOUT_PATH}/"
+# 呼び方を変える前（evals/test/）の会話記録も検査できるよう、古いパスも探す。
+ACCESS = re.compile(r"(?<![\w.-])evals/(?:holdout|test)(?:/([\w-]+)\.json(?![\w.-])|(?=$|[^\w.-]))")
 
 
-def hide_test(worktree):
+def hide_holdout(worktree):
     subprocess.run(
         ["git", "-C", str(worktree), "sparse-checkout", "set", "--no-cone", "--stdin"],
-        input=f"/*\n{TEST_EXCLUDE}\n",
+        input=f"/*\n{HOLDOUT_EXCLUDE}\n",
         text=True,
         check=True,
     )
@@ -30,7 +31,7 @@ def strings(value):
             yield from strings(item)
 
 
-def test_access(tool_input):
+def holdout_access(tool_input):
     return {m[1] or "*" for value in strings(tool_input) for m in ACCESS.finditer(value)}
 
 
@@ -73,7 +74,7 @@ def audit_transcript(path):
                 raise ValueError(f"{path}:{line_no}: JSONL を読めません") from exc
             if not isinstance(event, dict):
                 raise ValueError(f"{path}:{line_no}: JSONL のイベントがオブジェクトではありません")
-            cases = {case for tool_input in tool_inputs(event) for case in test_access(tool_input)}
+            cases = {case for tool_input in tool_inputs(event) for case in holdout_access(tool_input)}
             if cases:
                 yield {"transcript": str(path), "line": line_no, "cases": sorted(cases)}
 
@@ -85,13 +86,13 @@ def check_hook():
         event = json.load(sys.stdin)
     except ValueError:
         return 0
-    if not isinstance(event, dict) or not test_access(event.get("tool_input")):
+    if not isinstance(event, dict) or not holdout_access(event.get("tool_input")):
         return 0
     # sparse-checkout を設定した子だけを対象にし、通常の checkout で作業する TC を止めない。
     cwd = event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     sparse = subprocess.run(["git", "sparse-checkout", "list"], cwd=cwd, capture_output=True, text=True)
-    if TEST_EXCLUDE in sparse.stdout.splitlines():
-        print("issue-planning: スキルの開発中は evals/test/ を読みません。", file=sys.stderr)
+    if HOLDOUT_EXCLUDE in sparse.stdout.splitlines():
+        print("issue-planning: スキルの開発中は evals/holdout/ を読みません。", file=sys.stderr)
         return 2
     return 0
 

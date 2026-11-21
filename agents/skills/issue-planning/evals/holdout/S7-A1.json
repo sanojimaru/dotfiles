@@ -1,6 +1,6 @@
 {
   "id": "S7-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S7",
   "prompt": "受付予約の番号検索は現場で確認できました。Epic の現状を確認してください。",
   "history": "親: Epic #<<epic>> の完了の状態と対象外について合意してから、番号検索を実装する子 #<<task>> を起動しました。<!--skill-->この後は `issue-planning` の親の手順を読みます。<!--/skill-->",

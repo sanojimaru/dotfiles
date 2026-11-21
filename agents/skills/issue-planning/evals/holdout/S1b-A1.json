@@ -1,6 +1,6 @@
 {
   "id": "S1b-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S1b",
   "prompt": "次は何をする？",
   "seed": {

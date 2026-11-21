@@ -1,6 +1,6 @@
 {
   "id": "S1a-B1",
-  "split": "test",
+  "split": "holdout",
   "section": "S1a",
   "prompt": "次は何をする？",
   "note": "質問の経過時間は子 Issue のコメント本文に記録する。GitHub のコメント作成時刻は変更しない。",

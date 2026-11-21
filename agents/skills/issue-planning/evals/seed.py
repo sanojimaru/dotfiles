@@ -128,7 +128,7 @@ def snapshot(repo):
     }
 
 
-def orca_state(case, nums, clone):
+def orca_state(case, nums, clone, repo):
     o = case["orca"]
     wts = [{"issue": None, "name": "main", "path": str(clone), "identity": "wt2:local:main"}]
     for w in o["worktrees"]:
@@ -140,7 +140,7 @@ def orca_state(case, nums, clone):
     messages = [orca_message(recordings, message, nums, rid, i) for i, message in enumerate(o.get("messages", []), 1)]
     reply = o.get("ask_reply")
     return {
-        "repo_id": "fake-repo", "run_id": o["run_id"], "run_objective": o["run_objective"], "worktrees": wts,
+        "repo_id": "fake-repo", "run_id": o["run_id"], "run_objective": subst(o["run_objective"].replace("<<repo>>", f"{OWNER}/{repo}"), nums), "worktrees": wts,
         "workers": [{"issue": nums[w["issue"]], "liveness": w["liveness"], "state": w["state"]} for w in o["workers"]],
         "tasks": o.get("tasks", []),
         "messages": messages,

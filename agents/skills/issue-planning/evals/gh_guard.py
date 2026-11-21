@@ -186,6 +186,7 @@ def main():
             extra = issue_event(argv, endpoint, input_body)
         except (OSError, TypeError, ValueError) as exc:
             extra = {"observation_error": str(exc)}
+    extra = {**extra, **fake_gh.OBSERVED}
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
         f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc, **extra}, ensure_ascii=False) + "\n")
     sys.exit(rc)
