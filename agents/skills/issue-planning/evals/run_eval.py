@@ -32,7 +32,7 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
                     STRIP_ENV, WALL_SECONDS, gh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
-from holdout import load_holdout
+from holdout import audit_transcript, hide_test
 from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_repo, snapshot, subst
 
 
@@ -224,12 +224,17 @@ def parse_codex(transcript):
     return {"skill_reads": reads, "cost": {"usd": None, "usage": usage}}
 
 
-def load_cases(names, holdout_repo):
+def load_cases(names, split):
     if any(not re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names):
         raise ValueError("ケース名には英数字・ハイフン・アンダースコアだけを使ってください")
-    if holdout_repo:
-        return load_holdout(holdout_repo, names)
-    return [json.loads((HERE / "cases" / f"{name}.json").read_text()) for name in names]
+    directory = HERE / {"dev": "cases", "test": "test"}[split]
+    cases = []
+    for name in names:
+        case = json.loads((directory / f"{name}.json").read_text())
+        if case.get("id") != name or case.get("split") != split:
+            raise ValueError(f"{name} の id または split が正しくありません")
+        cases.append(case)
+    return cases
 
 
 def prepare(case, repo, cond, agent, out):
@@ -317,7 +322,7 @@ def clean_trial(case, repo):
 
 def cmd_check(args):
     """配線の確認: 採点器が null・oracle・bad に正しく答えるか（#88 7.3 の 4）。"""
-    case, = load_cases([args.case], args.holdout_repo)
+    case, = load_cases([args.case], args.split)
     rows = []
     for kind in ("null", "oracle", "bad"):
         steps = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
@@ -341,13 +346,13 @@ def cmd_check(args):
 
 def cmd_trial(args):
     out = Path(args.out or tempfile.mkdtemp(prefix="ipe-trial-")).resolve()
-    case, = load_cases([args.case], args.holdout_repo)
+    case, = load_cases([args.case], args.split)
     rec = trial(case, args.repo, args.cond, args.agent, out)
     print(json.dumps({"out": str(out), **{k: rec[k] for k in ("case", "cond", "infra_failure")}, "grade": rec.get("grade"), "run": rec["run"]}, ensure_ascii=False, indent=2))
 
 
 def cmd_batch(args):
-    cases = load_cases(args.cases.split(","), args.holdout_repo)
+    cases = load_cases(args.cases.split(","), args.split)
     conds = args.cond.split(",")
     repos = args.repos.split(",")
     out_root = Path(args.out or Path.home() / ".cache/issue-planning-eval" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
@@ -420,19 +425,31 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
-    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
+    p.add_argument("--split", choices=("dev", "test"), default="dev")
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
-    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
+    p.add_argument("--split", choices=("dev", "test"), default="dev")
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
-    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（標準入力にトークンが必要）")
+    p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p = sub.add_parser("hide-test", help="スキルを書く子の worktree から test ケースを外す")
+    p.add_argument("worktree", type=Path)
+    p = sub.add_parser("audit-test", help="スキルを書いた子の JSONL 会話記録から test ケースへのアクセスを探す")
+    p.add_argument("transcript", type=Path, nargs="+")
     p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
     p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
     args = ap.parse_args()
-    if args.cmd in ("trial", "batch") and args.holdout_repo and not args.out:
-        ap.error("holdout の試行ログは --out で非共有ディレクトリを指定してください")
+    if args.cmd == "hide-test":
+        hide_test(args.worktree)
+        return 0
+    if args.cmd == "audit-test":
+        try:
+            findings = [hit for path in args.transcript for hit in audit_transcript(path)]
+        except (OSError, ValueError) as exc:
+            ap.error(str(exc))
+        print(json.dumps(findings, ensure_ascii=False, indent=2))
+        return int(bool(findings))
     args.f(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
