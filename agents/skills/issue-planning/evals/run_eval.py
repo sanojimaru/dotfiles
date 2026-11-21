@@ -19,8 +19,10 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -30,6 +32,7 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
                     STRIP_ENV, WALL_SECONDS, gh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
+from holdout import load_holdout
 from seed import ensure_seed, orca_state, pr_state, restore, snapshot, subst
 
 
@@ -91,15 +94,24 @@ def run_codex(prompt, clone, env, cond, out):
     home.mkdir()
     (home / "AGENTS.md").write_text(draft_for(cond))
     (home / "auth.json").symlink_to(Path.home() / ".codex/auth.json")
+    user_home = out / "codex-user"
+    user_home.mkdir()
+    gh_config = os.environ.get("GH_CONFIG_DIR") or str(Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "gh")
+    # HOME を変えると mise の shim が元のランタイムを見つけないため、評価の代役に必要な実体を固定する。
+    bindir = Path(env["PATH"].split(os.pathsep)[0])
+    (bindir / "python3").symlink_to(sys.executable)
+    jq = shutil.which("jq")
+    if jq and "mise/shims" in jq:
+        jq = subprocess.check_output(["mise", "which", "jq"], text=True).strip()
+    if jq:
+        (bindir / "jq").symlink_to(jq)
     # Codex は `zsh -lc` でコマンドを実行し、ログインシェルの設定が PATH を作り直して代役の gh・orca を外す。
     # ZDOTDIR を空の設定に向け、PATH の先頭へ代役を戻す（利用者の設定は読まれないので、本番との差になる）
     zdot = out / "zdotdir"
     zdot.mkdir()
     for name in (".zshenv", ".zprofile", ".zshrc"):
-        (zdot / name).write_text(f'export PATH="{Path(env["PATH"].split(os.pathsep)[0])}:$PATH"\n')
-    if (Path.home() / ".agents/skills/issue-planning").exists():
-        raise RuntimeError("~/.agents/skills/issue-planning があると、Codex の無の条件にもスキルが入る。外してから流す")
-    env = dict(env, CODEX_HOME=str(home), ZDOTDIR=str(zdot))
+        (zdot / name).write_text(f'export PATH={shlex.quote(str(bindir))}:"$PATH"\n')
+    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
     last = out / "last-message.txt"
     argv = ["codex", "exec", "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-C", str(clone),
             "--dangerously-bypass-approvals-and-sandbox", "-o", str(last), prompt]
@@ -163,8 +175,12 @@ def parse_codex(transcript):
     return {"skill_reads": reads, "cost": {"usd": None, "usage": usage}}
 
 
-def load_case(name):
-    return json.loads((HERE / "cases" / f"{name}.json").read_text())
+def load_cases(names, holdout_repo):
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names):
+        raise ValueError("ケース名には英数字・ハイフン・アンダースコアだけを使ってください")
+    if holdout_repo:
+        return load_holdout(holdout_repo, names)
+    return [json.loads((HERE / "cases" / f"{name}.json").read_text()) for name in names]
 
 
 def prepare(case, repo, cond, agent, out):
@@ -220,7 +236,7 @@ def trial(case, repo, cond, agent, out, use_judge=True):
 
 def cmd_check(args):
     """配線の確認: 採点器が null・oracle・bad に正しく答えるか（#88 7.3 の 4）。"""
-    case = load_case(args.case)
+    case, = load_cases([args.case], args.holdout_repo)
     rows = []
     for kind in ("null", "oracle", "bad"):
         steps = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
@@ -242,12 +258,13 @@ def cmd_check(args):
 
 def cmd_trial(args):
     out = Path(args.out or tempfile.mkdtemp(prefix="ipe-trial-")).resolve()
-    rec = trial(load_case(args.case), args.repo, args.cond, args.agent, out)
+    case, = load_cases([args.case], args.holdout_repo)
+    rec = trial(case, args.repo, args.cond, args.agent, out)
     print(json.dumps({"out": str(out), **{k: rec[k] for k in ("case", "cond", "infra_failure")}, "grade": rec.get("grade"), "run": rec["run"]}, ensure_ascii=False, indent=2))
 
 
 def cmd_batch(args):
-    cases = [load_case(c) for c in args.cases.split(",")]
+    cases = load_cases(args.cases.split(","), args.holdout_repo)
     conds = args.cond.split(",")
     repos = args.repos.split(",")
     out_root = Path(args.out or Path.home() / ".cache/issue-planning-eval" / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")).resolve()
@@ -320,8 +337,11 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（IPE_HOLDOUT_TOKEN が必要）")
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（IPE_HOLDOUT_TOKEN が必要）")
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
+    p.add_argument("--holdout-repo", help="test ケースを取得する非公開の owner/repo（IPE_HOLDOUT_TOKEN が必要）")
     p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
     p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
