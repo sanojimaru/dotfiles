@@ -8,16 +8,21 @@
 
 評価中に GitHub に本物の PR を作ることはありません。PR を確かめるときは、代役が再生する `gh pr list`、`gh pr view`、`gh api repos/{owner}/{repo}/pulls`（一覧または番号指定）を使います。GraphQL や Issue のタイムラインには再生した PR は出ません。
 
-## 非公開の test ケース
+## 開発用と最終評価用のケース
 
-test の GitHub リポジトリは、スキルを書くセッションが使う GitHub 認証ではアクセスできない非公開のリポジトリに置きます。ケース作成用の認証と、評価器が取得するための読み取り専用の認証を分けます。ケースは `cases/<ケース名>.json` に置き、`"split": "test"` を指定します。評価器は通常の GitHub 認証で 404 が返ることを確認し、標準入力で受け取ったトークンだけで取得します。
+既定では `cases/<ケース名>.json` の dev ケースを使います。最終評価では `--split test` を指定し、同じリポジトリの `test/<ケース名>.json` を読みます。各ファイルの `split` を対応する値にしてください。test は公開リポジトリに置くため、次の手順は秘密を守るためではなく、スキルを書くセッションへの偶発的な混入を防ぐために使います。
 
 ```sh
-orca-nested python3 run_eval.py trial CASE --holdout-repo OWNER/REPO \
-  --cond with --agent claude --out "$PRIVATE_EVAL_DIR" < "$READ_TOKEN_FILE"
+orca-nested python3 run_eval.py trial CASE --split test --cond with --agent claude
 ```
 
-トークンを被験の CLI に渡すことはありません。test の試行ログは、スキルを書くセッションがアクセスできない場所に保存します。test の実行にはスキルの開発と並行で使っていない評価用リポジトリを割り当てます。test の種は共有キャッシュに書き込まず、試行後に評価用リポジトリから削除します。
+test の実行にはスキルの開発と並行で使っていない評価用リポジトリを割り当てます。test の種は共有キャッシュに書き込まず、試行後に評価用リポジトリから削除します。
+
+### スキルを書くワーカーの起動と確認
+
+1. スキルを書く子（B・C・D）の worktree を作成し、ワーカーを起動する前に、親の checkout にある実行器で `python3 run_eval.py hide-test "$CHILD_WORKTREE"` を実行します。子の checkout から `evals/test/` を外し、親や test ケースを書く子の checkout は変更しません。
+2. Claude Code はプロジェクトの `PreToolUse` フックで `Read`・`Grep`・`Glob`・`Bash` の入力に含まれる `evals/test/` への直接のアクセスを止めます。Codex には、test を読まないことを spec で伝えます。`ISSUE_PLANNING_EVAL_RUNNER=1` は、意図して test を実行する評価側の Claude Code を起動するときだけ設定できます。評価器はこの値を被験の CLI に引き継ぎません。
+3. test の実行前に `python3 run_eval.py audit-test "$CLAUDE_TRANSCRIPT" "$CODEX_TRANSCRIPT"` を使い、スキルを書いた子の JSONL 会話記録をすべて確認します。パスを含むツール入力を見つけた場合は終了コード 1 と記録の行番号・ケース名を返します。該当するケースは無効として、test を書く子に差し替えを依頼します。ケース名を特定できないアクセスは `*` と表示し、その入力が対象にしたケースを確認します。ツール入力ではない説明文や spec の記述は検査結果に含めません。
 
 ## 会話の途中から始める
 
