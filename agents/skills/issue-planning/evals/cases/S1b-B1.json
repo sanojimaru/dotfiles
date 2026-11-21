@@ -79,13 +79,7 @@
       "--body",
       "README の例を直す単独タスクのワーカーを起こし直します。"
     ],
-    [
-      "orca",
-      "orchestration",
-      "run-use",
-      "--id",
-      "run_ipe_s1b"
-    ],
+      ["orca", "orchestration", "run-use", "--id", "run_ipe_s1b"],
     [
       "orca",
       "orchestration",
