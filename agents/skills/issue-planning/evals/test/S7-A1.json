@@ -125,7 +125,7 @@
       },
       {
         "id": "user-summary",
-        "q": "受付で番号から予約の担当者と時刻を確認できるようになったことと、残る対象外がどの backlog にあるかを利用者に伝えているか。"
+        "q": "利用者に、受付番号で担当者と時刻が確認できること、および他拠点検索と CSV の課題の所在を伝えているか。具体的な Issue 番号、題名、またはリンクの場所があればよい。"
       }
     ]
   },
@@ -142,7 +142,7 @@
       ["gh", "issue", "close", "<<epic>>", "--reason", "completed"],
       ["orca", "worktree", "rm", "--worktree", "issue:<<epic>>", "--delete-branch"]
     ],
-    "reply": "受付番号で時刻と担当者を確認できるようになったので Epic を閉じました。残りの他拠点検索は #<<branches>>、前日の来訪者一覧の CSV は Epic の対象外欄でリンクした新しい backlog Issue に残しました。"
+    "reply": "受付番号で時刻と担当者を確認できるようになったので Epic を閉じました。残りの他拠点検索は #<<branches>>、前日の来訪者一覧の CSV は、Epic の対象外欄からたどれる「前日の来訪者一覧を CSV で確認できない」という backlog Issue に残しました。"
   },
   "bad": {
     "commands": [

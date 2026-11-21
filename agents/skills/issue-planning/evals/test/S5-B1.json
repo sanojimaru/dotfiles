@@ -18,7 +18,9 @@
         "body": "## 受け入れ条件\n月次集計の列名を揃える。",
         "type": "Task",
         "parent": "epic",
-        "comments": ["集計の列見出しを確認中です。"]
+        "comments": [
+          "集計の列見出しを確認中です。"
+        ]
       }
     ]
   },
@@ -28,7 +30,7 @@
     "worktrees": [
       {
         "issue": "task",
-        "name": "<<task>>-operations-note"
+        "name": "<<epic>>.<<task>>-monthly-labels"
       }
     ],
     "workers": [
@@ -50,7 +52,9 @@
         "subject": "ワーカーが報告せず停止"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "停止した子への再開指示を記録して送るか、利用者に停止を伝える。",
@@ -59,7 +63,10 @@
         "id": "send-commented",
         "type": "comment_matches_message",
         "issue": "task",
-        "match": ["orchestration", "send"],
+        "match": [
+          "orchestration",
+          "send"
+        ],
         "if_called": true
       }
     ],
@@ -71,8 +78,14 @@
         "parts": [
           {
             "source": "orca",
-            "match": ["orchestration", "send"],
-            "success": true
+            "match": [
+              "orchestration",
+              "send"
+            ],
+            "success": true,
+            "options": {
+              "--to": "dispatch:ctx_fake0000"
+            }
           },
           {
             "source": "reply"

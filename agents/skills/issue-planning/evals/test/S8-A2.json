@@ -18,7 +18,9 @@
         "type": "Task",
         "parent": "epic",
         "state": "closed",
-        "comments": ["## 片付いたこと\n社内 ID が登録された倉庫 1 件の出荷明細を取得できました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"]
+        "comments": [
+          "## 片付いたこと\n社内 ID が登録された倉庫 1 件の出荷明細を取得できました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       }
     ],
     "prs": [
@@ -26,8 +28,11 @@
         "key": "pr",
         "title": "社内 ID を出荷明細に含める",
         "body": "倉庫の社内 ID を取得できる。Closes #<<task>>",
-        "closes": ["task"],
-        "state": "MERGED"
+        "closes": [
+          "task"
+        ],
+        "state": "MERGED",
+        "headRefName": "<<epic>>.<<task>>-warehouse-lookup"
       }
     ]
   },
@@ -41,7 +46,7 @@
       },
       {
         "issue": "task",
-        "name": "<<task>>-warehouse-lookup",
+        "name": "<<epic>>.<<task>>-warehouse-lookup",
         "checkout": true
       }
     ],
@@ -66,7 +71,9 @@
         "id": "msg_warehouse"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "Run を再開して閉じた子の報告と状態を照合し、子の worktree を消し、先行が完了した次の作業を起動する。",
@@ -74,7 +81,10 @@
       {
         "id": "run-use",
         "type": "calls",
-        "match": ["orchestration", "run-use"],
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
         "count": 1,
         "success": true,
         "options": {
@@ -121,18 +131,34 @@
             "parent": "epic"
           }
         },
-        "fields": ["title", "body"]
+        "fields": [
+          "title",
+          "body"
+        ]
       }
     ]
   },
   "oracle": {
     "commands": [
-      ["orca", "orchestration", "run-use", "--id", "run_e803297d9e8f"],
-      ["orca", "worktree", "rm", "--worktree", "issue:<<task>>", "--delete-branch"],
+      [
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_e803297d9e8f"
+      ],
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch"
+      ],
       [
         "sh",
         "-c",
-        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
+        "set -eu\nurl=$(gh issue create --title \"$1\" --body \"$2\" --parent \"$3\" --type Task)\nnumber=${url##*/}\norca worktree create --name \"$3.$number-$4\" --issue \"$number\" --parent-worktree active\norca orchestration worker-start --worktree \"issue:$number\" --agent claude --spec \"$5\"",
         "launch-child",
         "一覧に倉庫名と社内 ID を表示する",
         "倉庫の名前と社内 ID を含む明細が一覧の行に表示される。",

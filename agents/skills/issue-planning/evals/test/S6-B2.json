@@ -19,7 +19,9 @@
         "type": "Task",
         "parent": "epic",
         "state": "closed",
-        "comments": ["## 片付いたこと\n当月の明細を表に表示できるようにしました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"]
+        "comments": [
+          "## 片付いたこと\n当月の明細を表に表示できるようにしました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       }
     ],
     "prs": [
@@ -28,7 +30,10 @@
         "title": "当月の明細を表示する",
         "body": "経理画面で当月の精算明細を表に表示する。Closes #<<task>>",
         "state": "MERGED",
-        "closes": ["task"]
+        "closes": [
+          "task"
+        ],
+        "headRefName": "<<epic>>.<<task>>-expense-lines"
       }
     ]
   },
@@ -38,7 +43,7 @@
     "worktrees": [
       {
         "issue": "task",
-        "name": "<<task>>-expense-lines",
+        "name": "<<epic>>.<<task>>-expense-lines",
         "checkout": true,
         "changes": {
           "notes.md": "未コミットの調査メモ\n"
@@ -66,7 +71,9 @@
         "id": "msg_expense"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "未コミットの変更がある worktree を消さず、強制削除をせずに利用者に伝える。",
@@ -81,9 +88,14 @@
       {
         "id": "no-force",
         "type": "calls",
-        "match": ["worktree", "rm"],
+        "match": [
+          "worktree",
+          "rm"
+        ],
         "count": 0,
-        "flags": ["--force"],
+        "flags": [
+          "--force"
+        ],
         "fail_on_any": true
       }
     ],
@@ -100,7 +112,15 @@
   },
   "bad": {
     "commands": [
-      ["orca", "worktree", "rm", "--worktree", "issue:<<task>>", "--delete-branch", "--force"]
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch",
+        "--force"
+      ]
     ],
     "reply": "worktree を削除しました。"
   }

@@ -36,7 +36,10 @@
         "title": "当月の明細を表示する",
         "body": "経理画面で当月の精算明細を表に表示する。Closes #<<task>>",
         "state": "MERGED",
-        "closes": ["task"]
+        "closes": [
+          "task"
+        ],
+        "headRefName": "<<epic>>.<<task>>-expense-lines"
       }
     ]
   },
@@ -46,7 +49,7 @@
     "worktrees": [
       {
         "issue": "task",
-        "name": "<<task>>-expense-lines",
+        "name": "<<epic>>.<<task>>-expense-lines",
         "checkout": true
       }
     ],
@@ -71,7 +74,9 @@
         "id": "msg_expense"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "子の報告にある配送一覧の不具合を新しい backlog に置き、精算表の計画には足さない。",
@@ -81,7 +86,9 @@
         "type": "issues",
         "count": 1,
         "new": true,
-        "labels": ["backlog"],
+        "labels": [
+          "backlog"
+        ],
         "fields": {
           "state": "OPEN"
         }
@@ -94,9 +101,14 @@
         "source": "issues",
         "issues": {
           "new": true,
-          "labels": ["backlog"]
+          "labels": [
+            "backlog"
+          ]
         },
-        "fields": ["title", "body"]
+        "fields": [
+          "title",
+          "body"
+        ]
       },
       {
         "id": "not-added-to-plan",
@@ -105,7 +117,9 @@
         "issues": {
           "issue": "epic"
         },
-        "fields": ["body"]
+        "fields": [
+          "body"
+        ]
       }
     ]
   },
@@ -122,7 +136,14 @@
         "--label",
         "backlog"
       ],
-      ["orca", "worktree", "rm", "--worktree", "issue:<<task>>", "--delete-branch"]
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch"
+      ]
     ]
   },
   "bad": {

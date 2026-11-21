@@ -49,7 +49,7 @@
       },
       {
         "issue": "b",
-        "name": "<<b>>-visit-dates"
+        "name": "<<epic>>.<<b>>-visit-dates"
       }
     ],
     "workers": [

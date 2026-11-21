@@ -32,7 +32,7 @@
       },
       {
         "issue": "task",
-        "name": "<<task>>-warehouse-code"
+        "name": "<<epic>>.<<task>>-warehouse-code"
       }
     ],
     "workers": [
