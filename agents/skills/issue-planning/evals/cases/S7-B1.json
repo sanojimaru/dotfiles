@@ -1,0 +1,176 @@
+{
+  "id": "S7-B1",
+  "split": "dev",
+  "section": "S7",
+  "history": "利用者: 会議の記録を Claude Code から探せるようにしたいです。\n\n親: 子 #<<c3>> の報告を照合し、worktree を片付けました。残りのノード（全件の索引と横断検索）は、今の子の大きさに収まらないと分かりました。<!--skill-->この後 Epic を閉じるので、issue-planning の該当する参照を読みます。<!--/skill-->",
+  "prompt": "続けてください。",
+  "seed": {
+    "files": {
+      "README.md": "# 会議の記録\n"
+    },
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "会議の記録を Claude Code から探せるようにする",
+        "body": "## 完了の状態\n- [x] 利用者として、Claude Code から会議 1 件を検索して中身を読める\n- [ ] 利用者として、約 3 万件の会議の全件から横断して検索できる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. 会議 1 件を取り込む] --> B[2. 検索コマンド]\n    B --> C[3. 検索結果の表示]\n    C --> D[4. 全件の索引と横断検索]\n```\n\nRun id: `run_ipe_s7_b1`"
+      },
+      {
+        "key": "c1",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "会議 1 件を取り込む",
+        "body": "## 受け入れ条件\n- [ ] 会議 1 件を取り込む\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- 会議 1 件を取り込む（PR をマージ済み）。\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      },
+      {
+        "key": "c2",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "会議の検索コマンドを作る",
+        "body": "## 受け入れ条件\n- [ ] 会議の検索コマンドを作る\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- 会議の検索コマンドを作る（PR をマージ済み）。\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      },
+      {
+        "key": "c3",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "検索結果を表示する",
+        "body": "## 受け入れ条件\n- [ ] 検索結果を表示する\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- 検索結果を表示する（PR をマージ済み）。\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- 全件の横断検索は、索引を作るところから必要で、作業時間は数日規模になる。今の子の大きさに収まらない。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s7_b1",
+    "run_objective": "Epic: 会議の記録を探せるようにする",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-meeting-search"
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "epic-completed",
+        "type": "issues",
+        "issue": "epic",
+        "count": 1,
+        "fields": {
+          "state": "CLOSED",
+          "stateReason": "COMPLETED"
+        }
+      },
+      {
+        "id": "remainder-in-backlog",
+        "type": "issues",
+        "new": true,
+        "minimum": 1,
+        "labels": [
+          "backlog"
+        ]
+      },
+      {
+        "id": "backlog-before-close",
+        "type": "order",
+        "events": [
+          {
+            "event": "created"
+          },
+          {
+            "event": "closed",
+            "issue": "epic"
+          }
+        ]
+      },
+      {
+        "id": "backlog-linked",
+        "type": "order",
+        "events": [
+          {
+            "event": "linked",
+            "issue": "epic",
+            "targets": {
+              "new": true,
+              "labels": [
+                "backlog"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "judge": [
+      {
+        "id": "closing-comment-starts-with-split",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "comments"
+        ],
+        "q": "Epic に新しく書いたコメントの冒頭が「分割」で始まり、外した部分を置いた backlog Issue を参照しているか",
+        "new_comments": true
+      },
+      {
+        "id": "done-state-narrowed",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の完了の状態が、会議 1 件の検索だけに狭められ、全件の横断検索を含んでいないか"
+      },
+      {
+        "id": "backlog-is-need-not-solution",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "labels": [
+            "backlog"
+          ]
+        },
+        "fields": [
+          "title",
+          "body"
+        ],
+        "q": "backlog の Issue が、何が起きている（起きうる）か・根拠・困る人だけで書かれ、解決策や手順を書いていないか"
+      },
+      {
+        "id": "reports-result-and-remainder",
+        "q": "返事で、できるようになったことと、残りの置き場（backlog の Issue）を利用者に伝えているか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "bash",
+        "-c",
+        "set -e; url=$(gh issue create --title '約 3 万件の会議の全件から横断して検索したい' --label backlog --body '会議の全件から横断して検索できず、担当者が会議ごとに開いている。全件の索引は数日規模の作業と見込まれる。'); n=${url##*/}; gh issue comment <<epic>> --body \"分割: 全件の横断検索は大きすぎるので backlog #$n に外した。\"; gh issue close <<epic>> --reason completed"
+      ]
+    ],
+    "reply": "会議 1 件の検索はできるようになりました。全件の横断検索は backlog に置いて Epic を閉じました。"
+  }
+}
