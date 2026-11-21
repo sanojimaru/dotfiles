@@ -15,14 +15,15 @@ import sys
 import time
 from pathlib import Path
 
-from pr_replay import replay
+from pr_replay import api_method, replay
 
 REPO = os.environ["GH_GUARD_REPO"]
 GH_REAL = "@@GH_REAL@@"  # 試行ごとにコピーするとき、本物の gh のパスを埋める（環境変数に出すと、エージェントが直接呼べてしまう）
 # 通すのは、評価で使うコマンドだけ（`issue transfer`・`issue delete`・`repo delete`・`auth` などは通さない）
 ALLOW = {
     "issue": {"list", "view", "comment", "close", "reopen", "edit", "create", "status"},
-    "pr": {"list", "ls", "view"},
+    "pr": {"list", "ls", "view", "checks", "diff", "merge"},
+    "stack": {"merge", "sync", "view"},
     "label": {"list", "create"},
     "repo": {"view"},
     "api": None,
@@ -78,8 +79,7 @@ def check(argv):
         elif not re.fullmatch(rf"repos/{re.escape(REPO)}(/.*)?", path.split("?")[0]):
             return f"api は repos/{REPO} 以下か graphql の query だけ使えます"
         else:
-            method = next((argv[i + 1].upper() for i, a in enumerate(argv[:-1]) if a in ("-X", "--method")), "")
-            method = method or next((re.sub(r"^(--method=|-X=?)", "", a).upper() for a in argv if re.match(r"(--method=|-X.)", a)), "")
+            method = api_method(argv)
             if method == "DELETE" or (method not in ("", "GET") and re.fullmatch(rf"repos/{re.escape(REPO)}/?", path.split("?")[0])):
                 return "リポジトリそのものの変更と DELETE は評価中は使えません"
     return None
@@ -165,12 +165,19 @@ def main():
     if not reason and any((argv[0] == "api" and arg.endswith("=@-")) or arg in ("--input=-", "--body-file=-") or
                            (arg == "-" and argv[i - 1] in ("--input", "--body-file", "-F")) for i, arg in enumerate(argv[1:], 1)):
         input_body = sys.stdin.read()
-    rc = deny(reason) if reason else replay(argv, REPO, endpoint)
+    metadata = {}
+    pr_fields = None
+    if not reason and re.search(r"/pulls/\d+/merge(?:-async)?$", endpoint.split("?", 1)[0].rstrip("/")):
+        try:
+            pr_fields = api_fields(argv, input_body)
+        except (OSError, ValueError) as exc:
+            reason = f"PR マージの入力を読めません: {exc}"
+    rc = deny(reason) if reason else replay(argv, REPO, endpoint, metadata, pr_fields)
     if rc is None:
         rc = subprocess.run([GH_REAL] + argv, input=input_body, text=True,
                             env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1")).returncode
-    extra = {}
-    if rc == 0:
+    extra = metadata
+    if rc == 0 and not extra:
         try:
             extra = issue_event(argv, endpoint, input_body)
         except (OSError, TypeError, ValueError) as exc:

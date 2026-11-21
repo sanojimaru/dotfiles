@@ -1,0 +1,258 @@
+{
+  "id": "S11-A1",
+  "split": "test",
+  "section": "S11",
+  "prompt": "Issue: このリポジトリの #<<task>> を担当します。受け入れ条件は Issue の本文を読んでください。\n報告先: Epic #<<epic>> の親（あなたを起動した coordinator）。\n決まり:\n- 割り当てられた worktree で作業します。Orca の worktree 選択には path: と絶対パスを使います。\n- セッションへ送る文は同じ全文を作業 Issue にコメントしてから送ります。利用者とは話しません。未解決の依存や利用者の判断が要るときは、コメントしてから ask で coordinator に上げ、ターンを終えます。\n- 作業 Issue の子を作ったり、範囲外を直したりしません。Epic の完了に要る残りは作業 Issue にコメントして ask で戻し、要らない残りは backlog Issue に置きます。作業が 2 時間以内で閉じない見込みなら、受け入れ条件を片付く範囲に絞り、外した部分も同じように扱います。\n- 設計・実装・テストは自分で進めます。仕上げのレビューや読み取りだけの調査は頼めますが、ファイルは書き換えさせません。\n閉じ方:\n- PR に hold-merge が付いていたら、承認なしにはマージしません。承認が必要なら、作業 Issue に全文をコメントしてから ask します。\n- マージ → 作業 Issue に報告（片付いたこと・片付かなかったこと・計画に影響する発見） → Issue を閉じる → worker_done の順です。完了した範囲を示せなければ、Issue を開いたまま理由を書き、worker_done を失敗として送ります。worktree を片付けるのは coordinator です。\n",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "新入社員が操作手順にたどり着けるようにする",
+        "body": "## 完了の状態\n新入社員が README のリンクからチームのツールの操作手順にたどり着ける。",
+        "type": "Feature"
+      },
+      {
+        "key": "task",
+        "title": "README の操作手順へのリンクを修正する",
+        "body": "## 受け入れ条件\nREADME の手順書へのリンクが存在するファイルを指し、読者が開ける。修正は PR #<<pr>> にあります。",
+        "type": "Task",
+        "parent": "epic"
+      }
+    ],
+    "prs": [
+      {
+        "key": "pr",
+        "title": "README の手順書リンクを修正",
+        "body": "手順書のリンク先を現行の操作手順に更新しました。Refs #<<task>>",
+        "state": "OPEN",
+        "headRefName": "<<epic>>.<<task>>-readme-guide",
+        "replay_checks": [
+          {
+            "name": "Check Links",
+            "state": "SUCCESS",
+            "bucket": "pass",
+            "description": "The README link resolves",
+            "link": "",
+            "workflow": "Validate",
+            "event": "pull_request",
+            "startedAt": "2026-07-08T10:18:00Z",
+            "completedAt": "2026-07-08T10:19:00Z"
+          }
+        ],
+        "statusCheckRollup": [
+          {
+            "__typename": "CheckRun",
+            "name": "Check Links",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "",
+            "workflowName": "Validate"
+          }
+        ],
+        "files": [
+          {
+            "path": "README.md",
+            "additions": 1,
+            "deletions": 1
+          }
+        ],
+        "replay_diff": "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1,3 +1,3 @@\n # チームのツール\n \n-操作は[手順書](docs/old-guide.md)を参照してください。\n+操作は[手順書](docs/guide.md)を参照してください。"
+      }
+    ],
+    "files": {
+      "README.md": "# チームのツール\n\n操作は[手順書](docs/old-guide.md)を参照してください。\n",
+      "docs/guide.md": "# 操作手順\nツールは管理メニューから起動します。\n"
+    }
+  },
+  "orca": {
+    "run_id": "run_d1c93137dea5",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<epic>>.<<task>>-readme-guide",
+        "checkout": true,
+        "current": true,
+        "committed": {
+          "README.md": "# チームのツール\n\n操作は[手順書](docs/guide.md)を参照してください。\n"
+        }
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "tasks": [
+      "task_fake0000"
+    ]
+  },
+  "expect": {
+    "summary": "マージを済ませ、作業 Issue に 3 項目を報告して閉じ、worker_done を送る。自分で worktree を消さない。",
+    "checks": [
+      {
+        "id": "closed-completed",
+        "type": "issues",
+        "count": 1,
+        "issue": "task",
+        "fields": {
+          "state": "CLOSED",
+          "stateReason": "COMPLETED"
+        }
+      },
+      {
+        "id": "succeeded-done",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "send"
+        ],
+        "count": 1,
+        "success": true,
+        "options": {
+          "--type": "worker_done",
+          "--outcome": "succeeded"
+        }
+      },
+      {
+        "id": "merge-report-close-done",
+        "type": "order",
+        "events": [
+          {
+            "event": "merged",
+            "issue": "pr"
+          },
+          {
+            "event": "comment",
+            "issue": "task"
+          },
+          {
+            "event": "closed",
+            "issue": "task"
+          },
+          {
+            "event": "orca",
+            "match": [
+              "orchestration",
+              "send"
+            ],
+            "options": {
+              "--type": "worker_done",
+              "--outcome": "succeeded"
+            }
+          }
+        ]
+      },
+      {
+        "id": "worktree-preserved",
+        "type": "worktree",
+        "issue": "task",
+        "present": true
+      }
+    ],
+    "judge": [
+      {
+        "id": "three-part-report",
+        "q": "新しいコメントは、①README のリンク修正と PR #<<pr>> のマージ、②片付かなかったこと、③計画に影響する発見を報告しているか。②③はなしでよい。",
+        "source": "issues",
+        "issues": {
+          "issue": "task"
+        },
+        "fields": [
+          "comments"
+        ],
+        "new_comments": true
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "pr",
+        "merge",
+        "<<pr>>",
+        "--squash"
+      ],
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ],
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<task>>",
+        "--reason",
+        "completed"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "send",
+        "--type",
+        "worker_done",
+        "--task-id",
+        "task_fake0000",
+        "--dispatch-id",
+        "ctx_fake0000",
+        "--outcome",
+        "succeeded",
+        "--subject",
+        "作業結果",
+        "--body",
+        "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ],
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<task>>",
+        "--reason",
+        "completed"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "send",
+        "--type",
+        "worker_done",
+        "--task-id",
+        "task_fake0000",
+        "--dispatch-id",
+        "ctx_fake0000",
+        "--outcome",
+        "succeeded",
+        "--subject",
+        "作業結果",
+        "--body",
+        "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ],
+      [
+        "gh",
+        "pr",
+        "merge",
+        "<<pr>>",
+        "--squash"
+      ]
+    ]
+  }
+}
