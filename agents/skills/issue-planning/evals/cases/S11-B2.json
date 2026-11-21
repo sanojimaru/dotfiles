@@ -209,7 +209,7 @@
           "comments"
         ],
         "new_comments": true,
-        "q": "作業 Issue に新しく書いた報告のコメントが、片付かなかったこと 2 件の backlog Issue をどちらも参照しているか"
+        "q": "作業 Issue に新しく書いたコメントのうち、片付いたこと・片付かなかったこと・計画に影響する発見の 3 項目を持つ報告のコメントが、片付かなかったこと 2 件の backlog Issue をどちらも参照しているか。そのような報告のコメントが無ければ no。"
       },
       {
         "id": "backlog-is-need-not-solution",

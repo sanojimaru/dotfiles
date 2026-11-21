@@ -112,6 +112,16 @@
         "success": true
       },
       {
+        "id": "ask-commented",
+        "type": "comment_matches_message",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "body_flag": "--question"
+      },
+      {
         "id": "ask-parent",
         "type": "calls",
         "match": [
@@ -172,31 +182,6 @@
         ],
         "success": true,
         "q": "ask の質問が、注文一覧 API（別の子 Issue の PR）がまだマージされておらず、この作業を進められないことを、coordinator に伝えているか"
-      },
-      {
-        "id": "ask-matches-comment",
-        "source": "combined",
-        "parts": [
-          {
-            "source": "orca",
-            "match": [
-              "orchestration",
-              "ask"
-            ],
-            "success": true
-          },
-          {
-            "source": "issues",
-            "issues": {
-              "issue": "task"
-            },
-            "fields": [
-              "comments"
-            ],
-            "new_comments": true
-          }
-        ],
-        "q": "証拠の前半は ask の呼び出し、後半は作業 Issue に新しく書いたコメント。ask の質問が、作業 Issue のコメントと同じ内容（同じ依存と、進めない理由）を伝えているか"
       }
     ]
   },
@@ -208,14 +193,14 @@
         "comment",
         "<<task>>",
         "--body",
-        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れない。"
+        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れません。API のマージを待つか、順序を見直してください。"
       ],
       [
         "orca",
         "orchestration",
         "ask",
         "--question",
-        "注文一覧 API（#<<api>>）が未マージで進めません。API のマージを待つか、順序を見直してください。"
+        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れません。API のマージを待つか、順序を見直してください。"
       ]
     ]
   }

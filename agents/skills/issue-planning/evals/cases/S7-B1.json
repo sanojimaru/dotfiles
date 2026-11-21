@@ -141,7 +141,7 @@
           "comments"
         ],
         "new_comments": true,
-        "q": "Epic に新しく書いたコメントが、外した部分を置いた backlog Issue を参照しているか"
+        "q": "Epic に新しく書いたコメントのうち、冒頭が「分割」で始まるコメントが、外した部分を置いた backlog Issue を参照しているか。「分割」で始まるコメントが無ければ no。"
       },
       {
         "id": "done-state-narrowed",

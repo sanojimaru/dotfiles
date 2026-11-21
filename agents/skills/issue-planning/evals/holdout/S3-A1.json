@@ -106,7 +106,18 @@
         "fields": [
           "body"
         ],
-        "q": "Epic の本文の完了の状態に、利用者が使う流れと、観測できる確認項目があるか。"
+        "q": "Epic の本文の完了の状態に、観測できる確認項目があるか。"
+      },
+      {
+        "id": "user-flow",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文に、利用者が使う流れ（操作や画面の順）が書かれているか。"
       },
       {
         "id": "walking-skeleton",

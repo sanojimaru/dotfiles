@@ -23,6 +23,9 @@ def cmd_labels(args):
         inputs = (r.get("grade") or {}).get("judge_inputs", {})
         r["judged"] = {j: v for j, v in (r.get("grade") or {}).get("judge", {}).items() if inputs.get(j, {}).get("evidence", "").strip()}
     trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["judged"]]
+    for d, r in trials:  # 問いを直す前の試行は、今のケースに無い id の証拠を labels.md に出せない
+        if stale := set(r["judged"]) - {j["id"] for j in load_case(r["case"])["expect"].get("judge", [])}:
+            raise SystemExit(f"{d} は今のケースに無い判定の id {sorted(stale)} を持つ。問いを直した後の試行を使ってください")
     random.Random(args.seed).shuffle(trials)  # 条件（有・無）が並びから分からないように混ぜる
     if len(trials) < args.count:
         raise SystemExit(f"判定器の問いがある試行が {len(trials)} 件しかありません（{args.count} 件が要る）。dev の試行を足してください")
