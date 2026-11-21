@@ -68,7 +68,7 @@ Epic の候補は、親の生死を確かめる。未読の通知や開いてい
 
    ```text
    Epic #<番号> の親のセッション（coordinator）を担当する。前の親のセッションは止まった。
-   最初に `orca orchestration run-use --id <Epic の本文の Run の id>` で Epic の Run を引き継ぎ、issue-planning の S8 の手順で、Epic の本文と Issue のコメントから続ける。
+   Epic の本文に Run の id があれば、最初に `orca orchestration run-use --id <その Run の id>` で Epic の Run を引き継ぎ、issue-planning の S8 の手順で、Epic の本文と Issue のコメントから続ける。本文に Run の id が無ければ、S8 の「Epic の本文に Run の id が無いとき」に従う。
    ```
 
 新しい親は、子を待つ間、`worker_done` を送らずにターンを終える。そのとき窓口に `Worker stopped without reporting`（`stopReason`: `finished`）の escalation が 1 回届く。親が待っている合図なので、対応しない。
@@ -133,7 +133,7 @@ Issue と利用者の決定から答えられるなら、利用者に聞き直�
 最小の 1 本まで絞っても作業時間が 4 時間に収まらないとワーカーから `ask` が来たら、単独タスクを Epic に引き継ぐ。新しい GitHub Issue や子は立てず、元の Issue を使う。
 
 1. 元のワーカーが済ませた範囲と、元の Run の id を同じ Issue にコメントする。元のワーカーには、単独タスクの実装を続けず、Issue を閉じないことを伝える。返信に送る本文だけを別のコメントに書き、そのまま `reply` の本文に使う。
-2. Issue の type を Task から Feature に変え、利用者が確認できる完了の状態と、調査を受けて見直せる計画案を本文に書く。元の質問で分かった事実と、利用者と合意済みの範囲は引き継ぐ。
+2. Issue の type を Task から Feature に変え、利用者が確認できる完了の状態と、調査を受けて見直せる計画案を本文に書く。本文の元の Run の id は消す（元の Run の id は手順 1 のコメントに残っている）。Epic の Run の id は、親が S3 で書く。親が書く前に止まっても、立て直した親が元の単独タスクの Run を Epic の Run と取り違えないため。元の質問で分かった事実と、利用者と合意済みの範囲は引き継ぐ。
 3. `orca worktree create --name <番号>-epic-<slug> --issue <番号> --no-parent` で別の worktree を作る。窓口は Epic の Run を作らない。窓口が作った Run で親を起こすと、親はその Run の worker になり、その Run の coordinator になれない（`worker_cannot_coordinate_own_run`）。親を起こすための窓口の Run を `run-create --objective "<owner>/<repo>#<番号> の親を起こす"` で作り、親に送る spec を同じ Issue にコメントしてから、その Run と `path:<worktree の絶対パス>` を指定し、`worker-start --effort high --keep-open` で Epic の親を起こす。窓口の Run の id は本文に書かない。親が S3 の手順 2 で Epic の Run を作り、本文の Run の id を置き換える。親には Epic の番号と、このスキルの親の手順を読むことを伝える。親は利用者との相談を受けるので、セッションを残す。親が子を待ってターンを終えたときに届く `stopReason`: `finished` の escalation は、窓口の確認（1）の立て直しと同じく、対応しない。
 
 Epic へ引き継いだ後、元の Run の終了通知を受けても単独タスクを起こし直さない。元のワーカーが終了し、下の片付けの条件がすべてそろったことを確認できた場合にだけ、元の worktree を消す。未反映の変更があれば worktree を残し、パスと残りを Epic の親に引き継ぐ。
