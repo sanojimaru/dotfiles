@@ -4,6 +4,7 @@
 被験のエージェントが評価用リポジトリ（GH_GUARD_REPO）の外を触らないようにする。GH_REPO を固定し、
 リポジトリ・認証などのコマンドと、評価用リポジトリ以外を指す引数（`-R`・`--repo=`・GitHub の URL・api のパス）を断る。
 GraphQL は、読み取り（query）だけ通す。呼び出しの結果（終了コード）を ORCA_FAKE_LOG に記録する。
+IPE_GH_STATE があれば（評価の既定）、Issue・ラベル・api を代役（fake_gh.py）が手元の状態から返し、本物の GitHub を呼ばない。
 これは評価中の取り違えを防ぐ見張りで、悪意のあるエージェントを閉じ込める境界ではない（本物の gh を絶対パスで呼ぶ、などは防げない）。
 OS の境界が要るときは、評価専用の macOS ユーザーで流す。
 """
@@ -15,6 +16,7 @@ import sys
 import time
 from pathlib import Path
 
+import fake_gh
 from pr_replay import api_method, replay
 
 REPO = os.environ["GH_GUARD_REPO"]
@@ -173,6 +175,8 @@ def main():
         except (OSError, ValueError) as exc:
             reason = f"PR マージの入力を読めません: {exc}"
     rc = deny(reason) if reason else replay(argv, REPO, endpoint, metadata, pr_fields)
+    if rc is None and os.environ.get("IPE_GH_STATE"):
+        rc = fake_gh.handle(argv, input_body)
     if rc is None:
         rc = subprocess.run([GH_REAL] + argv, input=input_body, text=True,
                             env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1")).returncode

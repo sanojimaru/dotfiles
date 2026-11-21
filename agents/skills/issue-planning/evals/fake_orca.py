@@ -165,7 +165,13 @@ def dispatch(argv, started):
     elif cmd == "run-current":
         ok({"runId": state["run_id"], "objective": state["run_objective"]})
     elif cmd == "run-create":
-        if next_run_id := state.pop("next_run_id", None):
+        next_run_id = state.pop("next_run_id", None)
+        if not next_run_id and (state["workers"] or state["messages"]):
+            # 種の Run が使われている（worker か通知がある）なら、本物と同じく別の Run を作る。
+            # 使われていない種の Run は、これから作る Run の id として返す（S2-A2・S3-B1 の種）。
+            state["seq"] = state.get("seq", 0) + 1
+            next_run_id = f"run_new{state['seq']:04d}"
+        if next_run_id:
             state.setdefault("previous_runs", {})[state["run_id"]] = state["run_objective"]
             state["run_id"] = next_run_id
         state["run_objective"] = opt(argv, "--objective") or state["run_objective"]
