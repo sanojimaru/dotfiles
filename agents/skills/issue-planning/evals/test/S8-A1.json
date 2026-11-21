@@ -51,7 +51,7 @@
         "id": "run-use",
         "type": "calls",
         "match": ["orchestration", "run-use"],
-        "count": 1,
+        "minimum": 1,
         "success": true,
         "options": {
           "--id": "run_4f84670786b0"

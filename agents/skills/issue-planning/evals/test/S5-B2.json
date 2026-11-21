@@ -30,7 +30,7 @@
     "worktrees": [
       {
         "issue": "task",
-        "name": "<<task>>-operations-note"
+        "name": "<<epic>>.<<task>>-release-note-policy"
       }
     ],
     "workers": [

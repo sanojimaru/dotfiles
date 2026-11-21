@@ -41,7 +41,6 @@
         "id": "not-planned-only-after-confirmation",
         "type": "no_close",
         "issue": "epic",
-        "reason": "NOT_PLANNED",
         "before_followup": true,
         "fail_on_any": true
       },

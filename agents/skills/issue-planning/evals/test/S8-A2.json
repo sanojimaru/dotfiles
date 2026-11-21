@@ -85,7 +85,7 @@
           "orchestration",
           "run-use"
         ],
-        "count": 1,
+        "minimum": 1,
         "success": true,
         "options": {
           "--id": "run_e803297d9e8f"

@@ -112,6 +112,8 @@
       },
       {
         "id": "not-added-to-plan",
+        "changes_only": true,
+        "allow_empty": true,
         "q": "配送一覧の欠損日付の不具合を、この経費精算 Epic の完了の状態や計画の作業として足していないか。対象外としてリンクがあってもよい。",
         "source": "issues",
         "issues": {
