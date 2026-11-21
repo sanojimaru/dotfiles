@@ -96,7 +96,18 @@
         "fields": [
           "body"
         ],
-        "q": "Epic の本文に、Run の id が Run の id として（「Run id」などの見出しや説明を付けて）書かれ、元の計画の本文も残っているか。"
+        "q": "Epic の本文に、Run の id が Run の id として（「Run id」などの見出しや説明を付けて）書かれているか"
+      },
+      {
+        "id": "plan-kept",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文に、元の計画の本文が残っているか"
       }
     ]
   },

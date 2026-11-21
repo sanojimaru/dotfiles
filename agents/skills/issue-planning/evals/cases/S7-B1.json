@@ -128,8 +128,20 @@
         "fields": [
           "comments"
         ],
-        "q": "Epic に新しく書いたコメントの冒頭が「分割」で始まり、外した部分を置いた backlog Issue を参照しているか",
-        "new_comments": true
+        "new_comments": true,
+        "q": "Epic に新しく書いたコメントの冒頭が「分割」で始まっているか"
+      },
+      {
+        "id": "closing-comment-links-backlog",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "comments"
+        ],
+        "new_comments": true,
+        "q": "Epic に新しく書いたコメントが、外した部分を置いた backlog Issue を参照しているか"
       },
       {
         "id": "done-state-narrowed",
@@ -155,11 +167,15 @@
           "title",
           "body"
         ],
-        "q": "backlog の Issue が、何が起きている（起きうる）か・根拠・困る人だけで書かれているか。解決策や手順を書いていれば no。"
+        "q": "backlog の Issue が、何が起きている（起きうる）か・根拠・困る人を書いているか。見出し、利用者の言葉、根拠、未確認の点、関連する Issue へのリンクは書いてあってよい。解決策・やること・手順を書いていれば no。"
       },
       {
-        "id": "reports-result-and-remainder",
-        "q": "返事で、できるようになったことと、残りの置き場（backlog の Issue）を利用者に伝えているか"
+        "id": "reports-result",
+        "q": "返事で、利用者ができるようになったことを伝えているか"
+      },
+      {
+        "id": "reports-remainder",
+        "q": "返事で、残りの置き場（backlog の Issue）を利用者に伝えているか"
       }
     ]
   },

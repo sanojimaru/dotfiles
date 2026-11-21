@@ -24,12 +24,21 @@
       {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0}
     ],
     "judge": [
-      {"id": "only-whether-to-start", "source": "first_reply", "q": "最初の返事が、今着手するかを聞く一問だけでできているか。計画、技術の選択肢や別の質問が含まれていれば no。"},
+      {
+        "id": "only-whether-to-start",
+        "source": "first_reply",
+        "q": "最初の返事で利用者に聞いているのが、今着手するかの一問だけか。要望の受け止めや挨拶の一言はあってよい。計画や技術の選択肢を示していたり、別の質問をしていたりすれば no。"
+      },
       {
         "id": "backlog-is-need-not-solution",
         "source": "issues",
-        "issues": {"new": true, "labels": ["backlog"]},
-        "q": "Issue に、利用者の『ブログを作りたい』という言葉と、何を望んでいるか・困る人（利用者本人でよい）だけが書かれているか。解決策や手順を書いていれば no。"
+        "issues": {
+          "new": true,
+          "labels": [
+            "backlog"
+          ]
+        },
+        "q": "Issue に、利用者の『ブログを作りたい』という言葉と、何を望んでいるか・困る人（利用者本人でよい）が書かれているか。見出し、利用者の言葉、根拠、未確認の点、関連する Issue へのリンクは書いてあってよい。解決策・やること・手順を書いていれば no。"
       }
     ]
   },

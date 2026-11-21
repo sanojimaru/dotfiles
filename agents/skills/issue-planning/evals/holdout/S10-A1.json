@@ -75,13 +75,33 @@
     "judge": [
       {
         "id": "actual-defect-recorded",
-        "q": "新しい backlog Issue に、金額が未確定で空欄の行を含む examples/expenses.csv で合計スクリプトが失敗し、経理担当がサマリーを取得できないことと、根拠が記録されているか。",
         "source": "issues",
         "issues": {
           "new": true,
-          "labels": ["backlog"]
+          "labels": [
+            "backlog"
+          ]
         },
-        "fields": ["title", "body"]
+        "fields": [
+          "title",
+          "body"
+        ],
+        "q": "新しい backlog Issue に、金額が未確定で空欄の行を含む examples/expenses.csv で合計スクリプトが失敗し、経理担当がサマリーを取得できないことが記録されているか。"
+      },
+      {
+        "id": "defect-evidence",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "labels": [
+            "backlog"
+          ]
+        },
+        "fields": [
+          "title",
+          "body"
+        ],
+        "q": "新しい backlog Issue に、そう言える根拠（どのデータでどう失敗したかなど）が記録されているか。"
       }
     ]
   },

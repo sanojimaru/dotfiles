@@ -90,8 +90,12 @@
     ],
     "judge": [
       {
+        "id": "tells-epic-closed",
+        "q": "返事で、Epic を閉じたことを利用者に伝えているか"
+      },
+      {
         "id": "tells-user-why-kept",
-        "q": "返事で、Epic を閉じたことと、親の worktree を消さずに残したこと（origin/main より進んだコミットがあるため）を利用者に伝えているか"
+        "q": "返事で、親の worktree を消さずに残したことと、その理由（origin/main より進んだコミットがあるため）を利用者に伝えているか"
       },
       {
         "id": "reports-result",

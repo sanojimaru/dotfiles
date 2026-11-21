@@ -72,13 +72,16 @@
         "id": "reply-content",
         "q": "ワーカーに、締め日を YYYY-MM-DD で表示すると答えているか。",
         "source": "orca",
-        "match": ["orchestration", "reply"],
+        "match": [
+          "orchestration",
+          "reply"
+        ],
         "success": true
       },
       {
         "id": "no-user-question",
-        "q": "返事が、利用者に判断や確認を求めずに、ワーカーへ答えたことを伝えるだけになっているか。",
-        "allow_empty": true
+        "allow_empty": true,
+        "q": "返事が、ワーカーへ答えたことを伝えているか。利用者に判断や確認を求めていれば no。"
       }
     ]
   },
