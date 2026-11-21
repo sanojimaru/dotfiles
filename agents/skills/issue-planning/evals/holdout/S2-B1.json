@@ -1,6 +1,6 @@
 {
   "id": "S2-B1",
-  "split": "test",
+  "split": "holdout",
   "section": "S2",
   "prompt": "社内の経費精算を楽にしたい",
   "followup": "やる",

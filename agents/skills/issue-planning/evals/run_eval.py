@@ -5,7 +5,7 @@
   run_eval.py trial  <case> --cond with|without --agent claude|codex [--repo ipe-1]
   run_eval.py batch  <case,case,...> --n 3 [--cond with,without] [--agent claude] [--repos ipe-1,ipe-2] [--out DIR]
   run_eval.py report <DIR...>
-  run_eval.py labels <DIR...> --out DIR                 判定器の較正のために、返事を人が yes/no を付けられる形（labels.md）に出す
+  run_eval.py labels <DIR...> --out DIR [--count 20]    判定器の較正のために、判定器の証拠を人が yes/no を付けられる形（labels.md）に出す
   run_eval.py agreement <human.json> <answers.json>     人のラベルと判定器の一致率（90% 以上で使う）
 
 固定の評価用リポジトリ（非公開の `ipe-N`）を使い回す。種が立っていれば使い回し、試行の後は、エージェントが変えたものだけを戻す
@@ -34,7 +34,7 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
                     STRIP_ENV, WALL_SECONDS, gh, sh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
-from holdout import audit_transcript, hide_test
+from holdout import audit_transcript, hide_holdout
 import fake_gh
 from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_local, seed_repo, snapshot, subst
 
@@ -53,7 +53,7 @@ def make_workdir(repo, case, nums, cond, agent, root, fake):
     if files:
         seed_commit(repo_clone, files, "Prepare repository files")
         seed_git(repo_clone, "update-ref", "refs/remotes/origin/main", "HEAD")
-    orca = orca_state(case, nums, repo_clone)
+    orca = orca_state(case, nums, repo_clone, repo)
     clone = repo_clone
     for spec, wt in zip(case["orca"]["worktrees"], orca["worktrees"][1:]):
         if not spec.get("checkout"):
@@ -74,14 +74,14 @@ def make_workdir(repo, case, nums, cond, agent, root, fake):
             exclude.write("\n/.claude/skills/\n/.agents/skills/\n")
     prs = pr_state(case, nums, repo)
     local_branches = {wt["name"] for wt in orca["worktrees"] if wt.get("checkout")}
-    local_prs = [pr for pr in prs if case["split"] == "dev" and pr["headRefName"] in local_branches]
+    local_prs = [pr for pr in prs if (case["split"] == "dev" or fake) and pr["headRefName"] in local_branches]
     for pr in local_prs:
         pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
         if pr["state"] == "MERGED":
             seed_git(repo_clone, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
                      "merge", "--no-edit", "--no-gpg-sign", pr["headRefOid"])
             pr["mergeCommit"] = {"oid": seed_git(repo_clone, "rev-parse", "HEAD").strip()}
-    if case["split"] == "test" or local_prs or fake:
+    if case["split"] == "holdout" or local_prs or fake:
         remote = root / "push.git"
         seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(remote))
         # dev で PR とローカルのブランチを照合するケースと代役では、fetch でも種の状態が残るようにする。
@@ -336,7 +336,7 @@ def parse_codex(transcript):
 def load_cases(names, split):
     if any(not re.fullmatch(r"[A-Za-z0-9_-]+", name) for name in names):
         raise ValueError("ケース名には英数字・ハイフン・アンダースコアだけを使ってください")
-    directory = HERE / {"dev": "cases", "test": "test"}[split]
+    directory = HERE / {"dev": "cases", "holdout": "holdout"}[split]
     cases = []
     for name in names:
         case = json.loads((directory / f"{name}.json").read_text())
@@ -350,9 +350,9 @@ def prepare(case, repo, cond, agent, out, fake):
     if fake:
         nums, gh_state = seed_local(case, repo)
         (out / "gh-state.json").write_text(json.dumps(gh_state, ensure_ascii=False))
-    elif case.get("split") == "test":
+    elif case.get("split") == "holdout":
         reset_repo(repo)
-        nums = seed_repo(repo, case)  # test の種を共有の repo-state.json に記録しない。
+        nums = seed_repo(repo, case)  # 評価データセットの種を共有の repo-state.json に記録しない。
     else:
         nums, _ = ensure_seed(repo, case)
     clone, bindir, state = make_workdir(repo, case, nums, cond, agent, out, fake)
@@ -465,7 +465,7 @@ def trial(case, repo, cond, agent, out, use_judge=True, fake=True):
 
 
 def clean_trial(case, repo):
-    if case.get("split") == "test":
+    if case.get("split") == "holdout":
         reset_repo(repo)
     else:
         restore(repo)
@@ -474,8 +474,8 @@ def clean_trial(case, repo):
 def cmd_check(args):
     """配線の確認: 採点器が null・oracle・bad に正しく答えるか（#88 7.3 の 4）。"""
     case, = load_cases([args.case], args.split)
-    if args.split == "test" and case.get("bad") is None:
-        raise ValueError(f"{args.case} の test に誤った手本 (bad) がありません")
+    if args.split == "holdout" and case.get("bad") is None:
+        raise ValueError(f"{args.case} の評価ケースに誤った手本 (bad) がありません")
     rows = []
     for kind in ("null", "oracle", "bad"):
         sample = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
@@ -488,7 +488,7 @@ def cmd_check(args):
             nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out, args.gh == "fake")
             env = agent_env(bindir, state, log, args.repo)
             first = sample.get("first", {})
-            strict = args.split == "test" and kind == "oracle"
+            strict = args.split == "holdout" and kind == "oracle"
             replay_steps(first.get("commands", []), nums, clone, env, require_success=strict)
             first_calls = read_calls(log)
             replay_steps(sample.get("commands", []), nums, clone, env, require_success=strict)
@@ -498,17 +498,17 @@ def cmd_check(args):
             reply = subst(sample.get("reply", ""), nums)
             check_code = grade(case, ctx, reply, "claude", out, use_judge=False)
             needs_judge = check_code["pass_code"] or any(j.get("fail_on_any") for j in case["expect"].get("judge", []))
-            g = grade(case, ctx, reply, "claude", out) if args.split == "test" and needs_judge else check_code
+            g = grade(case, ctx, reply, "claude", out) if args.split == "holdout" and needs_judge else check_code
         finally:
             if args.gh == "real":
                 clean_trial(case, args.repo)
             shutil.rmtree(out, ignore_errors=True)
         row = {"kind": kind, **{key: g[key] for key in ("pass_code", "checks", "fail_on_any")}}
-        if args.split == "test":
+        if args.split == "holdout":
             row.update(pass_all=g["pass_all"], judge=g["judge"])
         rows.append(row)
     print(json.dumps(rows, ensure_ascii=False, indent=2))
-    if args.split == "test":
+    if args.split == "holdout":
         expected = {"null": False, "oracle": True, "bad": False}
         fatal = any(c.get("fail_on_any") for key in ("checks", "judge") for c in case["expect"].get(key, []))
         observed = {row["kind"]: row["pass_all"] for row in rows}
@@ -573,7 +573,7 @@ def cmd_report(args):
     for p in paths:
         r = json.loads(p.read_text())
         key = (r["case"], r["cond"], r["agent"])
-        g = rows.setdefault(key, {"n": 0, "pass_code": 0, "pass_all": 0, "fail_on_any": 0, "infra": 0, "usd": 0.0, "sec": 0.0, "loaded": 0, "judge_no": 0})
+        g = rows.setdefault(key, {"n": 0, "pass_code": 0, "pass_all": 0, "fail_on_any": 0, "infra": 0, "usd": 0.0, "sec": 0.0, "loaded": 0, "judge_no": 0, "gql": []})
         if r["infra_failure"]:
             g["infra"] += 1
             g["usd"] += r["run"].get("cost", {}).get("usd") or 0  # 失敗した試行の費用も合計に入れる（件数には入れない）
@@ -585,15 +585,16 @@ def cmd_report(args):
         g["fail_on_any"] += bool(gr["fail_on_any"])
         g["loaded"] += r.get("loaded_skill", False)
         g["judge_no"] += sum(v is not True for v in gr["judge"].values())
+        g["gql"].append(gr.get("graphql_points", 0))
         usd = r["run"].get("cost", {}).get("usd")
         g["usd_unknown"] = g.get("usd_unknown", 0) + (usd is None)  # Codex は費用を返さない。0 とは数えない
         g["usd"] += usd or 0
         g["sec"] += r["run"]["seconds"]
-    print("case / cond / agent: n pass_code pass_all fail_on_any loaded infra  usd/試行 sec/試行")
+    print("case / cond / agent: n pass_code pass_all fail_on_any loaded infra  usd/試行 sec/試行 GraphQL の見積もり（最大）")
     for (case, cond, agent), g in sorted(rows.items()):
         n = max(g["n"], 1)
         usd = "$n/a" if g.get("usd_unknown") else f"${g['usd'] / n:.2f}"
-        print(f"{case} / {cond} / {agent}: n={g['n']} code={g['pass_code']} all={g['pass_all']} fail_on_any={g['fail_on_any']} loaded={g['loaded']} infra={g['infra']}  {usd}  {g['sec'] / n:.0f}s")
+        print(f"{case} / {cond} / {agent}: n={g['n']} code={g['pass_code']} all={g['pass_all']} fail_on_any={g['fail_on_any']} loaded={g['loaded']} infra={g['infra']}  {usd}  {g['sec'] / n:.0f}s  gql={max(g['gql'], default=0)}")
     partial = "（費用を返さない試行を含まない一部の合計）" if any(g.get("usd_unknown") for g in rows.values()) else ""
     print(f"合計 usd: ${sum(g['usd'] for g in rows.values()):.2f}{partial}")
     leak_logs = ("history.jsonl", "first-transcript.jsonl", "transcript.jsonl")
@@ -606,34 +607,35 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
-    p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--split", choices=("dev", "holdout"), default="dev")
     p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
-    p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--split", choices=("dev", "holdout"), default="dev")
     p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
-    p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--split", choices=("dev", "holdout"), default="dev")
     p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
-    p = sub.add_parser("hide-test", help="スキルを書く子の worktree から test ケースを外す")
+    p = sub.add_parser("hide-holdout", help="スキルを書く子の worktree から評価データセットを外す")
     p.add_argument("worktree", type=Path)
-    p = sub.add_parser("audit-test", help="スキルを書いた子の JSONL 会話記録から test ケースへのアクセスを探す")
+    p = sub.add_parser("audit-holdout", help="スキルを書いた子の JSONL 会話記録から評価データセットへのアクセスを探す")
     p.add_argument("transcript", type=Path, nargs="+")
     p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
+    p.add_argument("--count", type=int, default=20, help="判定器の問いがある試行から、混ぜて選ぶ件数")
     p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
     args = ap.parse_args()
-    if args.cmd == "hide-test":
-        hide_test(args.worktree)
+    if args.cmd == "hide-holdout":
+        hide_holdout(args.worktree)
         return 0
-    if args.cmd == "audit-test":
+    if args.cmd == "audit-holdout":
         try:
             findings = [hit for path in args.transcript for hit in audit_transcript(path)]
         except (OSError, ValueError) as exc:
             ap.error(str(exc))
         print(json.dumps(findings, ensure_ascii=False, indent=2))
         return int(bool(findings))
-    if args.cmd in ("trial", "batch") and args.split == "test" and not args.out:
-        ap.error("test の試行ログの保存先を --out で指定してください")
+    if args.cmd in ("trial", "batch") and args.split == "holdout" and not args.out:
+        ap.error("評価データセットの試行ログの保存先を --out で指定してください")
     return args.f(args)
 
 

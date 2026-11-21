@@ -1,6 +1,6 @@
 {
   "id": "S2-B2",
-  "split": "test",
+  "split": "holdout",
   "section": "S2",
   "prompt": "README のリンク切れを直して",
   "seed": {

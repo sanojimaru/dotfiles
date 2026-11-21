@@ -1,6 +1,6 @@
 {
   "id": "S3-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S3",
   "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当します。<!--skill-->`issue-planning` の親の手順を読んでから始めてください。<!--/skill-->",
   "seed": {

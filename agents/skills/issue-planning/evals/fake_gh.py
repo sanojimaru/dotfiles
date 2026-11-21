@@ -24,6 +24,7 @@ DEFAULT_LABELS = ["bug", "documentation", "duplicate", "enhancement", "good firs
                   "question", "wontfix"]
 TYPES = {"Task": "A specific piece of work", "Bug": "An unexpected problem or behavior",
          "Feature": "A request, idea, or new functionality"}
+OBSERVED = {}  # gh_guard が呼び出しの記録に足す値（一覧が返した行数。GitHub の予算の見積もりに使う）
 FIELDS = ["assignees", "author", "body", "closed", "closedAt", "closedByPullRequestsReferences", "comments", "createdAt",
           "id", "isPinned", "issueType", "labels", "milestone", "number", "parent", "projectCards", "projectItems",
           "reactionGroups", "state", "stateReason", "subIssues", "subIssuesSummary", "title", "updatedAt", "url"]
@@ -265,6 +266,7 @@ def issue_cmd(state, cmd, argv, input_body):
         if args.search:
             rows = [i for i in rows if all(matches(state, i, term) for term in shlex.split(args.search))]
         rows = sorted(rows, key=lambda i: i["number"], reverse=True)[:args.limit]
+        OBSERVED["rows"] = len(rows)
         if args.fields:
             return output([project(state, i, args.fields) for i in rows], args.jq)
         for i in rows:

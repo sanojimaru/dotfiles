@@ -1,6 +1,6 @@
 {
   "id": "S5-B1",
-  "split": "test",
+  "split": "holdout",
   "section": "S5",
   "prompt": "Run `run_3e4fe02c26fe` に Orca からワーカーの通知が届きました。",
   "history": "親: Epic #<<epic>> の計画に沿って #<<task>> のワーカーを起動しました。私が質問や停止の通知を受けます。<!--skill-->通知に対応するときは `issue-planning` の親の手順を読みます。<!--/skill-->",

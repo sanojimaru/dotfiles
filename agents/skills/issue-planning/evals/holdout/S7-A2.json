@@ -1,6 +1,6 @@
 {
   "id": "S7-A2",
-  "split": "test",
+  "split": "holdout",
   "section": "S7",
   "prompt": "この Epic はもう要らない",
   "history": "親: 店頭の案内パネルの Epic #<<epic>> を担当しています。<!--skill-->`issue-planning` の親の手順を読みます。<!--/skill-->",

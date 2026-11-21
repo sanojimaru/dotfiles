@@ -1,6 +1,6 @@
 {
   "id": "S4-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S4",
   "prompt": "合意済みの計画です。今の状態から、着手できる作業があれば進めてください。",
   "history": "親: 受付予約の Epic #<<epic>> で、完了の状態と全体の流れ、依存グラフを提案しました。\n\n利用者: この計画で進めてください。\n\n親: 私がこの Epic の coordinator です。<!--skill-->`issue-planning` の親の手順を読みます。<!--/skill-->",

@@ -1,6 +1,6 @@
 {
   "id": "N-A2",
-  "split": "test",
+  "split": "holdout",
   "section": "N",
   "prompt": "`gh stack` の使い方を教えて",
   "seed": {

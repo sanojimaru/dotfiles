@@ -1,6 +1,6 @@
 {
   "id": "S8-A1",
-  "split": "test",
+  "split": "holdout",
   "section": "S8",
   "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当します。<!--skill-->`issue-planning` の親の手順を読んでから始めてください。<!--/skill--> 前の親のセッションは止まったので、Epic の本文と Issue のコメントから続けてください。",
   "note": "元のワーカーは live で、送信可能な試行。送信が失敗したケースに限る再起動は、この種では発生しない。",

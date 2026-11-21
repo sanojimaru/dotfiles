@@ -23,21 +23,43 @@ orca-nested python3 run_eval.py trial S1a-A1 --cond with --agent claude --out "$
 
 評価中に GitHub に本物の PR を作ることはありません。PR を確かめるときは、代役が再生する `gh pr list`、`gh pr view`、`gh api repos/{owner}/{repo}/pulls`（一覧または番号指定）を使います。GraphQL や Issue のタイムラインには再生した PR は出ません。
 
-## 開発用と最終評価用のケース
+## dev ケースと評価データセット
 
-既定では `cases/<ケース名>.json` の dev ケースを使います。最終評価では `--split test` を指定し、同じリポジトリの `test/<ケース名>.json` を読みます。各ファイルの `split` を対応する値にしてください。test は公開リポジトリに置くため、次の手順は秘密を守るためではなく、スキルを書くセッションへの偶発的な混入を防ぐために使います。
+既定では `cases/<ケース名>.json` の dev ケースを使います。評価データセット（スキルを書くセッションに見せない評価ケース。英語では held-out set）は `--split holdout` を指定し、同じリポジトリの `holdout/<ケース名>.json` を読みます。各ファイルの `split` を対応する値にしてください。評価データセットは公開リポジトリに置くため、次の手順は秘密を守るためではなく、スキルを書くセッションへの偶発的な混入を防ぐために使います。
 
 ```sh
-orca-nested python3 run_eval.py trial CASE --split test --cond with --agent claude --out "$TEST_OUTPUT"
+orca-nested python3 run_eval.py trial CASE --split holdout --cond with --agent claude --out "$HOLDOUT_OUTPUT"
 ```
 
-test の実行にはスキルの開発と並行で使っていない評価用リポジトリを割り当てます。test の種は共有キャッシュに書き込まず、試行後に評価用リポジトリから削除します。
+`--gh real` で評価データセットを流すときは、スキルの開発と並行で使っていない評価用リポジトリを割り当てます。評価データセットの種は共有キャッシュに書き込まず、試行後に評価用リポジトリから削除します。
 
 ### スキルを書くワーカーの起動と確認
 
-1. スキルを書く子の worktree は、エージェントを指定せずに `orca worktree create` で作成します。親の checkout にある実行器で `python3 run_eval.py hide-test "$CHILD_WORKTREE"` を実行し、子の checkout から最終評価データセット（`evals/test/`）を外します。親や評価ケースを書く子の checkout は変更しません。
-2. Claude Code と Codex のプロジェクトの `PreToolUse` フックは、子の worktree でツールの入力に明記された `evals/test/` へのアクセスを止めます。Codex は、リンクされた worktree では主 checkout の `.codex/hooks.json` を読みます。Codex の子を起動する前に、主 checkout にそのファイルがあり、対象の worktree から Codex がプロジェクトを信頼していることを確かめます。Codex CLI の `/hooks` でこのフックを確認し、信頼して有効にしてから `worker-start` で起動します。フックの定義が変わると信頼が外れます。フックを有効にできなければ Claude Code を使います。`ISSUE_PLANNING_EVAL_RUNNER=1` は、最終評価データセットで評価する側の CLI を起動するときだけ設定します。評価器はこの値を被験の CLI に引き継ぎません。
-3. test の実行前に `python3 run_eval.py audit-test "$CLAUDE_TRANSCRIPT" "$CODEX_TRANSCRIPT"` を使い、スキルを書いた子の JSONL 会話記録をすべて確認します。パスを含むツール入力を見つけた場合は終了コード 1 と記録の行番号・ケース名を返します。該当するケースは無効として、test を書く子に差し替えを依頼します。ケース名を特定できないアクセスは `*` と表示し、その入力が対象にしたケースを確認します。ツール入力ではない説明文や spec の記述は検査結果に含めません。
+1. スキルを書く子の worktree は、エージェントを指定せずに `orca worktree create` で作成します。親の checkout にある実行器で `python3 run_eval.py hide-holdout "$CHILD_WORKTREE"` を実行し、子の checkout から評価データセット（`evals/holdout/`）を外します。親や評価ケースを書く子の checkout は変更しません。
+2. Claude Code と Codex のプロジェクトの `PreToolUse` フックは、子の worktree でツールの入力に明記された `evals/holdout/` へのアクセスを止めます。Codex は、リンクされた worktree では主 checkout の `.codex/hooks.json` を読みます。Codex の子を起動する前に、主 checkout にそのファイルがあり、対象の worktree から Codex がプロジェクトを信頼していることを確かめます。Codex CLI の `/hooks` でこのフックを確認し、信頼して有効にしてから `worker-start` で起動します。フックの定義が変わると信頼が外れます。フックを有効にできなければ Claude Code を使います。`ISSUE_PLANNING_EVAL_RUNNER=1` は、評価データセットで評価する側の CLI を起動するときだけ設定します。評価器はこの値を被験の CLI に引き継ぎません。
+3. 評価データセットを流す前に `python3 run_eval.py audit-holdout "$CLAUDE_TRANSCRIPT" "$CODEX_TRANSCRIPT"` を使い、スキルを書いた子の JSONL 会話記録をすべて確認します。パスを含むツール入力を見つけた場合は終了コード 1 と記録の行番号・ケース名を返します。該当するケースは無効として、評価ケースを書く子に差し替えを依頼します。ケース名を特定できないアクセスは `*` と表示し、その入力が対象にしたケースを確認します。ツール入力ではない説明文や spec の記述は検査結果に含めません。呼び方を変える前の `evals/test/` へのアクセスも同じく検出します。
+
+## S1 の GitHub の予算
+
+S1（窓口の着手前の確認。S1a・S1b の評価ケース）は、1 回の GitHub の消費を GraphQL 10 ポイントまでとし、超えた試行は `graphql-budget` の確認で失敗にします。代役は GitHub を呼ばないので、`calls.jsonl` に記録した `gh` の呼び出しから、#138 で本物に流して測った単価で見積もります（`grading.py` の `graphql_points`）。
+
+- 成功した（終了コード 0 の）`gh` の呼び出し 1 回を 1 ポイントと数えます。書き込み（`issue comment`・`issue close`・`issue edit` など）と `gh repo view` も含めます。
+- 一覧（`gh issue list`・`gh pr list`）は、返した行数 100 件ごとに 1 ポイント（最低 1）と数えます。GitHub の GraphQL は 1 ページ 100 件で、ページごとに 1 ポイントを使うためです。
+- REST（`gh api repos/...`）は GraphQL のポイントを使わないので数えません。代役が断った呼び出し（GraphQL の `gh api graphql` など）は GitHub に届かないので数えません。
+
+#138 の実測では、S1 の一覧 2 回で 3 ポイント前後、候補の Issue を読むのは 1 件 1 ポイントでした。`report` は、ケースごとの見積もりの最大を `gql=` に出します。
+
+## 判定器の較正
+
+dev の試行から、判定器の問いがある試行を混ぜて 20 件選び、人が判定器と同じ証拠に yes/no を付けます（#88 の決定 4）。
+
+```sh
+orca-nested python3 run_eval.py batch CASES --n 1 --cond with,without --out "$DEV_OUTPUT"
+python3 run_eval.py labels "$DEV_OUTPUT" --out "$LABEL_DIR" --count 20
+python3 run_eval.py agreement "$LABEL_DIR/human.json" "$LABEL_DIR/answers.json"
+```
+
+`labels.md` には、問いごとに判定器に渡した証拠（返事、Issue の本文やコメント、`orca` の呼び出し）をそのまま出します。条件（スキルの有無）は並びから分からないよう混ぜ、判定器の答えは `answers.json` に分けます。
 
 ## 会話の途中から始める
 
