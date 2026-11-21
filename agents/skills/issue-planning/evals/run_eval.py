@@ -162,7 +162,7 @@ def run_session(agent, prompt, history, out, launch):
     )
     if warm["returncode"] or not session_id or reply.strip().rstrip("。") != marker or used_tools:
         transcript.touch()
-        return {**warm, "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
+        return {**warm, "reply": "", "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
     scored = launch(prompt, transcript, session_id=session_id)
     scored["seconds"] += warm["seconds"]
     return scored
@@ -216,7 +216,7 @@ def parse_codex(transcript):
     for ev in json_events(transcript):
         item = ev.get("item") or {}
         if ev.get("type") == "item.completed" and item.get("type") == "command_execution" and item.get("exit_code") == 0 \
-                and "issue-planning" in item.get("command", "") and "SKILL.md" in item.get("command", "") \
+                and re.search(r"issue-planning/(?:SKILL\.md|references/[\w-]+\.md)\b", item.get("command", "")) \
                 and re.search(r"(^|[\s'\"])(cat|sed|head|tail|less|more|bat|nl|awk)\s", item.get("command", "")):  # ls・find は読み込みではない
             reads.append(item["command"])
         if ev.get("type") == "turn.completed":
