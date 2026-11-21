@@ -24,12 +24,12 @@
       {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0}
     ],
     "judge": [
-      {"id": "only-whether-to-start", "source": "first_reply", "q": "最初の返事では今着手するかだけを聞き、計画、技術の選択肢や別の質問を出していないか"},
+      {"id": "only-whether-to-start", "source": "first_reply", "q": "最初の返事が、今着手するかを聞く一問だけでできているか。計画、技術の選択肢や別の質問が含まれていれば no。"},
       {
         "id": "backlog-is-need-not-solution",
         "source": "issues",
         "issues": {"new": true, "labels": ["backlog"]},
-        "q": "Issue に利用者の『ブログを作りたい』という言葉と、何を望んでいるか・困る人（利用者本人でよい）があり、解決策や手順を書いていないか"
+        "q": "Issue に、利用者の『ブログを作りたい』という言葉と、何を望んでいるか・困る人（利用者本人でよい）だけが書かれているか。解決策や手順を書いていれば no。"
       }
     ]
   },

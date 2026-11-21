@@ -11,7 +11,9 @@
         "title": "部署別に申請を絞り込めるようにする",
         "body": "## 完了の状態\n担当者が部署を選んで申請を絞り込める。\n\n## 計画\n部署の選択欄と検索結果をつなぐ。作業は #<<task>> で進めている。\n\nRun id: `run_a8b3bcb9798e`",
         "type": "Feature",
-        "comments": ["絞り込み表示の作業に着手しました。"]
+        "comments": [
+          "絞り込み表示の作業に着手しました。"
+        ]
       },
       {
         "key": "task",
@@ -19,7 +21,9 @@
         "body": "部署を一つ指定すると、対応する申請だけが表示される。",
         "type": "Task",
         "parent": "epic",
-        "comments": ["2 時間前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"]
+        "comments": [
+          "2 時間前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"
+        ]
       }
     ]
   },
@@ -46,10 +50,25 @@
       {
         "id": "worker-start",
         "type": "calls",
-        "match": ["orchestration", "worker-start"],
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
         "count": 1,
         "worktree_of": "epic",
         "success": true
+      },
+      {
+        "id": "no-run-use-of-epic-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
+        "options": {
+          "--id": "run_a8b3bcb9798e"
+        },
+        "count": 0
       }
     ],
     "judge": [
@@ -60,12 +79,18 @@
         "parts": [
           {
             "source": "orca",
-            "match": ["orchestration", "worker-start"],
+            "match": [
+              "orchestration",
+              "worker-start"
+            ],
             "success": true
           },
           {
             "source": "orca",
-            "match": ["orchestration", "task-create"],
+            "match": [
+              "orchestration",
+              "task-create"
+            ],
             "success": true
           },
           {
@@ -73,7 +98,9 @@
             "issues": {
               "issue": "epic"
             },
-            "fields": ["comments"],
+            "fields": [
+              "comments"
+            ],
             "new_comments": true
           }
         ]
@@ -86,18 +113,38 @@
   },
   "oracle": {
     "commands": [
-      ["gh", "issue", "comment", "<<epic>>", "--body", "前の親から引き継いでください。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"],
-      ["orca", "orchestration", "run-use", "--id", "run_a8b3bcb9798e"],
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<epic>>",
+        "--body",
+        "親のセッションが止まっていたので、新しい親を起こします。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "run-create",
+        "--objective",
+        "sanojimaru/ipe-1#<<epic>> の親を立て直す"
+      ],
       [
         "orca",
         "orchestration",
         "worker-start",
+        "--run",
+        "run_new0001",
         "--worktree",
         "path:/fake/worktrees/<<epic>>-epic-department-filter",
         "--agent",
         "claude",
+        "--model",
+        "claude-opus-5-5",
+        "--effort",
+        "high",
+        "--keep-open",
         "--spec",
-        "前の親から引き継いでください。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"
+        "Epic #<<epic>> の親のセッション（coordinator）を担当する。前の親のセッションは止まった。最初に orca orchestration run-use --id run_a8b3bcb9798e で Epic の Run を引き継ぎ、issue-planning の S8 の手順で続ける。子 #<<task>> のコメントに、部署コードについて未回答の質問がある。"
       ]
     ],
     "reply": "止まっていた親を立て直し、部署コードの未回答の質問を引き継ぎました。"

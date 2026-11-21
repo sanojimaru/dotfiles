@@ -99,7 +99,7 @@
       },
       {
         "id": "walking-skeleton",
-        "q": "Epic の Mermaid の依存グラフに、会議を 1 件用意して Claude Code の検索から読むところまで通す最初の子があり、未合意の技術設計を固定していないか。",
+        "q": "Epic の Mermaid の依存グラフに、会議を 1 件用意して Claude Code の検索から読むところまで通す最初の子があり、技術の設計を最初の子に任せているか。未合意の技術の設計（データモデル・API・ライブラリなど）を Epic で決めていれば no。",
         "source": "issues",
         "issues": {
           "issue": "epic"
@@ -110,7 +110,7 @@
       },
       {
         "id": "extension-outside-mvp",
-        "q": "新しい backlog の課題は今回の会議 1 件の検索とは別に延期できる拡張・対象外を記録しており、Epic がそれを今回の完了の状態に含めていないか。",
+        "q": "新しい backlog の課題が、今回の会議 1 件の検索とは別に延期できる拡張・対象外を記録し、Epic の完了の状態が会議 1 件の検索だけになっているか。拡張を完了の状態に含めていれば no。",
         "source": "combined",
         "parts": [
           {
@@ -150,7 +150,7 @@
         "orchestration",
         "run-create",
         "--objective",
-        "会議の記録を Claude Code から探せるようにする"
+        "sanojimaru/ipe-1#<<epic>> 会議の記録を Claude Code から探せるようにする"
       ],
       [
         "sh",
