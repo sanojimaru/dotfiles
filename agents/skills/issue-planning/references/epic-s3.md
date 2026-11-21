@@ -7,10 +7,10 @@
 ## 手順
 
 1. Epic の本文を読み、リポジトリのファイルと既存の Issue を調べる。
-2. Orca の Run を作り、返ってきた Run の id を Epic の本文に「Run id: `<id>`」の形で書く。落ちた親を立て直すとき、新しい親がこの id で Run を再開する。
+2. Orca の Run を作り、返ってきた Run の id を Epic の本文に「Run id: `<id>`」の形で書く。単独タスクから引き継いだ Epic で本文に前の Run の id があれば、置き換える。落ちた親を立て直すとき、新しい親がこの id で Run を再開する。objective は `<owner>/<repo>#<Epic の番号> ` で始める。窓口が、GitHub を読まずに Epic と Run を対応づけるため。
 
    ```sh
-   orca orchestration run-create --objective "<Epic の目的>" --json
+   orca orchestration run-create --objective "<owner>/<repo>#<Epic の番号> <Epic の目的>" --json
    ```
 
 3. Epic の本文を、`gh issue edit <番号> --body-file <ファイル>` で次の形に書き換える。コメントに書くだけでは、子と次の親が本文から読めない。元の困りごとと事実は残す。
@@ -24,7 +24,7 @@
    - 最初の子は最小の 1 本か。
    - 各子は 4 時間に収まるか。1 時間に満たない見込みの作業は、依存関係の近い次のストーリーと束ねる（4 時間と 1 時間は仮の値）。
    - 同じファイルやインターフェースを触るノードどうしに、依存の線を引いたか。
-6. 調べた結果、全体が 4 時間以内で閉じると分かったら、Epic のまま計画しない。Epic の type を Task に書き換え、受け入れ条件を書き、Epic に「Task に書き換えた。窓口が起動する」とコメントしてから、利用者に窓口へ渡すことを伝える。子の Issue は立てない。
+6. 調べた結果、全体が 4 時間以内で閉じると分かったら、Epic のまま計画しない。Epic の type を Task に書き換え、受け入れ条件を書き、Issue に「Task に書き換えた。親がこの Task の coordinator としてワーカーを起動する」とコメントする。子の Issue は立てず、窓口へも渡し直さない。親自身がその Task の coordinator になり、手順 2 の Run を使って、窓口の「単独タスクのワーカーを起動する」と同じ順（worktree、Orca の Task、spec のコメント、ワーカー）で起動する。worktree は `<番号>-<slug>` の名前で新しく作り、spec の報告先は親にする。起動したことを利用者に伝え、以後のワーカーの質問と終了の通知は、親が S9（単独タスクの coordinator）の手順で受ける。S9 の片付けで消すのはワーカーの worktree（`<番号>-<slug>`）にする。親の worktree（`<番号>-epic-<slug>`）は、Task が閉じた後に、[S7](epic-s7.md) の親の worktree の条件で消す。
 
 ## 利用者との合意
 

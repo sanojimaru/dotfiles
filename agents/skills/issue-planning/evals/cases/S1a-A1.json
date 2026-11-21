@@ -161,27 +161,22 @@
     [
       "orca",
       "orchestration",
-      "run-use",
-      "--id",
-      "run_ipe0001"
-    ],
-    [
-      "orca",
-      "orchestration",
-      "task-create",
-      "--spec",
-      "親のセッションを担当する"
+      "run-create",
+      "--objective",
+      "sanojimaru/ipe-1#<<epic>> の親を立て直す"
     ],
     [
       "orca",
       "orchestration",
       "worker-start",
-      "--task",
-      "task_new0001",
+      "--spec",
+      "Epic #<<epic>> の親のセッションを担当する。最初に orca orchestration run-use --id run_ipe0001 で Epic の Run を引き継ぐ。",
       "--worktree",
-      "issue:<<epic>>",
+      "path:/fake/worktrees/<<epic>>-epic-meeting-search",
       "--agent",
       "claude",
+      "--effort",
+      "high",
       "--keep-open"
     ]
   ]
