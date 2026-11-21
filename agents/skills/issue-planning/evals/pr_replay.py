@@ -129,6 +129,7 @@ def lifecycle(argv, records, event, rest_output=False):
     if args.command == "diff":
         print("\n".join(f["path"] for f in pr["files"]) if args.name_only else pr.get("replay_diff", ""))
         return 0
+    event.update(event="merge_attempted", issue=pr["number"])
     if not passed or pr["state"] != "OPEN" or pr["isDraft"] or any(label["name"] == "hold-merge" for label in pr["labels"]) or (
         args.match_head_commit and args.match_head_commit != pr["headRefOid"]
     ):
