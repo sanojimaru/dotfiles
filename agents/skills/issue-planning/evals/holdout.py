@@ -1,37 +1,103 @@
-"""非公開の test ケースは、被験プロセスを起こす前にメモリへ取得する。"""
-import base64
+"""スキルの開発中に test ケースを参照しないためのフックと会話記録の検査。"""
 import json
 import os
 import re
+import subprocess
 import sys
 
-from common import gh
+TEST_PATH = "agents/skills/issue-planning/evals/test"
+TEST_EXCLUDE = f"!/{TEST_PATH}/"
+ACCESS = re.compile(r"""(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[/*?\[\s"'\\]))""")
 
 
-def load_holdout(repo, names):
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
-        raise ValueError("--holdout-repo は owner/repo で指定してください")
-    if sys.stdin.isatty():
-        raise ValueError("test ケースの読み取り専用トークンは標準入力へリダイレクトしてください")
-    token = sys.stdin.readline().strip()
-    if not token:
-        raise ValueError("test ケースの読み取り専用トークンを標準入力に渡してください")
-    env = dict(os.environ, GH_TOKEN=token)
-    path = f"repos/{repo}"
-    metadata = json.loads(gh("api", path, env=env))
-    if not metadata["private"]:
-        raise ValueError("--holdout-repo は非公開リポジトリである必要があります")
-    # 通常の GitHub 認証でも読める配置だと、同じ環境でスキルを書く側に test が見える。
-    probe = gh("api", path, "--include", check=False).split("\n", 1)[0]
-    if not re.fullmatch(r"HTTP/\S+ 404(?: .*)?\r?", probe):
-        raise ValueError("通常の GitHub 認証で holdout が 404 になることを確認できません")
-    cases = []
-    for name in names:
-        encoded = gh("api", f"{path}/contents/cases/{name}.json", "--jq", ".content", env=env)
-        if not encoded.strip():
-            raise ValueError(f"holdout の {name} が空か、GitHub Contents API の 1 MB 制限を超えています")
-        case = json.loads(base64.b64decode(encoded))
-        if case.get("id") != name or case.get("split") != "test":
-            raise ValueError(f"holdout にある {name} の id または split が正しくありません")
-        cases.append(case)
-    return cases
+def hide_test(worktree):
+    subprocess.run(
+        ["git", "-C", str(worktree), "sparse-checkout", "set", "--no-cone", "--stdin"],
+        input=f"/*\n{TEST_EXCLUDE}\n",
+        text=True,
+        check=True,
+    )
+
+
+def strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings(item)
+
+
+def test_access(tool_input):
+    return {m[1] or "*" for value in strings(tool_input) for m in ACCESS.finditer(value)}
+
+
+def tool_inputs(event):
+    kind = event.get("type")
+    if kind == "assistant":
+        for block in event.get("message", {}).get("content", []):
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                yield block.get("input")
+    elif kind == "response_item":
+        payload = event.get("payload", {})
+        if payload.get("type") in {"function_call", "custom_tool_call"}:
+            arguments = payload.get("arguments", payload.get("input"))
+            if isinstance(arguments, str):
+                try:
+                    arguments = json.loads(arguments)
+                except ValueError:
+                    pass  # custom_tool_call の入力はプレーンテキストの場合もある。
+            yield arguments
+        elif payload.get("type") == "local_shell_call":
+            yield payload.get("action")
+    elif kind in {"item.started", "item.completed"}:
+        item = event.get("item", {})
+        if item.get("type") == "command_execution":
+            yield item.get("command")
+        elif item.get("type") == "file_change":
+            yield item.get("changes")
+        elif item.get("type") == "mcp_tool_call":
+            yield item.get("arguments")
+
+
+def audit_transcript(path):
+    with path.open() as stream:
+        for line_no, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError as exc:
+                raise ValueError(f"{path}:{line_no}: JSONL を読めません") from exc
+            if not isinstance(event, dict):
+                raise ValueError(f"{path}:{line_no}: JSONL のイベントがオブジェクトではありません")
+            cases = {case for tool_input in tool_inputs(event) for case in test_access(tool_input)}
+            if cases:
+                yield {"transcript": str(path), "line": line_no, "cases": sorted(cases)}
+
+
+def check_hook():
+    if os.environ.get("ISSUE_PLANNING_EVAL_RUNNER") == "1":
+        return 0
+    try:
+        event = json.load(sys.stdin)
+        if not isinstance(event.get("tool_input"), dict):
+            raise ValueError
+    except (AttributeError, ValueError):
+        print("issue-planning: フックに渡されたツール入力を検査できません。", file=sys.stderr)
+        return 2
+    if not test_access(event["tool_input"]):
+        return 0
+    # sparse-checkout を設定した子だけを対象にし、通常の checkout で作業する TC を止めない。
+    cwd = event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    sparse = subprocess.run(["git", "sparse-checkout", "list"], cwd=cwd, capture_output=True, text=True)
+    if TEST_EXCLUDE in sparse.stdout.splitlines():
+        print("issue-planning: スキルの開発中は evals/test/ を読みません。", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(check_hook())
