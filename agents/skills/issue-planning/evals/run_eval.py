@@ -448,6 +448,8 @@ def main():
             ap.error(str(exc))
         print(json.dumps(findings, ensure_ascii=False, indent=2))
         return int(bool(findings))
+    if args.cmd in ("trial", "batch") and args.split == "test" and not args.out:
+        ap.error("test の試行ログの保存先を --out で指定してください")
     args.f(args)
 
 
