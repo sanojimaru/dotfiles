@@ -13,6 +13,8 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
+
 from pr_replay import replay
 
 REPO = os.environ["GH_GUARD_REPO"]
@@ -48,7 +50,7 @@ def api_path(argv):
 
 def check(argv):
     """通してよければ None、断るなら理由を返す。"""
-    if argv[:1] in (["--version"], ["version"]):
+    if argv in (["--version"], ["version"], ["stack", "--help"], ["stack", "-h"]):
         return None
     if not argv or argv[0] not in ALLOW or (ALLOW[argv[0]] is not None and argv[1:2] and argv[1] not in ALLOW[argv[0]]):
         return f"`gh {' '.join(argv[:2])}` は評価中は使えません"
@@ -83,17 +85,98 @@ def check(argv):
     return None
 
 
+def api_fields(argv, input_body):
+    fields = {}
+    for i, arg in enumerate(argv):
+        following = argv[i + 1] if i + 1 < len(argv) else ""
+        if arg == "--input" or arg.startswith("--input="):
+            path = arg.split("=", 1)[1] if "=" in arg else following
+            body = json.loads(input_body if path == "-" else Path(path).read_text())
+            if not isinstance(body, dict):
+                raise ValueError("API request body is not an object")
+            fields.update(body)
+        flag = re.fullmatch(r"(-[fF]|--(?:raw-)?field)(?:=)?(.*)", arg)
+        if flag:
+            key, equals, value = (flag[2] or following).partition("=")
+            if equals:
+                if flag[1] in ("-F", "--field") and value.startswith("@"):
+                    value = input_body if value == "@-" else Path(value[1:]).read_text()
+                fields[key] = value
+    return fields
+
+
+def issue_number(args):
+    takes_value = {"-R", "--repo", "-b", "--body", "-F", "--body-file", "-t", "--title", "-c", "--comment", "-r", "--reason",
+                   "--type", "--add-label", "--remove-label", "--add-assignee", "--remove-assignee", "--milestone"}
+    positional = (arg for i, arg in enumerate(args) if not arg.startswith("-") and (i == 0 or args[i - 1] not in takes_value))
+    for arg in positional:
+        if match := re.search(r"(?:^#?|/issues/)(\d+)(?:/?$|[#?])", arg):
+            return int(match[1])
+    return None
+
+
+def issue_event(argv, endpoint, input_body):
+    api_issues = re.fullmatch(r"repos/[^/]+/[^/]+/issues(?:/(\d+)(/comments)?)?", endpoint.split("?", 1)[0].rstrip("/"))
+    fields = api_fields(argv, input_body) if api_issues else {}
+    if argv[:2] == ["issue", "create"] or (api_issues and not api_issues[1] and "title" in fields):
+        return {"event": "created"}
+    if argv[:2] in (["issue", "comment"], ["issue", "edit"], ["issue", "close"]):
+        number = issue_number(argv[2:])
+        metadata = {"issue": number}
+        if argv[1] == "close" and number is not None:
+            metadata.update(event="closed", state_reason="COMPLETED")
+        for i, arg in enumerate(argv[2:], 2):
+            flag, equal, value = arg.partition("=")
+            val = value if equal else (argv[i + 1] if i + 1 < len(argv) else "")
+            text = val if flag in ("--body", "-b") else None
+            if flag in ("--body-file", "-F"):
+                if val == "-":
+                    text = input_body
+                elif Path(val).is_file():
+                    text = Path(val).read_text()
+            if text is not None:
+                if argv[1] == "comment":
+                    return {**metadata, "comment_body": text}
+                if argv[1] == "edit" and number is not None:
+                    return {**metadata, "event": "updated", "body": text}
+            if argv[1] == "close" and flag in ("--comment", "-c"):
+                metadata["comment_body"] = val
+            if argv[1] == "close" and flag in ("--reason", "-r"):
+                metadata["state_reason"] = val.upper().replace(" ", "_")
+        return metadata
+    if api_issues and api_issues[1]:
+        if api_issues[2] and "body" in fields:
+            return {"issue": int(api_issues[1]), "comment_body": fields["body"]}
+        if fields.get("state") == "closed":
+            return {"event": "closed", "issue": int(api_issues[1]), "state_reason": str(fields.get("state_reason") or "completed").upper()}
+        if not api_issues[2] and "body" in fields:
+            return {"event": "updated", "issue": int(api_issues[1]), "body": fields["body"]}
+    return {}
+
+
 def main():
     if os.environ.get("GH_GUARD_ACTIVE"):
         sys.exit(deny("見張りが自分を呼んでいます（本物の gh のパスが見張り自身を指している）"))
     argv = sys.argv[1:]
     started = time.time()
     reason = check(argv)
-    rc = deny(reason) if reason else replay(argv, REPO, api_path(argv) if argv[0] == "api" else "")
+    endpoint = api_path(argv) if argv[:1] == ["api"] else ""
+    input_body = None
+    if not reason and any((argv[0] == "api" and arg.endswith("=@-")) or arg in ("--input=-", "--body-file=-") or
+                           (arg == "-" and argv[i - 1] in ("--input", "--body-file", "-F")) for i, arg in enumerate(argv[1:], 1)):
+        input_body = sys.stdin.read()
+    rc = deny(reason) if reason else replay(argv, REPO, endpoint)
     if rc is None:
-        rc = subprocess.call([GH_REAL] + argv, env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1"))
+        rc = subprocess.run([GH_REAL] + argv, input=input_body, text=True,
+                            env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1")).returncode
+    extra = {}
+    if rc == 0:
+        try:
+            extra = issue_event(argv, endpoint, input_body)
+        except (OSError, TypeError, ValueError) as exc:
+            extra = {"observation_error": str(exc)}
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
-        f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc}, ensure_ascii=False) + "\n")
+        f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc, **extra}, ensure_ascii=False) + "\n")
     sys.exit(rc)
 
 

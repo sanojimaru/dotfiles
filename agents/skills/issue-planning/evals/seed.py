@@ -21,10 +21,10 @@ def reset_repo(repo):
         gh("issue", "delete", str(n["number"]), "-R", r, "--yes")
 
 
-def subst(text, nums):
+def subst(text, nums, *, defer=False):
     two_days = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
     text = text.replace("<<date-2d>>", two_days)
-    return re.sub(r"<<([a-z0-9]+)>>", lambda m: str(nums[m.group(1)]), text)
+    return re.sub(r"<<([a-z0-9]+)>>", lambda m: str(nums.get(m[1], m[0]) if defer else nums[m[1]]), text)
 
 
 def seed_repo(repo, case):
@@ -39,8 +39,11 @@ def seed_repo(repo, case):
     if len(set(keys)) != len(keys):
         raise ValueError("種の Issue と PR の key は重複できません")
     nums = {pr["key"]: 1_000_000 + i for i, pr in enumerate(prs, 1)}
-    for iss in case["seed"]["issues"]:
-        args = ["issue", "create", "-R", r, "--title", subst(iss["title"], nums), "--body", subst(iss["body"], nums)]
+    seeded = case["seed"]["issues"]
+    deferred = []
+    for iss in seeded:
+        title, body = (subst(iss[field], nums, defer=True) for field in ("title", "body"))
+        args = ["issue", "create", "-R", r, "--title", title, "--body", body]
         if iss.get("type"):
             args += ["--type", iss["type"]]
         for lab in iss.get("labels", []):
@@ -49,6 +52,11 @@ def seed_repo(repo, case):
             args += ["--parent", str(nums[iss["parent"]])]
         url = gh(*args).strip()
         nums[iss["key"]] = int(url.rsplit("/", 1)[1])
+        if "<<" in title or "<<" in body:
+            deferred.append((iss["key"], title, body))
+    for key, title, body in deferred:
+        gh("issue", "edit", str(nums[key]), "-R", r, "--title", subst(title, nums), "--body", subst(body, nums))
+    for iss in seeded:
         for body in iss.get("comments", []):
             gh("issue", "comment", str(nums[iss["key"]]), "-R", r, "--body", subst(body, nums))
         if iss.get("state") == "closed":
