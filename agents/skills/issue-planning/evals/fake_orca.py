@@ -17,6 +17,8 @@ ORCA_REAL = "@@ORCA_REAL@@"  # 試行ごとにコピーするとき、本物の 
 def log(argv, started, rc):
     path = opt(argv, "--spec-file") if argv[:2] in (["orchestration", "task-create"], ["orchestration", "worker-start"]) else None
     details = {}
+    if argv[:2] == ["orchestration", "worker-start"]:
+        details["cwd"] = os.path.realpath(os.getcwd())
     if path and os.path.isfile(path):
         with open(path) as f:
             details["spec"] = f.read()

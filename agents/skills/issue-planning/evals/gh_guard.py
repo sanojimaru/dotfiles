@@ -91,7 +91,10 @@ def api_fields(argv, input_body):
         following = argv[i + 1] if i + 1 < len(argv) else ""
         if arg == "--input" or arg.startswith("--input="):
             path = arg.split("=", 1)[1] if "=" in arg else following
-            fields.update(json.loads(input_body if path == "-" else Path(path).read_text()))
+            body = json.loads(input_body if path == "-" else Path(path).read_text())
+            if not isinstance(body, dict):
+                raise ValueError("API request body is not an object")
+            fields.update(body)
         flag = re.fullmatch(r"(-[fF]|--(?:raw-)?field)(?:=)?(.*)", arg)
         if flag:
             key, equals, value = (flag[2] or following).partition("=")
@@ -113,7 +116,7 @@ def issue_number(args):
 
 
 def issue_event(argv, endpoint, input_body):
-    api_issues = re.fullmatch(r"repos/[^/]+/[^/]+/issues(?:/(\d+)(/comments)?)?", endpoint)
+    api_issues = re.fullmatch(r"repos/[^/]+/[^/]+/issues(?:/(\d+)(/comments)?)?", endpoint.split("?", 1)[0].rstrip("/"))
     fields = api_fields(argv, input_body) if api_issues else {}
     if argv[:2] == ["issue", "create"] or (api_issues and not api_issues[1] and "title" in fields):
         return {"event": "created"}
@@ -121,8 +124,7 @@ def issue_event(argv, endpoint, input_body):
         number = issue_number(argv[2:])
         metadata = {"issue": number}
         if argv[1] == "close" and number is not None:
-            reason = "NOT_PLANNED" if "not planned" in argv[2:] or "--reason=not planned" in argv[2:] else "COMPLETED"
-            metadata.update(event="closed", state_reason=reason)
+            metadata.update(event="closed", state_reason="COMPLETED")
         for i, arg in enumerate(argv[2:], 2):
             flag, equal, value = arg.partition("=")
             val = value if equal else (argv[i + 1] if i + 1 < len(argv) else "")
@@ -139,12 +141,14 @@ def issue_event(argv, endpoint, input_body):
                     return {**metadata, "event": "updated", "body": text}
             if argv[1] == "close" and flag in ("--comment", "-c"):
                 metadata["comment_body"] = val
+            if argv[1] == "close" and flag in ("--reason", "-r"):
+                metadata["state_reason"] = val.upper().replace(" ", "_")
         return metadata
     if api_issues and api_issues[1]:
         if api_issues[2] and "body" in fields:
             return {"issue": int(api_issues[1]), "comment_body": fields["body"]}
         if fields.get("state") == "closed":
-            return {"event": "closed", "issue": int(api_issues[1]), "state_reason": fields.get("state_reason", "completed").upper()}
+            return {"event": "closed", "issue": int(api_issues[1]), "state_reason": str(fields.get("state_reason") or "completed").upper()}
         if not api_issues[2] and "body" in fields:
             return {"event": "updated", "issue": int(api_issues[1]), "body": fields["body"]}
     return {}
@@ -169,7 +173,7 @@ def main():
     if rc == 0:
         try:
             extra = issue_event(argv, endpoint, input_body)
-        except (OSError, ValueError) as exc:
+        except (OSError, TypeError, ValueError) as exc:
             extra = {"observation_error": str(exc)}
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
         f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc, **extra}, ensure_ascii=False) + "\n")

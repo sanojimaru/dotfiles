@@ -83,12 +83,17 @@ def run_check(chk, ctx):
             return False
         if "worktree_of" in chk:
             wt = next((w for w in ctx["state"]["worktrees"] if w["issue"] == ctx["nums"][chk["worktree_of"]]), None)
-            return not calls or (wt is not None and all(selector_hits(option(c["argv"], "--worktree") or "", wt) for c in calls))
+            if not calls or wt is None:
+                return not calls
+            return all(
+                selector_hits(selector, wt) if (selector := option(c["argv"], "--worktree")) not in (None, "current") else
+                bool(c.get("cwd")) and Path(c["cwd"]).is_relative_to(Path(wt["path"]).resolve())
+                for c in calls
+            )
         return True
     if t == "comment_before_call":
         n = ctx["nums"][chk["issue"]]
-        starts = [c["ts"] for c in ctx["calls"] if c["tool"] == "orca" and c["argv"][:len(chk["match"])] == chk["match"] and c.get("rc") == 0
-                  and "--help" not in c["argv"] and "-h" not in c["argv"]]  # ヘルプや失敗した呼び出しは起動ではない
+        starts = [c["ts"] for c in orca_calls(ctx, {**chk, "success": True})]
         comments = [c.get("end", c["ts"]) for c in ctx["calls"] if is_comment_on(c, n)]  # コメントが終わった時刻を、起動の呼び出しの時刻と比べる
         return bool(starts) and bool(comments) and min(comments) < min(starts)
     if t == "unchanged":
@@ -127,6 +132,9 @@ def run_check(chk, ctx):
                        and ("reason" not in chk or c.get("state_reason") == chk["reason"]) for c in ctx.get(source, []))
     if t == "no_first_issues":
         return not any(c.get("event") == "created" for c in ctx.get("first_calls", []))
+    if t == "no_pr_merge":
+        pr = ctx["nums"][chk["pr"]]
+        return not any(c.get("issue") == pr and c.get("event") in ("merged", "merge_attempted") for c in ctx["calls"])
     if t == "order":
         last = float("-inf")
         for event in chk["events"]:

@@ -62,6 +62,11 @@ def make_workdir(repo, case, nums, cond, agent, root):
     if clone != repo_clone:
         with (repo_clone / ".git/info/exclude").open("a") as exclude:
             exclude.write("\n/.claude/skills/\n/.agents/skills/\n")
+    if case["split"] == "test":
+        push_repo = root / "push.git"
+        seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(push_repo))
+        seed_git(repo_clone, "remote", "set-url", "--push", "origin", str(push_repo))
+        seed_git(repo_clone, "push", "--all", "origin")
     skills_root = clone / (".claude/skills" if agent == "claude" else ".agents/skills")
     skills_root.mkdir(parents=True)
     shutil.copytree(Path.home() / ".agents/skills/orchestration", skills_root / "orchestration")
@@ -540,8 +545,8 @@ def cmd_report(args):
     partial = "（費用を返さない試行を含まない一部の合計）" if any(g.get("usd_unknown") for g in rows.values()) else ""
     print(f"合計 usd: ${sum(g['usd'] for g in rows.values()):.2f}{partial}")
     leak_logs = ("history.jsonl", "first-transcript.jsonl", "transcript.jsonl")
-    leaks = [str(p.parent) for p in paths if any(log.exists() and LEAK.search(log.read_text())
-                                               for log in (p.parent / name for name in leak_logs))]
+    logs = (log for d in map(Path, args.dir) for name in leak_logs for log in (d / name, *d.glob(f"*/try*/{name}")))
+    leaks = sorted({str(log.parent) for log in logs if log.is_file() and LEAK.search(log.read_text())})
     print(f"本番の環境の漏れ（Phase 0 の 1・3）: {len(leaks)} 件", *leaks, sep="\n  ")
 
 
