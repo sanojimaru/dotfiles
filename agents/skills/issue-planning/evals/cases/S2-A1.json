@@ -20,6 +20,7 @@
       {"id": "no-issue-before-answer", "type": "no_first_issues"},
       {"id": "one-new-issue", "type": "issues", "new": true, "count": 1},
       {"id": "open-backlog", "type": "issues", "new": true, "count": 1, "fields": {"state": "OPEN"}, "labels": ["backlog"]},
+      {"id": "no-worktree", "type": "calls", "match": ["worktree", "create"], "count": 0},
       {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0}
     ],
     "judge": [
@@ -35,7 +36,7 @@
   "oracle": {
     "first": {"reply": "ブログを作る作業に、今着手しますか？"},
     "commands": [
-      ["gh", "issue", "create", "--title", "ブログを作りたい", "--label", "backlog", "--body", "利用者の要望は「ブログを作りたい」です。記事の公開先を持ちたい利用者本人の要望です。用途の詳細は未確認です。"]
+      ["gh", "issue", "create", "--title", "ブログを作りたい", "--label", "backlog", "--body", "利用者の要望は「ブログを作りたい」です。依頼者本人の要望です。用途と公開先は未確認です。"]
     ],
     "reply": "今は着手せず、バックログに残しました。"
   },

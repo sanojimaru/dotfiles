@@ -30,10 +30,9 @@
         "top_level": true
       },
       {
-        "id": "run-worktree-start-order",
+        "id": "worktree-before-start",
         "type": "order",
         "events": [
-          {"event": "orca", "match": ["orchestration", "run-create"]},
           {"event": "orca", "match": ["worktree", "create"]},
           {"event": "orca", "match": ["orchestration", "worker-start"]}
         ]
@@ -52,7 +51,7 @@
   "oracle": {
     "commands": [
       ["orca", "orchestration", "run-create", "--objective", "README のリンク切れ"],
-      ["bash", "-c", "set -e; url=$(gh issue create --type Task --title 'README のリンク切れ' --body '受け入れ条件: README の「初めて使う方へ」を開くと対象のガイドが表示される。Run id: run_ipe_s2_readme'); number=${url##*/}; orca worktree create --name \"${number}-readme-link\" --issue \"$number\" --no-parent; task=$(orca orchestration task-create --spec \"Issue #$number を担当する\" | jq -r .result.taskId); orca orchestration worker-start --task \"$task\" --worktree \"issue:$number\" --agent codex"]
+      ["bash", "-c", "set -e; url=$(gh issue create --type Task --title 'README のリンク切れ' --body '受け入れ条件: README の「初めて使う方へ」を開くと対象のガイドが表示される。Run id: run_ipe_s2_readme'); number=${url##*/}; path=$(orca worktree create --name \"${number}-readme-link\" --issue \"$number\" --no-parent --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s2_readme --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s2_readme --task \"$task\" --worktree \"path:$path\" --agent codex --model gpt-6.2-sol"]
     ],
     "reply": "README のリンクを修正するワーカーを起動しました。"
   },

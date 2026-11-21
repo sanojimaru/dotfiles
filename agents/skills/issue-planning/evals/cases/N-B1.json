@@ -9,7 +9,11 @@
   },
   "orca": {"run_id": "run_ipe_n_tools", "run_objective": "", "worktrees": [], "workers": []},
   "expect": {
-    "checks": [{"id": "no-issue-changes", "type": "all_issues_unchanged", "fail_on_any": true}],
+    "checks": [
+      {"id": "no-worker", "type": "calls", "match": ["orchestration", "worker-start"], "count": 0},
+      {"id": "no-worktree", "type": "calls", "match": ["worktree", "create"], "count": 0},
+      {"id": "no-issue-changes", "type": "all_issues_unchanged", "fail_on_any": true}
+    ],
     "judge": [{"id": "answer", "q": "設定のツールとして node と python を挙げているか"}]
   },
   "oracle": {"reply": "Node.js（22.14.0）と Python（3.13.2）です。"},
