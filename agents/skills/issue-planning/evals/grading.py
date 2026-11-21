@@ -116,6 +116,9 @@ def run_check(chk, ctx):
         matched = [w for w in started if w["issue"] in expected and w["issue"] is not None]
         if chk.get("top_level") and any(w["worktree"].get("has_parent") for w in matched):
             return False
+        if prefix := chk.get("worktree_name_prefix"):
+            if any(not w["worktree"]["name"].startswith(subst(prefix, ctx["nums"])) for w in matched):
+                return False
         return len(started) == chk["count"] == len(matched) == len({w["issue"] for w in matched})
     if t == "worktree":
         n = ctx["nums"][chk["issue"]]

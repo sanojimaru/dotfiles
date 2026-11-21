@@ -34,10 +34,12 @@
   "expect": {
     "checks": [
       {"id": "existing-issue-promoted", "type": "issues", "issue": "task", "count": 1, "fields": {"type": "Feature", "state": "OPEN"}},
-      {"id": "no-duplicate-issue", "type": "issues", "new": true, "count": 0},
+      {"id": "no-duplicate-epic", "type": "issues", "new": true, "count": 0, "fields": {"type": "Feature"}},
+      {"id": "no-premature-children", "type": "issues", "new": true, "count": 0, "fields": {"parent": "task"}},
       {"id": "no-close", "type": "no_close", "issue": "task"},
       {"id": "start-epic-parent", "type": "calls", "match": ["orchestration", "worker-start"], "count": 1, "success": true},
-      {"id": "worker-linked-to-epic", "type": "workers", "issues": {"issue": "task", "fields": {"type": "Feature"}}, "top_level": true, "count": 1}
+      {"id": "worker-linked-to-new-epic-worktree", "type": "workers", "issues": {"issue": "task", "fields": {"type": "Feature"}}, "top_level": true, "worktree_name_prefix": "<<task>>-epic-", "count": 1},
+      {"id": "answer-original-worker", "type": "comment_matches_message", "issue": "task", "match": ["orchestration", "reply"], "options": {"--id": "msg_ipe_s9_overrun"}}
     ],
     "judge": [
       {
@@ -54,20 +56,15 @@
         "fields": ["comments"],
         "new_comments": true,
         "q": "新しく書いた同じ Issue のコメントに、元のワーカーが権限判定箇所と CSV 出力経路を調査済みだと書いてあるか"
-      },
-      {
-        "id": "epic-worktree-name",
-        "source": "orca",
-        "match": ["worktree", "create"],
-        "success": true,
-        "q": "新しい worktree を <既存 Issue の番号>-epic-<作業名> という名前で作ったか"
       }
     ]
   },
   "oracle": {
     "commands": [
-      ["gh", "issue", "edit", "<<task>>", "--type", "Feature", "--body", "## 完了の状態\n経理担当が画面から当月の明細を 1 件 CSV で取得できます。\n\n## 計画（案）\n既存の権限判定を確認し、許可された担当者が CSV を取得できる最小の変更を通します。調査と合意は Epic の親が担当します。\n\nRun id: run_ipe_s9_overrun"],
       ["gh", "issue", "comment", "<<task>>", "--body", "元のワーカーが既存画面の権限判定箇所と現行 CSV 出力経路を調査しました。"],
+      ["gh", "issue", "comment", "<<task>>", "--body", "この Issue は Epic として引き継ぎます。単独タスクの実装は続けず、この Issue は閉じないでください。"],
+      ["orca", "orchestration", "reply", "--id", "msg_ipe_s9_overrun", "--body", "この Issue は Epic として引き継ぎます。単独タスクの実装は続けず、この Issue は閉じないでください。"],
+      ["gh", "issue", "edit", "<<task>>", "--type", "Feature", "--body", "## 完了の状態\n経理担当が画面から当月の明細を 1 件 CSV で取得できます。\n\n## 計画（案）\n既存の権限判定を確認し、許可された担当者が CSV を取得できる最小の変更を通します。調査と合意は Epic の親が担当します。\n\nRun id: run_ipe_s9_overrun"],
       ["orca", "worktree", "create", "--name", "<<task>>-epic-statement-export", "--issue", "<<task>>", "--no-parent"],
       ["orca", "orchestration", "worker-start", "--spec", "Epic #<<task>> の親を担当し、issue-planning の親の手順を読んでください。", "--worktree", "path:/fake/worktrees/<<task>>-epic-statement-export", "--agent", "claude"]
     ],
