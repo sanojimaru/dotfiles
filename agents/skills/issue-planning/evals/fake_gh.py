@@ -186,6 +186,11 @@ def labels_of(values):
     return [name.strip() for value in values for name in value.split(",") if name.strip()]
 
 
+def body_from(args, input_body):
+    if getattr(args, "body_file", None) is not None:
+        return input_body if args.body_file == "-" else Path(args.body_file).read_text()
+    return getattr(args, "body", None)
+
 
 def parser(prog, *flags, **valued):
     p = argparse.ArgumentParser(prog=prog, add_help=False)
@@ -221,6 +226,8 @@ def dispatch(argv, input_body):
         rc = issue_cmd(state, argv[1], argv[2:], input_body)
     elif argv[:2] == ["label", "list"]:
         rc = label_list(state, argv[2:])
+    elif argv[:2] == ["label", "create"]:
+        rc = label_create(state, argv[2:])
     else:
         raise ValueError(f"`gh {' '.join(argv[:2])}` は評価の代役では使えません")
     return rc
@@ -272,6 +279,106 @@ def issue_cmd(state, cmd, argv, input_body):
             for c in issue["comments"]:
                 print(f"--\nauthor:\t{OWNER}\nassociation:\towner\nedited:\tfalse\nstatus:\tnone\n--\n{c['body']}")
         return 0
+    if cmd == "create":
+        args = parser("gh issue create", "-w|--web", "-e|--editor", title="-t|--title", body="-b|--body",
+                      body_file="-F|--body-file", label=("-l|--label", {"action": "append", "default": []}),
+                      type_="--type", parent="--parent", assignee=("-a|--assignee", {"action": "append"}),
+                      milestone="-m|--milestone", project=("-p|--project", {"action": "append"}),
+                      template="-T|--template").parse_intermixed_args(argv)
+        if args.web or args.editor:
+            raise ValueError("--web と --editor は評価中は使えません")
+        if not args.title:
+            raise ValueError("must provide `--title` and `--body` when not running interactively")
+        body = body_from(args, input_body)
+        if body is None:
+            raise ValueError("must provide `--title` and `--body` when not running interactively")
+        parent = find(state, args.parent)["number"] if args.parent else None
+        issue = add_issue(state, args.title, body, labels=labels_of(args.label), type_=args.type_, parent=parent)
+        save(state)
+        print(url(state, issue["number"]))
+        return 0
+    if cmd == "edit":
+        args = parser("gh issue edit", "--remove-type", "--remove-parent", "--remove-milestone",
+                      selectors=("selectors", {"nargs": "*"}), title="-t|--title", body="-b|--body",
+                      body_file="-F|--body-file", add_label=("--add-label", {"action": "append", "default": []}),
+                      remove_label=("--remove-label", {"action": "append", "default": []}), type_="--type",
+                      parent="--parent", add_sub=("--add-sub-issue", {"action": "append", "default": []}),
+                      remove_sub=("--remove-sub-issue", {"action": "append", "default": []}),
+                      add_assignee="--add-assignee", remove_assignee="--remove-assignee", milestone="-m|--milestone",
+                      add_project="--add-project", remove_project="--remove-project").parse_intermixed_args(argv)
+        if not args.selectors:
+            raise ValueError("argument required: issue number or URL")
+        body = body_from(args, input_body)
+        issues = [find(state, s) for s in args.selectors]
+        known = {label["name"] for label in state["labels"]}
+        if missing := [name for name in labels_of(args.add_label) if name not in known]:
+            raise ValueError(f"'{missing[0]}' not found")
+        if args.type_ is not None and args.type_ not in TYPES:
+            raise ValueError(f"issue type '{args.type_}' not found")
+        for issue in issues:
+            if args.title is not None:
+                issue["title"] = args.title
+            if body is not None:
+                issue["body"] = body
+            issue["labels"] = [n for n in dict.fromkeys([*issue["labels"], *labels_of(args.add_label)])
+                               if n not in labels_of(args.remove_label)]
+            if args.type_ is not None:
+                issue["type"] = args.type_
+            if args.remove_type:
+                issue["type"] = None
+            if args.parent:
+                issue["parent"] = find(state, args.parent)["number"]
+            if args.remove_parent:
+                issue["parent"] = None
+            for sub in args.add_sub:
+                find(state, sub)["parent"] = issue["number"]
+            for sub in args.remove_sub:
+                if (child := find(state, sub))["parent"] == issue["number"]:
+                    child["parent"] = None
+            issue["updatedAt"] = now()
+            print(url(state, issue["number"]))
+        save(state)
+        return 0
+    if cmd == "comment":
+        args = parser("gh issue comment", "--edit-last", "--delete-last", "--create-if-none", "--yes", "-w|--web",
+                      "-e|--editor", selector=("selector", {"nargs": "?"}), body="-b|--body",
+                      body_file="-F|--body-file").parse_intermixed_args(argv)
+        if args.web or args.editor or args.delete_last:
+            raise ValueError("--web・--editor・--delete-last は評価中は使えません")
+        issue = find(state, args.selector or "")
+        body = body_from(args, input_body)
+        if body is None:
+            raise ValueError("--body or --body-file required when not running interactively")
+        if args.edit_last and issue["comments"]:
+            issue["comments"][-1]["body"] = body
+            comment = issue["comments"][-1]
+        else:
+            comment = add_comment(state, issue, body)
+        save(state)
+        print(f"{url(state, issue['number'])}#issuecomment-{comment['id']}")
+        return 0
+    if cmd in ("close", "reopen"):
+        args = parser(f"gh issue {cmd}", selector=("selector", {"nargs": "?"}), comment="-c|--comment",
+                      reason="-r|--reason", duplicate="--duplicate-of").parse_intermixed_args(argv)
+        issue = find(state, args.selector or "")
+        if args.comment:
+            add_comment(state, issue, args.comment)
+        if cmd == "close":
+            reason = (args.reason or ("duplicate" if args.duplicate else "completed")).upper().replace(" ", "_")
+            if reason not in ("COMPLETED", "NOT_PLANNED", "DUPLICATE"):
+                raise ValueError(f'invalid argument "{args.reason}" for "-r, --reason" flag')
+            if issue["state"] == "CLOSED":
+                print(f"! Issue {state['repo']}#{issue['number']} ({issue['title']}) is already closed", file=sys.stderr)
+            else:
+                set_state(issue, True, reason)
+                print(f"✓ Closed issue {state['repo']}#{issue['number']} ({issue['title']})", file=sys.stderr)
+        elif issue["state"] == "OPEN":
+            print(f"! Issue {state['repo']}#{issue['number']} ({issue['title']}) is already open", file=sys.stderr)
+        else:
+            set_state(issue, False)
+            print(f"✓ Reopened issue {state['repo']}#{issue['number']} ({issue['title']})", file=sys.stderr)
+        save(state)
+        return 0
     if cmd == "status":
         print(f"Relevant issues in {state['repo']}\n\nIssues assigned to you\n  There are no issues assigned to you")
         return 0
@@ -320,3 +427,20 @@ def label_list(state, argv):
     for label in rows:
         print(f"{label['name']}\t{label['description']}\t#{label['color']}")
     return 0
+
+
+def label_create(state, argv):
+    args = parser("gh label create", "-f|--force", name=("name", {}), color="-c|--color",
+                  description="-d|--description").parse_intermixed_args(argv)
+    existing = next((label for label in state["labels"] if label["name"].lower() == args.name.lower()), None)
+    if existing and not args.force:
+        raise ValueError(f"label with name \"{args.name}\" already exists; use `--force` to update its color and description")
+    if existing:
+        existing.update(description=args.description or existing["description"], color=args.color or existing["color"])
+    else:
+        state["labels"].append({"name": args.name, "description": args.description or "", "color": args.color or "ededed"})
+    save(state)
+    print(f"✓ Label \"{args.name}\" created in {state['repo']}", file=sys.stderr)
+    return 0
+
+
