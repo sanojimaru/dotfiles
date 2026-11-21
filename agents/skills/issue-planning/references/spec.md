@@ -16,3 +16,9 @@ Issue: <owner>/<repo>#<作業 Issue の番号> を担当する。受け入れ条
 - 完了した範囲のマージを済ませ、作業 Issue に「片付いたこと・片付かなかったこと・計画に影響する発見」をコメントする。次に作業 Issue を閉じ、worker_done を送る。完了した範囲を示せなければ Issue を開いたままにし、理由を報告して worker_done を失敗として送る。
 - worktree は worker_done を受けた coordinator が片付ける。
 ```
+
+## issue-planning のスキル本文を書くワーカー
+
+親は、子 B・C・D の起動前に[評価器の手順](../evals/README.md#スキルを書くワーカーの起動と確認)に従い、子の worktree から test ケースを外す。Codex を起動する場合は、spec の「決まり」に次の文を足す。
+
+> `agents/skills/issue-planning/evals/test/` にある最終評価用のケースは読みません。別の checkout や GitHub からも取得せず、スキルの変更と動作確認には dev ケースだけを使います。
