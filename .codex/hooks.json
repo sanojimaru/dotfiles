@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if root=$(git rev-parse --show-toplevel 2>/dev/null); then script=\"$root/agents/skills/issue-planning/evals/holdout.py\"; if [ -f \"$script\" ]; then exec python3 \"$script\"; fi; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

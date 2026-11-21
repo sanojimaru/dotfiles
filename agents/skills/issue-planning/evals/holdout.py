@@ -7,7 +7,7 @@ import sys
 
 TEST_PATH = "agents/skills/issue-planning/evals/test"
 TEST_EXCLUDE = f"!/{TEST_PATH}/"
-ACCESS = re.compile(r"""(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[/*?\[\s"'\\]))""")
+ACCESS = re.compile(r"(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[^\w.-]))")
 
 
 def hide_test(worktree):
@@ -83,12 +83,9 @@ def check_hook():
         return 0
     try:
         event = json.load(sys.stdin)
-        if not isinstance(event.get("tool_input"), dict):
-            raise ValueError
-    except (AttributeError, ValueError):
-        print("issue-planning: フックに渡されたツール入力を検査できません。", file=sys.stderr)
-        return 2
-    if not test_access(event["tool_input"]):
+    except ValueError:
+        return 0
+    if not isinstance(event, dict) or not test_access(event.get("tool_input")):
         return 0
     # sparse-checkout を設定した子だけを対象にし、通常の checkout で作業する TC を止めない。
     cwd = event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
