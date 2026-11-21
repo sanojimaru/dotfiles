@@ -1,0 +1,183 @@
+{
+  "id": "S6-A1",
+  "split": "dev",
+  "section": "S6",
+  "history": "利用者: 取引先の CSV を取り込みたいです。\n\n親: Epic #<<epic>> の計画に合意をいただき、子 #<<task>> を起動しました。私が coordinator として、完了の通知を受けたら報告と状態を照らし合わせます。<!--skill-->次に通知を受けたら、issue-planning の該当する参照を読みます。<!--/skill-->",
+  "prompt": "Orca からワーカーの worker_done が届きました。Run `run_ipe_s6_a1` の受信箱にあります。",
+  "seed": {
+    "files": {
+      "README.md": "# 取引先管理\n"
+    },
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "取引先の CSV を取り込みたい",
+        "body": "## 完了の状態\n- [ ] 担当者として、取引先の CSV を取り込み、一覧で見られる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. CSV を取り込む] --> B[2. 取り込んだ一覧を画面に出す]\n```\n\nRun id: `run_ipe_s6_a1`"
+      },
+      {
+        "key": "task",
+        "parent": "epic",
+        "type": "Task",
+        "state": "closed",
+        "title": "CSV を取り込む",
+        "body": "## 受け入れ条件\n- [ ] CSV を取り込める\n",
+        "comments": [
+          "報告\n\n**片付いたこと**\n- CSV を取り込めるようにした（PR #<<pr>> をマージ済み）。\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      }
+    ],
+    "prs": [
+      {
+        "key": "pr",
+        "title": "CSV を取り込む",
+        "state": "MERGED",
+        "closes": [
+          "task"
+        ],
+        "headRefName": "<<task>>-csv-import",
+        "files": [
+          {
+            "path": "import_csv.py",
+            "additions": 2,
+            "deletions": 0
+          }
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s6_a1",
+    "run_objective": "Epic: 取引先の CSV の取り込み",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<task>>-csv-import",
+        "checkout": true,
+        "committed": {
+          "import_csv.py": "import csv\n\n\ndef load(path):\n    with open(path, encoding=\"utf-8\", newline=\"\") as f:\n        return list(csv.DictReader(f))\n"
+        }
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "succeeded"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "worker_done",
+        "id": "msg_ipe_s6_a1",
+        "subject": "CSV の取り込みを完了しました",
+        "body": "CSV を取り込めるようにしました。作業 Issue #<<task>> に報告しました。",
+        "payload": {
+          "outcome": "succeeded",
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "worktree-removed",
+        "type": "worktree",
+        "issue": "task",
+        "present": false
+      },
+      {
+        "id": "remove-with-branch",
+        "type": "calls",
+        "match": [
+          "worktree",
+          "rm"
+        ],
+        "flags": [
+          "--delete-branch"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "epic-observation",
+        "type": "order",
+        "events": [
+          {
+            "event": "comment",
+            "issue": "epic"
+          }
+        ]
+      },
+      {
+        "id": "start-next-node",
+        "type": "issues",
+        "new": true,
+        "count": 1,
+        "fields": {
+          "parent": "epic",
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "worker-on-child-worktree",
+        "type": "workers",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic",
+            "type": "Task"
+          }
+        },
+        "count": 1
+      },
+      {
+        "id": "epic-open",
+        "type": "state",
+        "issue": "epic",
+        "state": "open"
+      }
+    ],
+    "judge": [
+      {
+        "id": "report-only",
+        "q": "返事が、照合と片付けと次の子の起動の報告だけで、利用者に答えを求める質問を含んでいないか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch"
+      ],
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<epic>>",
+        "--body",
+        "観測: 子 #<<task>> が閉じた。報告・PR・worktree を照合して片付けた。次は画面の子を起動する。"
+      ],
+      [
+        "bash",
+        "-c",
+        "set -e; url=$(gh issue create --type Task --parent <<epic>> --title '取り込んだ一覧を画面に出す' --body '受け入れ条件: 取り込んだ一覧が画面に出る。'); number=${url##*/}; path=$(orca worktree create --name \"<<epic>>.${number}-import-list\" --issue \"$number\" --parent-worktree active --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s6_a1 --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s6_a1 --task \"$task\" --worktree \"path:$path\" --agent claude"
+      ]
+    ],
+    "reply": "子 #<<task>> を照合して片付け、次の子を起動しました。"
+  }
+}
