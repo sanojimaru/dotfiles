@@ -68,8 +68,9 @@ def make_workdir(repo, case, nums, cond, agent, root):
     for pr in local_prs:
         pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
         if pr["state"] == "MERGED":
-            seed_git(repo_clone, "merge", "--ff-only", pr["headRefOid"])
-            pr["mergeCommit"] = {"oid": pr["headRefOid"]}
+            seed_git(repo_clone, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
+                     "merge", "--no-edit", "--no-gpg-sign", pr["headRefOid"])
+            pr["mergeCommit"] = {"oid": seed_git(repo_clone, "rev-parse", "HEAD").strip()}
     if case["split"] == "test" or local_prs:
         remote = root / "push.git"
         seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(remote))
@@ -148,7 +149,7 @@ def agent_env(bindir, state, log, repo, extra=None):
 
 
 def isolated_zdotdir(out):
-    # zsh の起動設定が PATH を作り直して、本物の gh や orca を呼ばないようにする。
+    # zsh の起動ファイルを分け、利用者の PATH 設定に代役を上書きさせない。
     zdot = out / "zdotdir"
     zdot.mkdir()
     for name in (".zshenv", ".zprofile", ".zshrc"):

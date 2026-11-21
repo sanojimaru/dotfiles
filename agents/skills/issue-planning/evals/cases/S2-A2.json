@@ -20,6 +20,7 @@
     "checks": [
       {"id": "one-new-issue", "type": "issues", "new": true, "count": 1},
       {"id": "task-with-run", "type": "issues", "new": true, "count": 1, "fields": {"type": "Task", "state": "OPEN", "parent": null}, "contains": {"body": "run_ipe_s2_readme"}},
+      {"id": "run-created", "type": "calls", "match": ["orchestration", "run-create"], "minimum": 1, "success": true},
       {"id": "create-top-level-worktree", "type": "calls", "match": ["worktree", "create"], "flags": ["--issue", "--no-parent"], "count": 1, "success": true},
       {"id": "start-by-task-id", "type": "calls", "match": ["orchestration", "worker-start"], "flags": ["--task", "--worktree"], "count": 1, "success": true},
       {
@@ -51,7 +52,7 @@
   "oracle": {
     "commands": [
       ["orca", "orchestration", "run-create", "--objective", "README のリンク切れ"],
-      ["bash", "-c", "set -e; url=$(gh issue create --type Task --title 'README のリンク切れ' --body '受け入れ条件: README の「初めて使う方へ」を開くと対象のガイドが表示される。Run id: run_ipe_s2_readme'); number=${url##*/}; path=$(orca worktree create --name \"${number}-readme-link\" --issue \"$number\" --no-parent --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s2_readme --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s2_readme --task \"$task\" --worktree \"path:$path\" --agent codex --model gpt-6.2-sol"]
+      ["bash", "-c", "set -e; url=$(gh issue create --type Task --title 'README のリンク切れ' --body '受け入れ条件: README の「初めて使う方へ」を開くと対象のガイドが表示される。Run id: run_ipe_s2_readme'); number=${url##*/}; path=$(orca worktree create --name \"${number}-readme-link\" --issue \"$number\" --no-parent --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s2_readme --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s2_readme --task \"$task\" --worktree \"path:$path\" --agent codex"]
     ],
     "reply": "README のリンクを修正するワーカーを起動しました。"
   },
