@@ -121,7 +121,7 @@ orca worktree create --name <番号>-<slug> --issue <番号> --no-parent --json
 orca orchestration task-create --run <Run の id> --spec-file <spec の一時ファイル> --json
 gh issue comment <番号> --body-file <spec の一時ファイル>
 orca orchestration worker-start --run <Run の id> --task <Task の id> \
-  --worktree path:<worktree の絶対パス> --agent <エージェント> --model <モデル>
+  --worktree path:<worktree の絶対パス> --agent <エージェント> --model <モデル> --effort <effort>
 ```
 
 起動したことと Task Issue の URL を利用者に返す。ワーカーとのやり取りは窓口が受ける。

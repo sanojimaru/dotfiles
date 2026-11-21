@@ -2,4 +2,31 @@
 
 親が、完了の状態を確認し、残りを開いた Issue に置いてから Epic を閉じる。
 
-## S7 の確認項目
+## 閉じる前に
+
+1. 完了の状態の各項目を、子の報告・PR・実際の動作と照らす。満たしていない項目が残っていて、まだ今の子の大きさで片付けられるなら、[S4](epic-s4.md) に戻る。今の子の大きさに収まらないと分かった項目は、S4 に戻らず、下の「分割」で外す。
+2. 残りと「対象外」の各項目に、backlog の Issue へのリンクがあるかを確かめる。無い項目は、backlog の Issue にしてリンクする。閉じた Epic のコメントに残りを書くだけでは、次の着手のときに誰も読まない。マイルストーン Issue にぶら下がる Epic なら、backlog の Issue をその sub-issue にする。backlog の Issue の本文には、何が起きているか（起きうるか）・根拠・困る人だけを書く。子の報告にある解決の見込み（例: 索引を作る）は書かない。着手するセッションが、調べ直さずにそれをなぞってしまうから。
+
+## 閉じ方
+
+- 完了の状態を満たした: `gh issue close <番号> --reason completed`。
+- 大きすぎると分かった（分割）: 外す部分を先に backlog の Issue にする。完了の状態を、満たした範囲まで狭めて Epic の本文に書き、`completed` で閉じる。閉じるコメントの冒頭に「分割」と書き、外した部分の backlog の Issue を参照する。
+- 取り下げ: 利用者に取り下げてよいかを確かめる。利用者の答えをもらってから、`--reason "not planned"` で閉じる。確認なしに `not planned` で閉じない。残りは backlog の Issue に移す。
+
+## 親の worktree
+
+次の 3 つがそろったときだけ消す。
+
+- 未コミットの変更が無い（`git status --porcelain` に何も出ない）。
+- `origin/main` より進んだコミットが無い（`git rev-list --count origin/main..HEAD` が 0）。親は PR を作らないので、進んだコミットは main に入っていない作業を意味する。
+- Epic の Issue が閉じている。
+
+```sh
+orca worktree rm --worktree "path:<親の worktree の絶対パス>" --delete-branch
+```
+
+1 つでも欠けていたら、Epic は閉じたまま、worktree は消さずに残す。`--force` は使わない。残した理由（例: `origin/main` より進んだコミットがある）を、利用者に伝える。
+
+## 利用者への報告
+
+利用者が何をできるようになったかと、残りをどの backlog の Issue に置いたか（URL）を伝える。worktree を残したなら、その理由も伝える。
