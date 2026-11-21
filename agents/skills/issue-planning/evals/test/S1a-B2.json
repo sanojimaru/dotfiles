@@ -1,0 +1,104 @@
+{
+  "id": "S1a-B2",
+  "split": "test",
+  "section": "S1a",
+  "prompt": "次は何をする？",
+  "note": "質問の経過時間は子 Issue のコメント本文に記録する。GitHub のコメント作成時刻は変更しない。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "部署別に申請を絞り込めるようにする",
+        "body": "## 完了の状態\n担当者が部署を選んで申請を絞り込める。\n\n## 計画\n部署の選択欄と検索結果をつなぐ。作業は #<<task>> で進めている。\n\nRun id: `run_e01477f9a9eb`",
+        "type": "Feature",
+        "comments": [
+          "絞り込み表示の作業に着手しました。"
+        ]
+      },
+      {
+        "key": "task",
+        "title": "部署を指定する検索欄をつなぐ",
+        "body": "部署を一つ指定すると、対応する申請だけが表示される。",
+        "type": "Task",
+        "parent": "epic",
+        "comments": [
+          "5 分前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_e01477f9a9eb",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-department-filter"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "epic",
+        "liveness": "live",
+        "state": "running"
+      }
+    ]
+  },
+  "expect": {
+    "summary": "親が稼働中なら新しい親を起動しない。",
+    "checks": [
+      {
+        "id": "worker-start",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-second-parent",
+        "type": "workers",
+        "count": 0,
+        "issues": {
+          "issue": "epic"
+        },
+        "fail_on_any": true
+      }
+    ],
+    "judge": [
+      {
+        "id": "next-answer",
+        "q": "『次は何をする？』に対し、次の候補か、いまは進めずに待つなどの回答を返しているか。親や部署について述べることは条件ではない。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [],
+    "reply": "既存の親が部署コードの質問を処理中です。新しい親は起こさず、まずその回答を待つのがよいです。"
+  },
+  "bad": {
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_e01477f9a9eb"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--worktree",
+        "issue:<<epic>>",
+        "--agent",
+        "claude",
+        "--spec",
+        "前の親から引き継いでください。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"
+      ]
+    ],
+    "reply": "親を新しく起動しました。"
+  }
+}
