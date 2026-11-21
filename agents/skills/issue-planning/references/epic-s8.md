@@ -12,9 +12,9 @@
 
 2. 状態を組み立てる。GitHub の API の上限は全リポジトリで共有しているので、手元の Orca を先に読み、コメントは必要な子だけ読む。
    - 子ごとの worker の状態: `orca orchestration worker-list --run <Run の id> --json`。1 回に最大 100 件で、`nextCursor` が返ったら続きも読む。
-   - 答えの無い質問と、受けていない終了の通知: `orca orchestration check --run <Run の id>` で、前の親が読んでいない `question`・`worker_done` を受ける（読んだ通知は既読になる）。
+   - 答えの無い質問と、受けていない終了の通知: `orca orchestration check --run <Run の id>` で、前の親が読んでいない `question`・`worker_done` を受ける（読んだ通知は既読になる）。前の親が読んだまま答えずに止まった質問もあるので、`orca orchestration inbox --terminal run:<Run の id> --limit 50 --json` で既読の `question` も見る。
    - Epic の本文・コメントと子の番号・状態: `gh issue view <Epic の番号> --json body,comments,subIssues`。
-   - 子 Issue のコメントは、worker が `exited`・`lost` の子と、閉じているのに Epic の観測が無い子だけ読む。
+   - 子 Issue のコメントは、worker が `exited`・`lost` の子、受信箱に `question` がある子、閉じているのに Epic の観測が無い子だけ読む。`question` に対する答えがコメントに無ければ、答えの無い質問とする。
 3. 子ごとに対応する。
    - worker が `live` の子: 何も起動しない。前の親が起動した worker が動いていて、新しく起動すると 2 つのセッションが同じ作業を進める。
    - worker が `exited` または `lost` の子で、答えの無い質問がある: 答えを子 Issue にコメントしてから、`orca orchestration send --to dispatch:<id>` で元の worker に続けさせる。送れなかったときだけ、同じ Task を既存の worktree で起動し直す。
@@ -31,4 +31,4 @@
 
 ## Epic の本文に Run の id が無いとき
 
-`orca orchestration run-create --objective "#<Epic の番号> <Epic の目的>" --json` で新しい Run を作り、返った id を Epic の本文に「Run id: `<id>`」の形で書く（本文のほかの部分は消さない）。そのうえで、上の 2・3 の手順で、Issue のコメントと worker の状態から状態を組み立てる。生きている worker の子は、起動し直さない。
+`orca orchestration run-create --objective "<owner>/<repo>#<Epic の番号> <Epic の目的>" --json` で新しい Run を作り、返った id を Epic の本文に「Run id: `<id>`」の形で書く（本文のほかの部分は消さない）。そのうえで、上の 2・3 の手順で、Issue のコメントと worker の状態から状態を組み立てる。生きている worker の子は、起動し直さない。
