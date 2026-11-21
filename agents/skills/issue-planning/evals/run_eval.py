@@ -237,10 +237,18 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
 
 
 def trial(case, repo, cond, agent, out, use_judge=True):
+    rec = None
     try:
-        return _trial(case, repo, cond, agent, out, use_judge)
+        rec = _trial(case, repo, cond, agent, out, use_judge)
     finally:
-        clean_trial(case, repo)
+        try:
+            clean_trial(case, repo)
+        except RuntimeError as exc:
+            if rec is None:
+                raise
+            rec.update(infra_failure=True, error=f"試行後の種を削除できませんでした: {exc}")
+            (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
+    return rec
 
 
 def clean_trial(case, repo):
