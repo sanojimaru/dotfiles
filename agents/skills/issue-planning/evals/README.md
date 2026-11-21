@@ -20,8 +20,8 @@ test の実行にはスキルの開発と並行で使っていない評価用リ
 
 ### スキルを書くワーカーの起動と確認
 
-1. スキルを書く子（B・C・D）の worktree は、エージェントを指定せずに `orca worktree create` で作成します。親の checkout にある実行器で `python3 run_eval.py hide-test "$CHILD_WORKTREE"` を実行し、子の checkout から `evals/test/` を外してから `worker-start` で起動します。親や test ケースを書く子の checkout は変更しません。
-2. Claude Code は、手順 1 を実行した子の worktree で、プロジェクトの `PreToolUse` フックを使います。`Read`・`Grep`・`Glob`・`Bash` の入力に含まれる `evals/test/` への直接のアクセスを止めます。Codex には、test を読まないことを spec で伝えます。`ISSUE_PLANNING_EVAL_RUNNER=1` は、意図して test を実行する評価側の Claude Code を起動するときだけ設定できます。評価器はこの値を被験の CLI に引き継ぎません。
+1. スキルを書く子の worktree は、エージェントを指定せずに `orca worktree create` で作成します。親の checkout にある実行器で `python3 run_eval.py hide-test "$CHILD_WORKTREE"` を実行し、子の checkout から最終評価データセット（`evals/test/`）を外します。親や評価ケースを書く子の checkout は変更しません。
+2. Claude Code と Codex のプロジェクトの `PreToolUse` フックは、子の worktree でツールの入力に明記された `evals/test/` へのアクセスを止めます。Codex は、リンクされた worktree では主 checkout の `.codex/hooks.json` を読みます。Codex の子を起動する前に、主 checkout にそのファイルがあり、対象の worktree から Codex がプロジェクトを信頼していることを確かめます。Codex CLI の `/hooks` でこのフックを確認し、信頼して有効にしてから `worker-start` で起動します。フックの定義が変わると信頼が外れます。フックを有効にできなければ Claude Code を使います。`ISSUE_PLANNING_EVAL_RUNNER=1` は、最終評価データセットで評価する側の CLI を起動するときだけ設定します。評価器はこの値を被験の CLI に引き継ぎません。
 3. test の実行前に `python3 run_eval.py audit-test "$CLAUDE_TRANSCRIPT" "$CODEX_TRANSCRIPT"` を使い、スキルを書いた子の JSONL 会話記録をすべて確認します。パスを含むツール入力を見つけた場合は終了コード 1 と記録の行番号・ケース名を返します。該当するケースは無効として、test を書く子に差し替えを依頼します。ケース名を特定できないアクセスは `*` と表示し、その入力が対象にしたケースを確認します。ツール入力ではない説明文や spec の記述は検査結果に含めません。
 
 ## 会話の途中から始める
