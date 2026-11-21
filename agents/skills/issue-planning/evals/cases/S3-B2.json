@@ -1,0 +1,131 @@
+{
+  "id": "S3-B2",
+  "split": "dev",
+  "section": "S3",
+  "history": "利用者: 取引先の CSV を取り込みたいです。\n\n親: Epic #<<epic>> の計画を本文に書きました。完了の状態は、担当者が CSV 1 種類を取り込み、一覧で見られるところまでです。毎晩の同期は backlog #<<backlog>> に置きました。計画への合意をお願いします。合意をいただいたら、私が coordinator として子を起動します。<!--skill-->次の手順は issue-planning の該当する参照を読みます。<!--/skill-->",
+  "prompt": "その計画でよいです。",
+  "seed": {
+    "files": {
+      "README.md": "# 取引先管理\n"
+    },
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "取引先の CSV を取り込みたい",
+        "body": "## 完了の状態\n- [ ] 担当者として、決まった形式の CSV を取り込み、一覧で見られる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. CSV 1 種類を取り込み、一覧で見る] --> B[2. 取り込みに失敗した行の報告]\n    A --> C[3. 取り込み履歴の画面]\n```\n\n外したもの: 毎晩の自動同期（backlog #<<backlog>>）\n\nRun id: `run_ipe_s3_b2`"
+      },
+      {
+        "key": "backlog",
+        "labels": [
+          "backlog"
+        ],
+        "title": "取引先の CSV を毎晩自動で同期したい",
+        "body": "経理担当が毎晩の自動同期を望んでいる。取引先側が連携に対応できるかは未確認。"
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s3_b2",
+    "run_objective": "Epic: 取引先の CSV を取り込む",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-csv-import"
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "only-first-node",
+        "type": "issues",
+        "new": true,
+        "count": 1,
+        "fields": {
+          "parent": "epic",
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "worker-on-child-worktree",
+        "type": "workers",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic",
+            "type": "Task"
+          }
+        },
+        "count": 1
+      },
+      {
+        "id": "one-worker-start",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "worktree-for-issue",
+        "type": "calls",
+        "match": [
+          "worktree",
+          "create"
+        ],
+        "flags": [
+          "--issue"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "epic-open",
+        "type": "state",
+        "issue": "epic",
+        "state": "open"
+      }
+    ],
+    "judge": [
+      {
+        "id": "no-detail-questions",
+        "q": "返事が、細部を聞き直さずに計画どおり子を起動した報告になっているか（名前・置き場所・実装方針を利用者に質問していないのが正しい）"
+      },
+      {
+        "id": "first-is-minimal",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "起動した子の受け入れ条件が、CSV 1 種類を取り込んで一覧で見るところまでか（失敗した行の報告や履歴の画面を含めていないか）"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "bash",
+        "-c",
+        "set -e; url=$(gh issue create --type Task --parent <<epic>> --title 'CSV 1 種類を取り込み、一覧で見る' --body '受け入れ条件: 決まった形式の CSV を取り込み、一覧で見られる。'); number=${url##*/}; path=$(orca worktree create --name \"<<epic>>.${number}-csv-import\" --issue \"$number\" --parent-worktree active --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s3_b2 --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s3_b2 --task \"$task\" --worktree \"path:$path\" --agent claude"
+      ]
+    ],
+    "reply": "計画の最初の子（CSV 1 種類の取り込み）だけを起動しました。"
+  }
+}

@@ -32,6 +32,12 @@ test の実行にはスキルの開発と並行で使っていない評価用リ
 
 読み込みの記録には、入口の `SKILL.md` と、そこから読む節の参照ファイルを含めます。
 
+## ワーカーのケース（spec から始める）
+
+`spec` を持つケースは、`prompt` の代わりに [`references/spec.md`](../references/spec.md) の型へ番号とパスを入れて渡します。`issue`（作業 Issue の key）・`epic`（親の Epic の key）・`hours`（作業時間の目安）を書きます。型を直すと、次の試行から直した型で走ります。ワーカーは `issue-planning` を読まないので、`--cond without` で流します。
+
+ワーカーの worktree には `checkout` と `current: true` を付け、同名のブランチの PR を種に置きます。マージまで確かめるケースの PR には、`replay_checks`（`bucket: pass` の CI）を付けます。
+
 ## Orca の着信
 
 `orca.messages` に `kind` を指定したレコードを並べます。利用できる `kind` は `ask`、`reply`、`send`、`worker_done`、`escalation` です。`id`・`body`・`subject`・`payload` などの指定で、記録の値を差し替えます。例えば、`ask` の `payload` にある `question` と本文には同じ質問を書けます。
