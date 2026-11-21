@@ -69,6 +69,18 @@
           "--id": "run_a8b3bcb9798e"
         },
         "count": 0
+      },
+      {
+        "id": "not-started-in-epic-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "options": {
+          "--run": "run_a8b3bcb9798e"
+        },
+        "count": 0
       }
     ],
     "judge": [
@@ -150,7 +162,22 @@
     "reply": "止まっていた親を立て直し、部署コードの未回答の質問を引き継ぎました。"
   },
   "bad": {
-    "commands": [],
-    "reply": "止まっている親を立て直した方がよさそうです。"
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--run",
+        "run_a8b3bcb9798e",
+        "--worktree",
+        "path:/fake/worktrees/<<epic>>-epic-department-filter",
+        "--agent",
+        "claude",
+        "--keep-open",
+        "--spec",
+        "子 #<<task>> のコメントに、部署コードについて未回答の質問がある。"
+      ]
+    ],
+    "reply": "止まっていた親を立て直し、部署コードの未回答の質問を引き継ぎました。"
   }
 }

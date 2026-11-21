@@ -109,7 +109,7 @@
     "judge": [
       {
         "id": "answered-warehouse-question",
-        "q": "元の子に、倉庫の表示には配送先コードでなく社内 ID（拠点 ID）を使うよう回答しているか。",
+        "q": "元の子への回答が、倉庫の表示に社内 ID（拠点 ID）を使うよう指示しているか。配送先コードを使うよう答えていれば no。",
         "source": "orca",
         "match": [
           "orchestration",

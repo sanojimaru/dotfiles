@@ -40,7 +40,7 @@ def replay(argv, repo, endpoint, event, fields=None):
                 return 0
             if argv[1:2] in (["checks"], ["diff"], ["merge"]):
                 return lifecycle(argv[1:], records, event)
-            return cli(argv[1:], records)
+            return cli(argv[1:], records, event)
         if not pulls:
             raise ValueError("再生する REST エンドポイントは pulls と pulls/<番号> です")
         if pulls[2]:
@@ -146,7 +146,7 @@ def lifecycle(argv, records, event, rest_output=False):
     return 0
 
 
-def cli(argv, records):
+def cli(argv, records, event):
     parser = argparse.ArgumentParser(prog="gh pr", add_help=False)
     parser.add_argument("command", choices=("list", "ls", "view"))
     parser.add_argument("selector", nargs="?")
@@ -185,6 +185,7 @@ def cli(argv, records):
     if args.limit <= 0:
         raise ValueError("--limit は正の整数を指定してください")
     results = results[:args.limit]
+    event["rows"] = len(results)  # GitHub の予算の見積もり（grading.graphql_points）に使う
     if args.fields:
         return output([project(p, args.fields) for p in results], args.jq)
     for p in results:

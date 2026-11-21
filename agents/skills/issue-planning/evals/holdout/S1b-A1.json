@@ -69,6 +69,16 @@
     "summary": "手元の Orca で単独タスクの Run の未読の worker_done を見つけ、閉じた Issue の報告とマージ済みの PR を照合して、ワーカーの worktree を片付ける。起動し直さない。",
     "checks": [
       {
+        "id": "notification-received",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "check"
+        ],
+        "minimum": 1,
+        "success": true
+      },
+      {
         "id": "worktree-cleaned",
         "type": "worktree",
         "issue": "task",
@@ -128,23 +138,13 @@
     "commands": [
       [
         "orca",
-        "orchestration",
-        "run-use",
-        "--id",
-        "run_5c0e7d21a9f3"
-      ],
-      [
-        "orca",
-        "orchestration",
-        "worker-start",
-        "--task",
-        "task_fake0000",
+        "worktree",
+        "rm",
         "--worktree",
         "issue:<<task>>",
-        "--agent",
-        "claude"
+        "--delete-branch"
       ]
     ],
-    "reply": "止まっていた単独タスクのワーカーを起こし直しました。"
+    "reply": "単独タスクは片付いたので、worktree を消しました。"
   }
 }
