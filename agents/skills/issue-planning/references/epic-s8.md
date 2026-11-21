@@ -31,4 +31,6 @@
 
 ## Epic の本文に Run の id が無いとき
 
+本文に完了の状態と計画が無ければ、前の親は計画を書く前に止まっている。[S3](epic-s3.md) の手順 1 から始める（Run は S3 の手順 2 で作る）。
+
 `orca orchestration run-create --objective "<owner>/<repo>#<Epic の番号> <Epic の目的>" --json` で新しい Run を作り、返った id を Epic の本文に「Run id: `<id>`」の形で書く（本文のほかの部分は消さない）。そのうえで、上の 2・3 の手順で、Issue のコメントと worker の状態から状態を組み立てる。生きている worker の子は、起動し直さない。
