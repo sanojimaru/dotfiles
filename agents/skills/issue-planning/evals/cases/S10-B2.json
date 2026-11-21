@@ -1,0 +1,197 @@
+{
+  "id": "S10-B2",
+  "split": "dev",
+  "section": "S10",
+  "spec": {
+    "issue": "task",
+    "epic": "epic",
+    "hours": "4 時間"
+  },
+  "seed": {
+    "files": {
+      "README.md": "# 注文管理\n",
+      "ui/orders.py": "def show(orders):\n    for o in orders:\n        print(o[\"id\"], o[\"total\"])\n"
+    },
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "注文の一覧を見られるようにする",
+        "body": "## 完了の状態\n- [ ] 担当者として、注文の一覧を画面で見られる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. 注文一覧 API] --> B[2. 注文一覧の画面]\n```\n\nRun id: `run_ipe_s10_b2`"
+      },
+      {
+        "key": "api",
+        "parent": "epic",
+        "type": "Task",
+        "title": "注文一覧 API を作る",
+        "body": "## 受け入れ条件\n- [ ] 注文一覧を JSON で返す API がある\n"
+      },
+      {
+        "key": "task",
+        "parent": "epic",
+        "type": "Task",
+        "title": "注文一覧の画面を作る",
+        "body": "## 受け入れ条件\n- [ ] 注文一覧の画面が、注文一覧 API の結果を表示する\n\n注文一覧 API は別の子 Issue の作業。"
+      }
+    ],
+    "prs": [
+      {
+        "key": "apipr",
+        "title": "注文一覧 API を作る",
+        "state": "OPEN",
+        "closes": [
+          "api"
+        ],
+        "headRefName": "<<api>>-orders-api",
+        "files": [
+          {
+            "path": "api/orders.py",
+            "additions": 20,
+            "deletions": 0
+          }
+        ],
+        "replay_checks": [
+          {
+            "name": "ci",
+            "state": "SUCCESS",
+            "bucket": "pass",
+            "description": "all checks passed"
+          }
+        ]
+      },
+      {
+        "key": "pr",
+        "title": "注文一覧の画面を作る",
+        "state": "OPEN",
+        "closes": [
+          "task"
+        ],
+        "headRefName": "<<task>>-orders-screen",
+        "files": [
+          {
+            "path": "ui/orders.py",
+            "additions": 5,
+            "deletions": 0
+          }
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s10_b2",
+    "run_objective": "Epic: 注文の一覧",
+    "worktrees": [
+      {
+        "issue": "api",
+        "name": "<<api>>-orders-api",
+        "checkout": true,
+        "committed": {
+          "api/orders.py": "def orders():\n    return []\n"
+        }
+      },
+      {
+        "issue": "task",
+        "name": "<<task>>-orders-screen",
+        "checkout": true,
+        "current": true,
+        "committed": {}
+      }
+    ],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "comment-then-ask",
+        "type": "comment_before_call",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "success": true
+      },
+      {
+        "id": "ask-parent",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "minimum": 1,
+        "success": true
+      },
+      {
+        "id": "no-waiting-worker",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-waiting-task",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "task-create"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-merge-of-others",
+        "type": "no_pr_merge",
+        "pr": "apipr",
+        "fail_on_any": true
+      },
+      {
+        "id": "task-not-closed",
+        "type": "no_close",
+        "issue": "task",
+        "fail_on_any": true
+      },
+      {
+        "id": "api-unchanged",
+        "type": "unchanged",
+        "issues": [
+          "api",
+          "epic"
+        ]
+      }
+    ],
+    "judge": [
+      {
+        "id": "asks-about-blocker",
+        "source": "orca",
+        "match": [
+          "orchestration",
+          "ask"
+        ],
+        "success": true,
+        "q": "ask の質問が、注文一覧 API（別の子 Issue の PR）がまだマージされておらず進めないことを、作業 Issue のコメントと同じ内容で coordinator に伝えているか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "注文一覧 API の子 Issue #<<api>> の PR が未マージで、画面を作れない。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "ask",
+        "--question",
+        "注文一覧 API（#<<api>>）が未マージで進めません。API のマージを待つか、順序を見直してください。"
+      ]
+    ]
+  }
+}
