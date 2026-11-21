@@ -1,0 +1,60 @@
+{
+  "id": "S2-A2",
+  "split": "dev",
+  "section": "S2",
+  "prompt": "README のリンク切れを直して",
+  "seed": {
+    "files": {
+      "README.md": "# 利用ガイド\n\n[初めて使う方へ](docs/setup.md)\n",
+      "docs/getting-started.md": "# 初めて使う方へ\n"
+    },
+    "issues": []
+  },
+  "orca": {
+    "run_id": "run_ipe_s2_readme",
+    "run_objective": "",
+    "worktrees": [],
+    "workers": []
+  },
+  "expect": {
+    "checks": [
+      {"id": "one-new-issue", "type": "issues", "new": true, "count": 1},
+      {"id": "task-with-run", "type": "issues", "new": true, "count": 1, "fields": {"type": "Task", "state": "OPEN", "parent": null}, "contains": {"body": "run_ipe_s2_readme"}},
+      {"id": "create-top-level-worktree", "type": "calls", "match": ["worktree", "create"], "flags": ["--issue", "--no-parent"], "count": 1, "success": true},
+      {"id": "start-by-task-id", "type": "calls", "match": ["orchestration", "worker-start"], "flags": ["--task", "--worktree"], "count": 1, "success": true},
+      {
+        "id": "worker-on-linked-top-level-worktree",
+        "type": "workers",
+        "issues": {"new": true, "fields": {"type": "Task"}},
+        "count": 1,
+        "top_level": true
+      },
+      {
+        "id": "run-worktree-start-order",
+        "type": "order",
+        "events": [
+          {"event": "orca", "match": ["orchestration", "run-create"]},
+          {"event": "orca", "match": ["worktree", "create"]},
+          {"event": "orca", "match": ["orchestration", "worker-start"]}
+        ]
+      }
+    ],
+    "judge": [
+      {"id": "do-not-confirm-start", "q": "着手するかを聞き直さずに進めているか", "fail_on_any": true},
+      {
+        "id": "reproducible-acceptance",
+        "source": "issues",
+        "issues": {"new": true, "fields": {"type": "Task"}},
+        "q": "Task Issue に、README のリンクを開いて対象のガイドへたどり着けると確認できる受け入れ条件があるか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      ["orca", "orchestration", "run-create", "--objective", "README のリンク切れ"],
+      ["bash", "-c", "set -e; url=$(gh issue create --type Task --title 'README のリンク切れ' --body '受け入れ条件: README の「初めて使う方へ」を開くと対象のガイドが表示される。Run id: run_ipe_s2_readme'); number=${url##*/}; orca worktree create --name \"${number}-readme-link\" --issue \"$number\" --no-parent; task=$(orca orchestration task-create --spec \"Issue #$number を担当する\" | jq -r .result.taskId); orca orchestration worker-start --task \"$task\" --worktree \"issue:$number\" --agent codex"]
+    ],
+    "reply": "README のリンクを修正するワーカーを起動しました。"
+  },
+  "bad": {"reply": "今から修正に着手してよいですか？"}
+}
