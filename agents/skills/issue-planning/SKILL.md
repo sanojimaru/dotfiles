@@ -50,7 +50,7 @@ Run の objective は `<owner>/<repo>#<番号> ` で始まる（S2・S3）。一
 - 単独タスクの worker が、`worker_done` を出さずに（`outcome` が `succeeded`・`failed` でない）`exited`・`lost` になっている。
 - 単独タスクの Run の受信箱に、未読の `worker_done`・`question` がある。前の窓口のセッションが受けていない。ワーカーは Issue を閉じてから `worker_done` を送るので、Issue が閉じていても、objective に番号がある Run の受信箱は確かめる。
 
-Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。窓口が立て直した親は worker なので、objective がその番号で始まる Run の `worker-list` に、その worktree の worker として出る。S2 で `worktree create --agent` で起こした親は、どの Run の worker でもないので、`worker-list` に出ない。
+Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。どの Run の `worker-list` でも、その worktree で動く worker が親にあたる。窓口が立て直した親は、窓口の Run（`... の親を立て直す`）に出る。以前の手順で立て直した親は、Epic の Run に出る。S2 で `worktree create --agent` で起こした親は、どの Run の worker でもないので、`worker-list` に出ない。
 
 - `liveness` が `live` の親は、次の子を立てる途中か、子の質問を処理中。手を出さない。二重に起こすと、2 つの親が同じ Epic を進める
 - `exited`・`lost` の親は、止まっている。立て直す
