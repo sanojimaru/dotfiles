@@ -102,12 +102,27 @@ def api_fields(argv, input_body):
     return fields
 
 
+def issue_number(args):
+    takes_value = {"-R", "--repo", "-b", "--body", "-F", "--body-file", "-t", "--title", "-c", "--comment", "-r", "--reason",
+                   "--type", "--add-label", "--remove-label", "--add-assignee", "--remove-assignee", "--milestone"}
+    positional = (arg for i, arg in enumerate(args) if not arg.startswith("-") and (i == 0 or args[i - 1] not in takes_value))
+    for arg in positional:
+        if match := re.search(r"(?:^#?|/issues/)(\d+)(?:/?$|[#?])", arg):
+            return int(match[1])
+    return None
+
+
 def issue_event(argv, endpoint, input_body):
     api_issues = re.fullmatch(r"repos/[^/]+/[^/]+/issues(?:/(\d+)(/comments)?)?", endpoint)
     fields = api_fields(argv, input_body) if api_issues else {}
     if argv[:2] == ["issue", "create"] or (api_issues and not api_issues[1] and "title" in fields):
         return {"event": "created"}
-    if argv[:2] in (["issue", "comment"], ["issue", "edit"]):
+    if argv[:2] in (["issue", "comment"], ["issue", "edit"], ["issue", "close"]):
+        number = issue_number(argv[2:])
+        metadata = {"issue": number}
+        if argv[1] == "close" and number is not None:
+            reason = "NOT_PLANNED" if "not planned" in argv[2:] or "--reason=not planned" in argv[2:] else "COMPLETED"
+            metadata.update(event="closed", state_reason=reason)
         for i, arg in enumerate(argv[2:], 2):
             flag, equal, value = arg.partition("=")
             val = value if equal else (argv[i + 1] if i + 1 < len(argv) else "")
@@ -119,15 +134,15 @@ def issue_event(argv, endpoint, input_body):
                     text = Path(val).read_text()
             if text is not None:
                 if argv[1] == "comment":
-                    return {"comment_body": text}
-                if issue := re.search(r"(?:^#?|/issues/)(\d+)$", argv[2]):
-                    return {"event": "updated", "issue": int(issue[1]), "body": text}
-    if argv[:2] == ["issue", "close"] and (issue := re.search(r"(?:^#?|/issues/)(\d+)$", argv[2])):
-        reason = "NOT_PLANNED" if "not planned" in argv[3:] or "--reason=not planned" in argv[3:] else "COMPLETED"
-        return {"event": "closed", "issue": int(issue[1]), "state_reason": reason}
+                    return {**metadata, "comment_body": text}
+                if argv[1] == "edit" and number is not None:
+                    return {**metadata, "event": "updated", "body": text}
+            if argv[1] == "close" and flag in ("--comment", "-c"):
+                metadata["comment_body"] = val
+        return metadata
     if api_issues and api_issues[1]:
         if api_issues[2] and "body" in fields:
-            return {"comment_body": fields["body"]}
+            return {"issue": int(api_issues[1]), "comment_body": fields["body"]}
         if fields.get("state") == "closed":
             return {"event": "closed", "issue": int(api_issues[1]), "state_reason": fields.get("state_reason", "completed").upper()}
         if not api_issues[2] and "body" in fields:
@@ -150,7 +165,12 @@ def main():
     if rc is None:
         rc = subprocess.run([GH_REAL] + argv, input=input_body, text=True,
                             env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1")).returncode
-    extra = issue_event(argv, endpoint, input_body) if rc == 0 else {}
+    extra = {}
+    if rc == 0:
+        try:
+            extra = issue_event(argv, endpoint, input_body)
+        except (OSError, ValueError) as exc:
+            extra = {"observation_error": str(exc)}
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
         f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc, **extra}, ensure_ascii=False) + "\n")
     sys.exit(rc)

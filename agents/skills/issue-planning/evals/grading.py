@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from common import JUDGE_MODEL, STRIP_ENV, sh
+from fake_orca import opt as option, selector_hits
 from seed import subst
 
 
@@ -17,6 +18,8 @@ def is_comment_on(call, n):
     a = call["argv"]
     if call["tool"] != "gh" or call.get("rc") != 0:  # 失敗したコメントは、書かれていない
         return False
+    if call.get("issue") == n and "comment_body" in call:
+        return True
     if a[:2] == ["issue", "comment"]:
         return any(x == str(n) or x.rstrip("/").endswith(f"/issues/{n}") for x in a[2:] if not x.startswith("-"))
     if a[:1] != ["api"] or not any(re.search(rf"/issues/{n}/comments", x) for x in a):
@@ -25,21 +28,6 @@ def is_comment_on(call, n):
     method = method or next((re.sub(r"^(--method=|-X=?)", "", x).upper() for x in a if re.match(r"(--method=|-X.)", x)), None)
     has_body = any(re.match(r"(-f|-F|--field|--raw-field|--input)", x) for x in a)  # `-fbody=x`・`--field=body=x` も本文
     return (method or ("POST" if has_body else "GET")) == "POST"
-
-
-def selector_hits(sel, wt):
-    kind, _, val = sel.partition(":")
-    return (kind == "issue" and val == str(wt["issue"])) or (kind == "path" and val == wt["path"]) or \
-           (kind == "identity" and val == wt["identity"]) or (kind == "name" and val == wt["name"]) or (kind == "branch" and val.endswith(wt["name"]))
-
-
-def option(argv, flag):
-    for i, arg in enumerate(argv):
-        if arg == flag:
-            return argv[i + 1] if i + 1 < len(argv) else ""
-        if arg.startswith(flag + "="):
-            return arg.split("=", 1)[1]
-    return None
 
 
 def orca_calls(ctx, spec):
@@ -77,19 +65,21 @@ def event_times(event, ctx):
     if event["event"] == "orca":
         return [c["ts"] for c in orca_calls(ctx, {**event, "success": True})]
     if event["event"] == "comment":
-        return [c.get("end", c["ts"]) for c in ctx["calls"] if is_comment_on(c, n)]
+        return [c["ts"] if c.get("event") == "closed" else c.get("end", c["ts"]) for c in ctx["calls"] if is_comment_on(c, n)]
     if event["event"] == "linked":
         targets = {str(k) for k, _ in matching_issues(event["targets"], ctx)}
-        return [c["end"] for c in ctx["calls"] if ((c.get("event") == "updated" and c.get("issue") == n) or is_comment_on(c, n)) and
+        return [c["ts"] if c.get("event") == "closed" else c["end"] for c in ctx["calls"]
+                if ((c.get("event") == "updated" and c.get("issue") == n) or is_comment_on(c, n)) and
                 targets.intersection(re.findall(r"(?:#|/issues/)(\d+)\b", c.get("body", c.get("comment_body", ""))))]
-    return [c["ts"] for c in ctx["calls"] if c.get("event") == event["event"] and c.get("issue") == n]
+    return [c.get("end", c["ts"]) for c in ctx["calls"] if c.get("event") == event["event"] and c.get("issue") == n]
 
 
 def run_check(chk, ctx):
     t = chk["type"]
     if t == "calls":
         calls = list(orca_calls(ctx, chk))
-        if len(calls) != chk["count"]:
+        count_ok = len(calls) == chk["count"] if "count" in chk else len(calls) >= chk["minimum"]
+        if not count_ok:
             return False
         if "worktree_of" in chk:
             wt = next((w for w in ctx["state"]["worktrees"] if w["issue"] == ctx["nums"][chk["worktree_of"]]), None)
@@ -134,7 +124,7 @@ def run_check(chk, ctx):
         n = ctx["nums"][chk["issue"]]
         source = "first_calls" if chk.get("before_followup") else "calls"
         return not any(c.get("event") == "closed" and c.get("issue") == n
-                       and c.get("state_reason") == chk["reason"] for c in ctx.get(source, []))
+                       and ("reason" not in chk or c.get("state_reason") == chk["reason"]) for c in ctx.get(source, []))
     if t == "no_first_issues":
         return not any(c.get("event") == "created" for c in ctx.get("first_calls", []))
     if t == "order":
@@ -168,9 +158,15 @@ def evidence(item, ctx, reply):
     if source == "issues":
         rows = {}
         for n, issue in matching_issues(item["issues"], ctx):
-            rows[n] = {field: issue[field] for field in item.get("fields", ["title", "body", "comments"])}
+            fields = item.get("fields", ["title", "body", "comments"])
+            existing = ctx["before"].get(n, {})
+            if item.get("changes_only") and all(issue[field] == existing.get(field) for field in fields):
+                continue
+            rows[n] = {field: issue[field] for field in fields}
             if item.get("new_comments"):
-                rows[n]["comments"] = issue["comments"][len(ctx["before"].get(n, {}).get("comments", [])):]
+                rows[n]["comments"] = issue["comments"][len(existing.get("comments", [])):]
+                if rows[n] == {"comments": []}:
+                    del rows[n]
         return json.dumps(rows, ensure_ascii=False) if rows else ""
     if source == "orca":
         return "\n".join(" ".join(c["argv"]) + ("\n" + c["spec"] if "spec" in c else "") for c in orca_calls(ctx, item))

@@ -83,7 +83,7 @@ def make_workdir(repo, case, nums, cond, agent, root):
     prs = pr_state(case, nums, repo)
     for pr in prs:
         if "replay_checks" in pr:
-            pr["headRefOid"] = seed_git(clone, "rev-parse", "HEAD").strip()
+            pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
     (root / "pr-state.json").write_text(json.dumps(prs, ensure_ascii=False))
     return clone, bindir, state
 
@@ -213,10 +213,10 @@ def run_session(agent, prompt, history, out, launch, followup):
         return scored
     first_path = out / "first-transcript.jsonl"
     first = launch(prompt, first_path, session_id=session_id, timeout=WALL_SECONDS - warm_seconds)
-    first_session, first_reply, _ = session_reply(agent, first_path, first)
+    first_session, first_reply, events = session_reply(agent, first_path, first)
     next_text, first_calls = followup()
     first_evidence = {"first_reply": first_reply, "first_calls": first_calls}
-    if first["returncode"]:
+    if first["returncode"] or any(event.get("type") == "result" and event.get("is_error") for event in events):
         first_path.rename(transcript)
         return {**first, **first_evidence, "seconds": warm_seconds + first["seconds"]}
     if not (first_session or session_id):
@@ -427,7 +427,7 @@ def cmd_check(args):
             continue
         if isinstance(sample, list):
             sample = {"commands": sample}
-        out = Path(tempfile.mkdtemp(prefix=f"ipe-check-{kind}-"))
+        out = Path(tempfile.mkdtemp(prefix=f"ipe-check-{kind}-")).resolve()
         try:
             nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out)
             env = agent_env(bindir, state, log, args.repo)
@@ -539,7 +539,9 @@ def cmd_report(args):
         print(f"{case} / {cond} / {agent}: n={g['n']} code={g['pass_code']} all={g['pass_all']} fail_on_any={g['fail_on_any']} loaded={g['loaded']} infra={g['infra']}  {usd}  {g['sec'] / n:.0f}s")
     partial = "（費用を返さない試行を含まない一部の合計）" if any(g.get("usd_unknown") for g in rows.values()) else ""
     print(f"合計 usd: ${sum(g['usd'] for g in rows.values()):.2f}{partial}")
-    leaks = [str(p.parent) for d in args.dir for p in [*Path(d).glob("*/try*/transcript.jsonl"), *Path(d).glob("transcript.jsonl")] if LEAK.search(p.read_text())]
+    leak_logs = ("history.jsonl", "first-transcript.jsonl", "transcript.jsonl")
+    leaks = [str(p.parent) for p in paths if any(log.exists() and LEAK.search(log.read_text())
+                                               for log in (p.parent / name for name in leak_logs))]
     print(f"本番の環境の漏れ（Phase 0 の 1・3）: {len(leaks)} 件", *leaks, sep="\n  ")
 
 

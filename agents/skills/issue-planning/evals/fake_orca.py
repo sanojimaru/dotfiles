@@ -6,6 +6,7 @@
 """
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -53,8 +54,9 @@ def selector_hits(sel, w):
 
 
 def current_worktree(state):
-    cwd = os.getcwd()
-    return next((w for w in state["worktrees"] if cwd == w["path"] or cwd.startswith(w["path"] + os.sep)), state["worktrees"][0])
+    cwd = os.path.realpath(os.getcwd())
+    return next((w for w in state["worktrees"] if os.path.commonpath([cwd, os.path.realpath(w["path"])]) ==
+                 os.path.realpath(w["path"])), state["worktrees"][0])
 
 
 def worktrees(state):
@@ -88,7 +90,8 @@ def workers(state):
             "host": "local",
         }
         if w["liveness"] == "live":
-            row.update({"outcome": "in_progress", "terminalState": "retained"})
+            outcome = w["state"] if w["state"] in ("succeeded", "failed") else "in_progress"
+            row.update({"outcome": outcome, "terminalState": "retained"})
         else:
             row.update({"terminalState": "released"})
         out.append(row)
@@ -213,6 +216,10 @@ def dispatch(argv, started):
         wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
         if wt is None or wt is state["worktrees"][0]:
             fail("worktree_not_found", f"No removable worktree matches {selector}")
+        if wt.get("checkout") and not {"--force", "--force=true"}.intersection(argv):
+            status = subprocess.run(["git", "-C", wt["path"], "status", "--porcelain"], capture_output=True, text=True)
+            if status.returncode or status.stdout:
+                fail("worktree_dirty", "The worktree has uncommitted changes or could not be checked")
         state["worktrees"].remove(wt)
         save(state_path, state)
         ok({"removed": True})
