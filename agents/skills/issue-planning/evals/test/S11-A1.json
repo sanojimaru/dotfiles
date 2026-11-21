@@ -25,14 +25,18 @@
         "title": "README の手順書リンクを修正",
         "body": "手順書のリンク先を現行の操作手順に更新しました。Refs #<<task>>",
         "state": "OPEN",
-        "headRefName": "<<task>>-readme-guide",
+        "headRefName": "<<epic>>.<<task>>-readme-guide",
         "replay_checks": [
           {
             "name": "Check Links",
             "state": "SUCCESS",
             "bucket": "pass",
             "description": "The README link resolves",
-            "link": ""
+            "link": "",
+            "workflow": "Validate",
+            "event": "pull_request",
+            "startedAt": "2026-07-08T10:18:00Z",
+            "completedAt": "2026-07-08T10:19:00Z"
           }
         ],
         "statusCheckRollup": [
@@ -66,7 +70,7 @@
     "worktrees": [
       {
         "issue": "task",
-        "name": "<<task>>-readme-guide",
+        "name": "<<epic>>.<<task>>-readme-guide",
         "checkout": true,
         "current": true,
         "committed": {
@@ -81,7 +85,9 @@
         "state": "running"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "マージを済ませ、作業 Issue に 3 項目を報告して閉じ、worker_done を送る。自分で worktree を消さない。",
@@ -99,7 +105,10 @@
       {
         "id": "succeeded-done",
         "type": "calls",
-        "match": ["orchestration", "send"],
+        "match": [
+          "orchestration",
+          "send"
+        ],
         "count": 1,
         "success": true,
         "options": {
@@ -125,7 +134,10 @@
           },
           {
             "event": "orca",
-            "match": ["orchestration", "send"],
+            "match": [
+              "orchestration",
+              "send"
+            ],
             "options": {
               "--type": "worker_done",
               "--outcome": "succeeded"
@@ -148,14 +160,22 @@
         "issues": {
           "issue": "task"
         },
-        "fields": ["comments"],
+        "fields": [
+          "comments"
+        ],
         "new_comments": true
       }
     ]
   },
   "oracle": {
     "commands": [
-      ["gh", "pr", "merge", "<<pr>>", "--squash"],
+      [
+        "gh",
+        "pr",
+        "merge",
+        "<<pr>>",
+        "--squash"
+      ],
       [
         "gh",
         "issue",
@@ -164,7 +184,14 @@
         "--body",
         "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
       ],
-      ["gh", "issue", "close", "<<task>>", "--reason", "completed"],
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<task>>",
+        "--reason",
+        "completed"
+      ],
       [
         "orca",
         "orchestration",
@@ -194,7 +221,14 @@
         "--body",
         "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
       ],
-      ["gh", "issue", "close", "<<task>>", "--reason", "completed"],
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<task>>",
+        "--reason",
+        "completed"
+      ],
       [
         "orca",
         "orchestration",
@@ -212,7 +246,13 @@
         "--body",
         "## 片付いたこと\nREADME の手順書リンクの参照先を更新しました。PR #<<pr>> は CI が通り、マージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
       ],
-      ["gh", "pr", "merge", "<<pr>>", "--squash"]
+      [
+        "gh",
+        "pr",
+        "merge",
+        "<<pr>>",
+        "--squash"
+      ]
     ]
   }
 }
