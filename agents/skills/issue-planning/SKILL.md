@@ -1,7 +1,20 @@
 ---
 name: issue-planning
-description: 窓口（デフォルトブランチのセッション）が、次に何に着手するかを決める前、または利用者の依頼を Issue にする前に読む。開いたまま誰も動かしていない Issue（親のセッションが止まった Epic、coordinator が居なくなった単独タスク、報告のコメントが無い閉じた子 Issue、開いた Epic の無いマイルストーン Issue、`backlog` の全件）を `gh` で確かめ、見つけたものを立て直す・書き足す・閉じる手順を持つ。質問への回答、調べもの、ファイルの変更、親やワーカーとして渡された作業の中では読まない。Orca のコマンドそのもの（`worker-start`・`ask`・`reply` など）は `orchestration`、worktree と terminal の操作は `orca-cli` を読む。
+description: 窓口（デフォルトブランチのセッション）が、次に何に着手するかを決める前、または利用者の依頼を Issue にする前に読む。開いたまま誰も動かしていない Issue（親のセッションが止まった Epic、coordinator が居なくなった単独タスク、報告のコメントが無い閉じた子 Issue、開いた Epic の無いマイルストーン Issue、`backlog` の全件）を `gh` で確かめ、見つけたものを立て直す・書き足す・閉じる手順を持つ。Epic の親は、渡された指示に従って該当する節を読む。質問への回答、調べもの、ファイルの変更、ワーカーとして渡された作業の中では読まない。Orca のコマンドそのもの（`worker-start`・`ask`・`reply` など）は `orchestration`、worktree と terminal の操作は `orca-cli` を読む。
 ---
+
+# Epic の親が読む節
+
+Epic の親は、担当する場面に対応する参照を読む。会話の途中で別の場面に移ったときや、セッションを立て直したときも、この一覧から読み直す。
+
+- [S3: Epic の計画を書く](references/epic-s3.md)
+- [S4: 子を起動する](references/epic-s4.md)
+- [S5: ワーカーからの質問や停止の通知に対応する](references/epic-s5.md)
+- [S6: ワーカーの報告を実際の状態と照らし合わせる](references/epic-s6.md)
+- [S7: Epic を閉じて利用者に報告する](references/epic-s7.md)
+- [S8: 止まった親のセッションを再開する](references/epic-s8.md)
+
+窓口と親は、ワーカーを起動する spec に[共通の型](references/spec.md)を使う。ワーカー自身は、このスキルではなく渡された spec を読む。
 
 # 窓口の着手前の確認
 
