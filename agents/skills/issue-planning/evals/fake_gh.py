@@ -14,6 +14,7 @@ import re
 import shlex
 import sys
 from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit
 
 from pr_replay import api_method, output
 
@@ -228,6 +229,14 @@ def dispatch(argv, input_body):
         rc = label_list(state, argv[2:])
     elif argv[:2] == ["label", "create"]:
         rc = label_create(state, argv[2:])
+    elif argv[:2] == ["repo", "view"]:
+        args = parser("gh repo view", "-w|--web", fields="--json", jq="-q|--jq").parse_intermixed_args(argv[2:])
+        repo = {"name": state["repo"].split("/")[1], "nameWithOwner": state["repo"], "owner": {"login": OWNER},
+                "url": f"https://github.com/{state['repo']}", "defaultBranchRef": {"name": "main"},
+                "visibility": "PRIVATE", "isPrivate": True, "hasIssuesEnabled": True, "description": ""}
+        rc = output({f: repo.get(f) for f in args.fields.split(",")} if args.fields else repo, args.jq)
+    elif argv[:1] == ["api"]:
+        rc = api(state, argv[1:], input_body)
     else:
         raise ValueError(f"`gh {' '.join(argv[:2])}` は評価の代役では使えません")
     return rc
@@ -444,3 +453,131 @@ def label_create(state, argv):
     return 0
 
 
+def rest(state, issue):
+    n = issue["number"]
+    t = issue["type"]
+    return {
+        "id": 3_000_000_000 + n, "node_id": f"I_eval{n}", "number": n, "title": issue["title"], "body": issue["body"],
+        "state": issue["state"].lower(), "state_reason": (issue["stateReason"] or "").lower() or None,
+        "labels": [{"name": name} for name in issue["labels"]], "type": {"name": t} if t else None,
+        "comments": len(issue["comments"]), "html_url": url(state, n), "user": {"login": OWNER},
+        "created_at": issue["createdAt"], "updated_at": issue["updatedAt"], "closed_at": issue["closedAt"],
+        "sub_issues_summary": graphql_view(state, issue, "subIssuesSummary"),
+    }
+
+
+def rest_comment(state, issue, c):
+    return {"id": c["id"], "node_id": f"IC_eval{c['id']}", "body": c["body"], "user": {"login": OWNER},
+            "created_at": c["createdAt"], "updated_at": c["createdAt"],
+            "html_url": f"{url(state, issue['number'])}#issuecomment-{c['id']}",
+            "issue_url": f"https://api.github.com/repos/{state['repo']}/issues/{issue['number']}"}
+
+
+def api(state, argv, input_body):
+    args = parser("gh api", "--paginate", "--slurp", "--silent", "-i|--include", "--verbose", endpoint=("endpoint", {}),
+                  method="-X|--method", header=("-H|--header", {"action": "append"}),
+                  field=("-F|--field|-f|--raw-field", {"action": "append", "default": []}), jq="-q|--jq",
+                  template="-t|--template", input="--input", cache="--cache", hostname="--hostname").parse_intermixed_args(argv)
+    endpoint = args.endpoint.lstrip("/").replace("{owner}", OWNER).replace("{repo}", state["repo"].split("/")[1])
+    if endpoint == "graphql":
+        raise ValueError("評価の代役は GraphQL を返しません。`gh issue view/list --json` か REST（repos/<owner>/<repo>/issues/...）を使ってください")
+    fields = {}
+    if args.input:
+        fields.update(json.loads(input_body if args.input == "-" else Path(args.input).read_text()))
+    for item in args.field:
+        key, _, value = item.partition("=")
+        if value.startswith("@"):
+            value = input_body if value == "@-" else Path(value[1:]).read_text()
+        fields[key] = value
+    method = (args.method or ("POST" if fields else "GET")).upper()
+    path = urlsplit(endpoint)
+    query = dict(parse_qsl(path.query))
+    if method == "GET":  # 本物の gh も、GET の -f・-F はクエリの引数として送る
+        query.update({k: str(v) for k, v in fields.items()})
+    base = f"repos/{state['repo']}"
+    rel = path.path.rstrip("/")[len(base):] if path.path.rstrip("/").startswith(base) else None
+    if rel is None:
+        raise ValueError(f"評価の代役は {endpoint} を返しません")
+    data = None
+    if rel == "":
+        data = {"name": state["repo"].split("/")[1], "full_name": state["repo"], "private": True,
+                "default_branch": "main", "owner": {"login": OWNER}, "has_issues": True}
+    elif rel in ("/labels",):
+        data = [{"name": label["name"], "description": label["description"], "color": label["color"]} for label in state["labels"]]
+    elif rel == "/milestones":
+        data = []
+    elif rel == "/issues" and method == "GET":
+        want = query.get("state", "open")
+        rows = [i for i in state["issues"] if want == "all" or i["state"].lower() == want]
+        if labels := query.get("labels"):
+            rows = [i for i in rows if set(labels.split(",")) <= set(i["labels"])]
+        rows = sorted(rows, key=lambda i: i["number"], reverse=True)
+        if not args.paginate:
+            size, page = int(query.get("per_page", "30")), int(query.get("page", "1"))
+            rows = rows[(page - 1) * size:page * size]
+        data = [rest(state, i) for i in rows]
+    elif rel == "/issues" and method == "POST":
+        issue = add_issue(state, fields["title"], fields.get("body", ""), labels=fields.get("labels") or [],
+                          type_=fields.get("type"))
+        data = rest(state, issue)
+    elif match := re.fullmatch(r"/issues/comments/(\d+)", rel):
+        hit = next(((i, c) for i in state["issues"] for c in i["comments"] if str(c["id"]) == match[1]), None)
+        if hit is None:
+            raise ValueError("gh: Not Found (HTTP 404)")
+        if method == "PATCH":
+            hit[1]["body"] = fields["body"]
+        elif method != "GET":
+            raise ValueError("コメントの削除は評価中は使えません")
+        data = rest_comment(state, *hit)
+    elif match := re.fullmatch(r"/issues/(\d+)(/comments|/sub_issues|/parent|/labels)?", rel):
+        issue = find(state, match[1])
+        sub = match[2]
+        if sub is None:
+            if method == "PATCH":
+                for key in ("title", "body"):
+                    if key in fields:
+                        issue[key] = fields[key]
+                if "state" in fields:
+                    closed = fields["state"] == "closed"
+                    reason = str(fields.get("state_reason") or "completed").upper()
+                    if closed != (issue["state"] == "CLOSED"):
+                        set_state(issue, closed, reason)
+                if "labels" in fields:
+                    issue["labels"] = list(fields["labels"])
+                if "type" in fields:
+                    if fields["type"] not in (None, *TYPES):
+                        raise ValueError(f"issue type '{fields['type']}' not found")
+                    issue["type"] = fields["type"]
+                issue["updatedAt"] = now()
+            elif method != "GET":
+                raise ValueError(f"{method} {endpoint} は評価の代役では使えません")
+            data = rest(state, issue)
+        elif sub == "/comments":
+            if method == "POST":
+                data = rest_comment(state, issue, add_comment(state, issue, fields["body"]))
+            else:
+                data = [rest_comment(state, issue, c) for c in issue["comments"]]
+        elif sub == "/sub_issues":
+            if method == "POST":
+                child = next((i for i in state["issues"] if 3_000_000_000 + i["number"] == int(fields["sub_issue_id"])), None)
+                if child is None:
+                    raise ValueError("gh: Validation Failed (HTTP 422)")
+                child["parent"] = issue["number"]
+                data = rest(state, child)
+            else:
+                data = [rest(state, s) for s in children(state, issue["number"])]
+        elif sub == "/parent":
+            if not issue["parent"]:
+                raise ValueError("gh: Not Found (HTTP 404)")
+            data = rest(state, find(state, issue["parent"]))
+        else:
+            if method == "POST":
+                issue["labels"] = list(dict.fromkeys([*issue["labels"], *(fields.get("labels") or [])]))
+            data = [{"name": name} for name in issue["labels"]]
+    else:
+        raise ValueError(f"評価の代役は {endpoint} を返しません")
+    if method != "GET":
+        save(state)
+    if args.silent:
+        return 0
+    return output([data] if args.slurp else data, args.jq)

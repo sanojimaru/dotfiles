@@ -2,6 +2,21 @@
 
 評価の指標、条件、ケースの割り付けは [dotfiles#88 の事前登録](https://github.com/sanojimaru/dotfiles/issues/88#issuecomment-7041081077) に従います。
 
+## GitHub の代役
+
+既定（`--gh fake`）では、種の Issue とラベルを試行ごとの手元の状態（`gh-state.json`）に立てます。被験エージェントの `gh issue`・`gh label`・`gh repo view`・`gh api repos/<owner>/<repo>/...` は代役（`fake_gh.py`）が状態から返し、書き込みも状態に記録します。採点は、状態から終わった状態を読みます。GitHub の API の上限は利用者の全リポジトリ・全エージェントで共有しているので、試行では本物の GitHub を呼びません。代役は GraphQL（`gh api graphql`）を返さず、`gh issue view --json` か REST を使うよう案内して失敗します。
+
+### 代役と本物のずれを確かめる
+
+代役や評価ケースを直したあと、代役の返す形が本物とずれていないかを確かめるときは、同じケースを本物の GitHub と代役で 1 試行ずつ（合わせて 2 試行）流して比べます。`--gh real` は評価用リポジトリ（`ipe-N`）に種を立てて戻すため、`gh api rate_limit` で GraphQL の残りを確かめてから流します。
+
+```sh
+orca-nested python3 run_eval.py trial S1a-A1 --cond with --agent claude --gh real --repo ipe-1 --out "$REAL_OUT"
+orca-nested python3 run_eval.py trial S1a-A1 --cond with --agent claude --out "$FAKE_OUT"
+```
+
+比べるのは、`trial.json` の `grade` と、`calls.jsonl` のうち `tool` が `gh` で `rc` が 0 でない呼び出しです。代役でだけ失敗した呼び出しは、代役が対応していない形なので、`fake_gh.py` に足します。
+
 ## PR の種
 
 ケースの `seed.prs` に `key`・`title`・`state`（`OPEN`・`CLOSED`・`MERGED`）を書きます。閉じた Issue との関係には `closes: ["issue_key"]` を使います。Issue の本文やコメントに `#<<pr_key>>` と書くと、試行で生成した PR 番号に置き換わります。

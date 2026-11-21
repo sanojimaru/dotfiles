@@ -74,7 +74,7 @@ def select(records, state, head=None, base=None):
 def output(data, jq=None):
     raw = json.dumps(data, ensure_ascii=False)
     if jq is not None:
-        return subprocess.run(["jq", "-r", jq], input=raw, text=True).returncode
+        return subprocess.run(["jq", "-r", "-c", jq], input=raw, text=True).returncode  # gh の --jq と同じく、1 行で出す
     print(raw)
     return 0
 

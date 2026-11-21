@@ -11,6 +11,8 @@
 固定の評価用リポジトリ（非公開の `ipe-N`）を使い回す。種が立っていれば使い回し、試行の後は、エージェントが変えたものだけを戻す
 （戻せないときだけ、Issue を全部削除して種を立て直す）。
 `gh` は見張り（gh_guard.py）、`orca` は代役（fake_orca.py）を PATH の先頭に置く。
+既定（`--gh fake`）では、種を GitHub でなく手元の状態に立て、`gh` の Issue・ラベル・api も代役（fake_gh.py）が返す。
+GitHub の API の上限は利用者の全リポジトリ・全エージェントで共有しているため（dotfiles#138）。`--gh real` は、代役と本物のずれを確かめるときだけ使う。
 """
 import argparse
 import concurrent.futures
@@ -33,12 +35,20 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
 from holdout import audit_transcript, hide_test
-from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_repo, snapshot, subst
+import fake_gh
+from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_local, seed_repo, snapshot, subst
 
 
-def make_workdir(repo, case, nums, cond, agent, root):
+def make_workdir(repo, case, nums, cond, agent, root, fake):
     repo_clone = root / "clone"
-    gh("repo", "clone", f"{OWNER}/{repo}", str(repo_clone), "--", "--quiet")
+    if fake:  # 評価用リポジトリと同じ中身を手元に作る（clone も GitHub の API を呼ぶ）
+        repo_clone.mkdir()
+        seed_git(repo_clone, "init", "--quiet", "-b", "main")
+        seed_commit(repo_clone, {"README.md": f"# {repo}\n"}, "neutral readme")
+        seed_git(repo_clone, "remote", "add", "origin", f"https://github.com/{OWNER}/{repo}.git")
+        seed_git(repo_clone, "update-ref", "refs/remotes/origin/main", "HEAD")
+    else:
+        gh("repo", "clone", f"{OWNER}/{repo}", str(repo_clone), "--", "--quiet")
     files = case["seed"].get("files", {})
     if files:
         seed_commit(repo_clone, files, "Prepare repository files")
@@ -71,11 +81,11 @@ def make_workdir(repo, case, nums, cond, agent, root):
             seed_git(repo_clone, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
                      "merge", "--no-edit", "--no-gpg-sign", pr["headRefOid"])
             pr["mergeCommit"] = {"oid": seed_git(repo_clone, "rev-parse", "HEAD").strip()}
-    if case["split"] == "test" or local_prs:
+    if case["split"] == "test" or local_prs or fake:
         remote = root / "push.git"
         seed_git(repo_clone, "init", "--bare", "--quiet", "-b", "main", str(remote))
-        # dev で PR とローカルのブランチを照合するケースでは、fetch でも種の状態が残るようにする。
-        push_only = ["--push"] if not local_prs else []
+        # dev で PR とローカルのブランチを照合するケースと代役では、fetch でも種の状態が残るようにする。
+        push_only = ["--push"] if not (local_prs or fake) else []
         seed_git(repo_clone, "remote", "set-url", *push_only, "origin", str(remote))
         seed_git(repo_clone, "push", "--all", "origin")
     skills_root = clone / (".claude/skills" if agent == "claude" else ".agents/skills")
@@ -96,6 +106,7 @@ def make_workdir(repo, case, nums, cond, agent, root):
     state = root / "orca-state.json"
     state.write_text(json.dumps(orca, ensure_ascii=False))
     shutil.copy(HERE / "pr_replay.py", bindir)
+    shutil.copy(HERE / "fake_gh.py", bindir)
     for pr in prs:
         if "replay_checks" in pr:
             pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
@@ -144,6 +155,8 @@ def agent_env(bindir, state, log, repo, extra=None):
         "PATH": f"{bindir}:{env['PATH']}", "ORCA_FAKE_STATE": str(state), "ORCA_FAKE_LOG": str(log),
         "GH_GUARD_REPO": f"{OWNER}/{repo}", "IPE_PR_STATE": str(state.with_name("pr-state.json")), "GIT_TERMINAL_PROMPT": "0",
     })
+    if (gh_state := state.with_name("gh-state.json")).exists():
+        env["IPE_GH_STATE"] = str(gh_state)
     env.update(extra or {})
     return env
 
@@ -333,17 +346,26 @@ def load_cases(names, split):
     return cases
 
 
-def prepare(case, repo, cond, agent, out):
-    if case.get("split") == "test":
+def prepare(case, repo, cond, agent, out, fake):
+    if fake:
+        nums, gh_state = seed_local(case, repo)
+        (out / "gh-state.json").write_text(json.dumps(gh_state, ensure_ascii=False))
+    elif case.get("split") == "test":
         reset_repo(repo)
         nums = seed_repo(repo, case)  # test の種を共有の repo-state.json に記録しない。
     else:
         nums, _ = ensure_seed(repo, case)
-    clone, bindir, state = make_workdir(repo, case, nums, cond, agent, out)
+    clone, bindir, state = make_workdir(repo, case, nums, cond, agent, out, fake)
     log = out / "calls.jsonl"
     log.write_text("")
-    before = snapshot(repo)
+    before = read_snapshot(repo, out, fake)
     return nums, clone, bindir, state, log, before
+
+
+def read_snapshot(repo, out, fake):
+    if fake:
+        return fake_gh.snapshot(json.loads((out / "gh-state.json").read_text()))
+    return snapshot(repo)
 
 
 def spec_prompt(case, nums, repo, clone):
@@ -359,10 +381,10 @@ def spec_prompt(case, nums, repo, clone):
     return text
 
 
-def _trial(case, repo, cond, agent, out, use_judge=True):
+def _trial(case, repo, cond, agent, out, use_judge=True, fake=True):
     out.mkdir(parents=True, exist_ok=True)
     try:
-        nums, clone, bindir, state, log, before = prepare(case, repo, cond, agent, out)
+        nums, clone, bindir, state, log, before = prepare(case, repo, cond, agent, out, fake)
         env = agent_env(bindir, state, log, repo)
         prompt = spec_prompt(case, nums, repo, clone) if "spec" in case else subst(text_for(case["prompt"], cond), nums)
         history = subst(text_for(case["history"], cond), nums) if "history" in case else None
@@ -399,7 +421,7 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
                 parsed["cost"]["usage"] = {k: warm_usage.get(k, 0) + v for k, v in trial_usage.items()}
     res.update({k: v for k, v in parsed.items() if k != "reply" or agent == "claude"})
     try:
-        after = snapshot(repo)
+        after = read_snapshot(repo, out, fake)
     except RuntimeError as e:  # 終状態を読めなかった試行は、被験の失敗に数えず、やり直す
         rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": True, "run": {"seconds": res["seconds"]}, "error": str(e)}
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
@@ -426,13 +448,14 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
     return rec
 
 
-def trial(case, repo, cond, agent, out, use_judge=True):
+def trial(case, repo, cond, agent, out, use_judge=True, fake=True):
     rec = None
     try:
-        rec = _trial(case, repo, cond, agent, out, use_judge)
+        rec = _trial(case, repo, cond, agent, out, use_judge, fake)
     finally:
         try:
-            clean_trial(case, repo)
+            if not fake:
+                clean_trial(case, repo)
         except RuntimeError as exc:
             if rec is None:
                 raise
@@ -462,7 +485,7 @@ def cmd_check(args):
             sample = {"commands": sample}
         out = Path(tempfile.mkdtemp(prefix=f"ipe-check-{kind}-")).resolve()
         try:
-            nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out)
+            nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out, args.gh == "fake")
             env = agent_env(bindir, state, log, args.repo)
             first = sample.get("first", {})
             strict = args.split == "test" and kind == "oracle"
@@ -470,14 +493,15 @@ def cmd_check(args):
             first_calls = read_calls(log)
             replay_steps(sample.get("commands", []), nums, clone, env, require_success=strict)
             ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before,
-                   "after": snapshot(args.repo), "clone": clone, "first_reply": subst(first.get("reply", ""), nums),
+                   "after": read_snapshot(args.repo, out, args.gh == "fake"), "clone": clone, "first_reply": subst(first.get("reply", ""), nums),
                    "first_calls": first_calls}
             reply = subst(sample.get("reply", ""), nums)
             check_code = grade(case, ctx, reply, "claude", out, use_judge=False)
             needs_judge = check_code["pass_code"] or any(j.get("fail_on_any") for j in case["expect"].get("judge", []))
             g = grade(case, ctx, reply, "claude", out) if args.split == "test" and needs_judge else check_code
         finally:
-            clean_trial(case, args.repo)
+            if args.gh == "real":
+                clean_trial(case, args.repo)
             shutil.rmtree(out, ignore_errors=True)
         row = {"kind": kind, **{key: g[key] for key in ("pass_code", "checks", "fail_on_any")}}
         if args.split == "test":
@@ -502,7 +526,7 @@ def replay_steps(steps, nums, clone, env, require_success):
 def cmd_trial(args):
     out = Path(args.out or tempfile.mkdtemp(prefix="ipe-trial-")).resolve()
     case, = load_cases([args.case], args.split)
-    rec = trial(case, args.repo, args.cond, args.agent, out)
+    rec = trial(case, args.repo, args.cond, args.agent, out, fake=args.gh == "fake")
     print(json.dumps({"out": str(out), **{k: rec[k] for k in ("case", "cond", "infra_failure")}, "grade": rec.get("grade"), "run": rec["run"]}, ensure_ascii=False, indent=2))
 
 
@@ -527,7 +551,7 @@ def cmd_batch(args):
         try:
             for attempt in range(3):  # 原因がエージェントの外の失敗だけ、やり直す
                 d = out_root / f"{case['id']}-{cond}-{args.agent}-{i}" / f"try{attempt}"
-                rec = trial(case, repo, cond, args.agent, d)
+                rec = trial(case, repo, cond, args.agent, d, fake=args.gh == "fake")
                 if not rec["infra_failure"]:
                     break
             with lock:
@@ -583,10 +607,13 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("check"); p.add_argument("case"); p.add_argument("--repo", default="ipe-1"); p.set_defaults(f=cmd_check)
     p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
     p = sub.add_parser("trial"); p.add_argument("case"); p.add_argument("--cond", required=True, choices=["with", "without"]); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repo", default="ipe-1"); p.add_argument("--out"); p.set_defaults(f=cmd_trial)
     p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
     p = sub.add_parser("batch"); p.add_argument("cases"); p.add_argument("--n", type=int, default=3); p.add_argument("--cond", default="with,without"); p.add_argument("--agent", default="claude", choices=["claude", "codex"]); p.add_argument("--repos", default="ipe-1,ipe-2,ipe-3,ipe-4"); p.add_argument("--out"); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_batch)
     p.add_argument("--split", choices=("dev", "test"), default="dev")
+    p.add_argument("--gh", choices=("fake", "real"), default="fake", help="real は本物の GitHub に種を立てる（上限を食う）")
     p = sub.add_parser("hide-test", help="スキルを書く子の worktree から test ケースを外す")
     p.add_argument("worktree", type=Path)
     p = sub.add_parser("audit-test", help="スキルを書いた子の JSONL 会話記録から test ケースへのアクセスを探す")
