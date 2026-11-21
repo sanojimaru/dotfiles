@@ -1,0 +1,109 @@
+{
+  "id": "S5-A1",
+  "split": "dev",
+  "section": "S5",
+  "history": "利用者: 社内の報告を CSV でダウンロードできるようにしたいです。\n\n親: Epic #<<epic>> の計画を確定し、CSV 出力の子 #<<task>> を起動しました。私がこの Epic の coordinator として、質問や停止の通知を受けます。<!--skill-->次に通知を受けたら、issue-planning の該当する参照を読みます。<!--/skill-->",
+  "prompt": "Orca からワーカーの question が届きました。Run `run_ipe_s5` の受信箱にあります。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "報告を CSV でダウンロードできるようにする",
+        "body": "## 完了の状態\n担当者が報告を 1 件 CSV として取得できる。\n\n## 計画\nCSV は BOM なしの UTF-8 で出力する。利用者との合意済み。\n\nRun id: `run_ipe_s5`"
+      },
+      {
+        "key": "task",
+        "parent": "epic",
+        "type": "Task",
+        "title": "CSV 出力を追加する",
+        "body": "## 受け入れ条件\n報告を CSV で出力できること。出力形式の決定は Epic の計画を参照。",
+        "comments": [
+          "CSV は UTF-8 と Shift_JIS のどちらで出力しますか。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s5",
+    "run_objective": "Epic の CSV 出力",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<task>>-report-export"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "ask",
+        "id": "msg_ipe_s5",
+        "subject": "CSV の出力形式",
+        "body": "CSV は UTF-8 と Shift_JIS のどちらで出力しますか。",
+        "run_id": "run_ipe_s5",
+        "to_handle": "run:run_ipe_s5",
+        "payload": {
+          "question": "CSV は UTF-8 と Shift_JIS のどちらで出力しますか。",
+          "options": [],
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "reply-once",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "reply"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "comment-then-reply",
+        "type": "comment_before_call",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "reply"
+        ]
+      },
+      {
+        "id": "epic-unchanged",
+        "type": "unchanged",
+        "issues": [
+          "epic"
+        ]
+      }
+    ],
+    "judge": [
+      {
+        "id": "no-user-question",
+        "q": "利用者に判断を求めたり再確認を促したりせず、計画で決定済みの内容として処理しているか"
+      }
+    ]
+  },
+  "oracle": [
+    ["gh", "issue", "comment", "<<task>>", "--body",
+      "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
+    ],
+    ["orca", "orchestration", "reply", "--id", "msg_ipe_s5", "--body",
+      "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
+    ]
+  ],
+  "bad": [
+    ["orca", "orchestration", "reply", "--id", "msg_ipe_s5", "--body",
+      "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
+    ]
+  ]
+}
