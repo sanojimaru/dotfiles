@@ -1,0 +1,80 @@
+{
+  "id": "S9-B3",
+  "split": "dev",
+  "section": "S9",
+  "history": "利用者: 経理担当が月次の明細を CSV で受け取れるようにしてください。最初は当月の 1 件で構いません。\n\n窓口: 単独タスク #<<task>> を Run run_ipe_s9_overrun で起動しました。私が coordinator として対応します。",
+  "prompt": "単独タスクのワーカーから question が届きました。Run run_ipe_s9_overrun の受信箱にあります。",
+  "seed": {
+    "issues": [{
+      "key": "task",
+      "type": "Task",
+      "title": "月次明細を CSV で出せるようにする",
+      "body": "受け入れ条件: 経理担当が画面から当月の明細を 1 件 CSV で取得できる。\n\nRun id: run_ipe_s9_overrun",
+      "comments": ["当月の実データ 1 件まで削っても、権限判定の共通化と出力が必要で、残りは作業時間 6 時間程度です。既存画面の権限判定箇所と現行の CSV 出力経路の調査は済んでいます。この Issue を Epic にして続けるか、窓口に判断をお願いします。"]
+    }]
+  },
+  "orca": {
+    "run_id": "run_ipe_s9_overrun",
+    "run_objective": "経理担当が月次明細を CSV で取得する",
+    "worktrees": [{"issue": "task", "name": "<<task>>-statement-export"}],
+    "workers": [{"issue": "task", "liveness": "live", "state": "waiting"}],
+    "messages": [{
+      "kind": "ask",
+      "id": "msg_ipe_s9_overrun",
+      "subject": "最小の 1 本でも 4 時間を超える",
+      "body": "当月の実データ 1 件まで削っても、権限判定の共通化と出力が必要で、残りは作業時間 6 時間程度です。既存画面の権限判定箇所と現行の CSV 出力経路の調査は済んでいます。この Issue を Epic にして続けるか、窓口に判断をお願いします。",
+      "payload": {
+        "question": "当月の実データ 1 件まで削っても、権限判定の共通化と出力が必要で、残りは作業時間 6 時間程度です。既存画面の権限判定箇所と現行の CSV 出力経路の調査は済んでいます。この Issue を Epic にして続けるか、窓口に判断をお願いします。",
+        "options": [],
+        "taskId": "task_fake0000",
+        "dispatchId": "ctx_fake0000"
+      }
+    }]
+  },
+  "expect": {
+    "checks": [
+      {"id": "existing-issue-promoted", "type": "issues", "issue": "task", "count": 1, "fields": {"type": "Feature", "state": "OPEN"}},
+      {"id": "no-duplicate-issue", "type": "issues", "new": true, "count": 0},
+      {"id": "no-close", "type": "no_close", "issue": "task"},
+      {"id": "start-epic-parent", "type": "calls", "match": ["orchestration", "worker-start"], "count": 1, "success": true},
+      {"id": "worker-linked-to-epic", "type": "workers", "issues": {"issue": "task", "fields": {"type": "Feature"}}, "top_level": true, "count": 1}
+    ],
+    "judge": [
+      {
+        "id": "done-state-and-tentative-plan",
+        "source": "issues",
+        "issues": {"issue": "task"},
+        "fields": ["body"],
+        "q": "経理担当が当月の明細を 1 件 CSV で取得できる完了の状態があり、権限判定と出力の計画を確定前の案として書いているか"
+      },
+      {
+        "id": "report-done-work",
+        "source": "issues",
+        "issues": {"issue": "task"},
+        "fields": ["comments"],
+        "new_comments": true,
+        "q": "新しく書いた同じ Issue のコメントに、元のワーカーが権限判定箇所と CSV 出力経路を調査済みだと書いてあるか"
+      },
+      {
+        "id": "epic-worktree-name",
+        "source": "orca",
+        "match": ["worktree", "create"],
+        "success": true,
+        "q": "新しい worktree を <既存 Issue の番号>-epic-<作業名> という名前で作ったか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      ["gh", "issue", "edit", "<<task>>", "--type", "Feature", "--body", "## 完了の状態\n経理担当が画面から当月の明細を 1 件 CSV で取得できます。\n\n## 計画（案）\n既存の権限判定を確認し、許可された担当者が CSV を取得できる最小の変更を通します。調査と合意は Epic の親が担当します。\n\nRun id: run_ipe_s9_overrun"],
+      ["gh", "issue", "comment", "<<task>>", "--body", "元のワーカーが既存画面の権限判定箇所と現行 CSV 出力経路を調査しました。"],
+      ["orca", "worktree", "create", "--name", "<<task>>-epic-statement-export", "--issue", "<<task>>", "--no-parent"],
+      ["orca", "orchestration", "worker-start", "--spec", "Epic #<<task>> の親を担当し、issue-planning の親の手順を読んでください。", "--worktree", "path:/fake/worktrees/<<task>>-epic-statement-export", "--agent", "claude"]
+    ],
+    "reply": "同じ Issue を Epic に変え、調査結果を引き継いで親を起動しました。"
+  },
+  "bad": {
+    "commands": [["gh", "issue", "create", "--type", "Feature", "--title", "別の CSV 出力 Epic", "--body", "CSV を出力します。"]],
+    "reply": "元の Task はそのままにし、別の Epic を作りました。"
+  }
+}
