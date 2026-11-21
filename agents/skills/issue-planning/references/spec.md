@@ -19,6 +19,4 @@ Issue: <owner>/<repo>#<作業 Issue の番号> を担当する。受け入れ条
 
 ## issue-planning のスキル本文を書くワーカー
 
-親は、子 B・C・D の起動前に[評価器の手順](../evals/README.md#スキルを書くワーカーの起動と確認)に従い、子の worktree から test ケースを外す。Codex を起動する場合は、spec の「決まり」に次の文を足す。
-
-> `agents/skills/issue-planning/evals/test/` にある最終評価用のケースは読みません。別の checkout や GitHub からも取得せず、スキルの変更と動作確認には dev ケースだけを使います。
+親は、スキルの本文を書く子の起動前に[評価器の手順](../evals/README.md#スキルを書くワーカーの起動と確認)に従い、子の worktree から最終評価データセットを外してプロジェクトのフックを有効にする。
