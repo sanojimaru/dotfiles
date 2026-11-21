@@ -11,7 +11,9 @@
         "title": "部署別に申請を絞り込めるようにする",
         "body": "## 完了の状態\n担当者が部署を選んで申請を絞り込める。\n\n## 計画\n部署の選択欄と検索結果をつなぐ。作業は #<<task>> で進めている。\n\nRun id: `run_e01477f9a9eb`",
         "type": "Feature",
-        "comments": ["絞り込み表示の作業に着手しました。"]
+        "comments": [
+          "絞り込み表示の作業に着手しました。"
+        ]
       },
       {
         "key": "task",
@@ -19,7 +21,9 @@
         "body": "部署を一つ指定すると、対応する申請だけが表示される。",
         "type": "Task",
         "parent": "epic",
-        "comments": ["5 分前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"]
+        "comments": [
+          "5 分前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"
+        ]
       }
     ]
   },
@@ -46,8 +50,20 @@
       {
         "id": "worker-start",
         "type": "calls",
-        "match": ["orchestration", "worker-start"],
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
         "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-second-parent",
+        "type": "workers",
+        "count": 0,
+        "issues": {
+          "issue": "epic"
+        },
         "fail_on_any": true
       }
     ],
@@ -64,7 +80,13 @@
   },
   "bad": {
     "commands": [
-      ["orca", "orchestration", "run-use", "--id", "run_e01477f9a9eb"],
+      [
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_e01477f9a9eb"
+      ],
       [
         "orca",
         "orchestration",
