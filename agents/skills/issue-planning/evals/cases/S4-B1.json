@@ -1,0 +1,139 @@
+{
+  "id": "S4-B1",
+  "split": "dev",
+  "section": "S4",
+  "history": "利用者: 取引先の CSV を取り込みたいです。\n\n親: Epic #<<epic>> の計画に合意をいただき、調査の子 #<<a>> を起動しました。私が coordinator として通知を受け、先行がそろった子を起動します。<!--skill-->次に通知を受けたら、issue-planning の該当する参照を読みます。<!--/skill-->",
+  "prompt": "Orca からワーカーの worker_done が届きました。Run `run_ipe_s4_b1` の受信箱にあります。",
+  "seed": {
+    "files": {
+      "README.md": "# 取引先管理\n"
+    },
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "取引先の CSV を取り込みたい",
+        "body": "## 完了の状態\n- [ ] 担当者として、取引先の CSV を取り込み、一覧で見られる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. 取引先の CSV の列と文字コードを調べる] --> B[2. CSV を取り込んで一覧で見る]\n```\n\nRun id: `run_ipe_s4_b1`"
+      },
+      {
+        "key": "a",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "title": "取引先の CSV の列と文字コードを調べる",
+        "body": "## 受け入れ条件\n- [ ] 列の名前と文字コードを Issue に書く\n",
+        "comments": [
+          "調べた結果: 列は 取引先・請求月・金額 の 3 つ、文字コードは UTF-8。\n\n報告\n\n**片付いたこと**\n- 列と文字コードを調べて、結果をこの Issue に書いた（変更するファイルが無いので PR は無い）。\n\n**片付かなかったこと**\n- なし\n\n**計画に影響する発見**\n- なし"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s4_b1",
+    "run_objective": "Epic: 取引先の CSV の取り込み",
+    "worktrees": [],
+    "workers": [],
+    "messages": [
+      {
+        "kind": "worker_done",
+        "id": "msg_ipe_s4_b1",
+        "subject": "調査を完了しました",
+        "body": "取引先の CSV の列と文字コードを調べました。作業 Issue #<<a>> に報告しました。",
+        "payload": {
+          "outcome": "succeeded",
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "start-b",
+        "type": "issues",
+        "new": true,
+        "count": 1,
+        "fields": {
+          "parent": "epic",
+          "type": "Task",
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "worker-on-child-worktree",
+        "type": "workers",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic",
+            "type": "Task"
+          }
+        },
+        "count": 1
+      },
+      {
+        "id": "one-worker-start",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "worktree-for-issue",
+        "type": "calls",
+        "match": [
+          "worktree",
+          "create"
+        ],
+        "flags": [
+          "--issue"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "a-unchanged",
+        "type": "unchanged",
+        "issues": [
+          "a"
+        ]
+      }
+    ],
+    "judge": [
+      {
+        "id": "b-from-plan",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "fields": {
+            "parent": "epic"
+          }
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "起動した子の受け入れ条件が、CSV を取り込んで一覧で見ることか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "bash",
+        "-c",
+        "set -e; url=$(gh issue create --type Task --parent <<epic>> --title 'CSV を取り込んで一覧で見る' --body '受け入れ条件: CSV を取り込んで一覧で見られる。'); number=${url##*/}; path=$(orca worktree create --name \"<<epic>>.${number}-csv-import\" --issue \"$number\" --parent-worktree active --json | jq -r .result.worktree.path); task=$(orca orchestration task-create --run run_ipe_s4_b1 --spec \"Issue #$number を担当する\" --json | jq -r .result.taskId); orca orchestration worker-start --run run_ipe_s4_b1 --task \"$task\" --worktree \"path:$path\" --agent claude"
+      ]
+    ],
+    "reply": "先行の調査 #<<a>> が閉じているので、取り込みの子を起動しました。"
+  }
+}
