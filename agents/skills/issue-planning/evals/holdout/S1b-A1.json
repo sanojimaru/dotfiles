@@ -3,106 +3,148 @@
   "split": "holdout",
   "section": "S1b",
   "prompt": "次は何をする？",
+  "note": "前の窓口のセッションは、単独タスクのワーカーの worker_done を受ける前に止まった。Task Issue は閉じているので、開いている Issue の一覧には出ない。",
   "seed": {
     "issues": [
       {
-        "key": "epic",
-        "title": "品目の棚卸しを迷わず始める",
-        "body": "棚卸しの一覧を整える。Run id: `run_c399e283484d`",
-        "type": "Feature"
-      },
-      {
         "key": "task",
-        "title": "一覧の列見出しを統一する",
-        "body": "棚卸し一覧で品目を識別する列に「品目コード」と表示する。",
+        "title": "請求書の一覧に締め日を出す",
+        "body": "## 受け入れ条件\n請求書の一覧の各行に締め日が YYYY-MM-DD で表示される。\n\nRun id: `run_5c0e7d21a9f3`",
         "type": "Task",
-        "parent": "epic",
-        "state": "closed"
+        "state": "closed",
+        "comments": [
+          "## 片付いたこと\n請求書の一覧に締め日を YYYY-MM-DD で表示しました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       }
     ],
     "prs": [
       {
         "key": "pr",
-        "title": "棚卸し一覧の列名を品目コードに統一する",
-        "body": "棚卸し一覧の画面と出力に使う列名を統一した。Closes #<<task>>",
+        "title": "請求書の一覧に締め日を表示する",
+        "body": "一覧の各行に締め日を表示する。Closes #<<task>>",
         "state": "MERGED",
-        "closes": ["task"]
+        "closes": [
+          "task"
+        ],
+        "headRefName": "<<task>>-invoice-closing-date"
       }
     ]
   },
   "orca": {
-    "run_id": "run_c399e283484d",
-    "run_objective": "チームの作業",
+    "run_id": "run_5c0e7d21a9f3",
+    "run_objective": "<<repo>>#<<task>> 請求書の一覧に締め日を出す",
     "worktrees": [
       {
-        "issue": "epic",
-        "name": "<<epic>>-epic-inventory-list"
+        "issue": "task",
+        "name": "<<task>>-invoice-closing-date",
+        "checkout": true
       }
     ],
     "workers": [
       {
-        "issue": "epic",
-        "liveness": "live",
-        "state": "running"
+        "issue": "task",
+        "liveness": "exited",
+        "state": "succeeded"
       }
+    ],
+    "messages": [
+      {
+        "kind": "worker_done",
+        "body": "## 片付いたこと\n請求書の一覧に締め日を YYYY-MM-DD で表示しました。PR #<<pr>> はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。",
+        "payload": {
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000",
+          "outcome": "succeeded",
+          "exitCode": 0
+        },
+        "subject": "作業完了",
+        "id": "msg_closing_date"
+      }
+    ],
+    "tasks": [
+      "task_fake0000"
     ]
   },
   "expect": {
-    "summary": "閉じた子に PR と Issue の状態に基づく 3 項目の報告を足し、他の Issue を変えない。",
+    "summary": "手元の Orca で単独タスクの Run の未読の worker_done を見つけ、閉じた Issue の報告とマージ済みの PR を照合して、ワーカーの worktree を片付ける。起動し直さない。",
     "checks": [
       {
-        "id": "unrelated-issues-unchanged",
-        "type": "unchanged",
-        "issues": ["epic"]
+        "id": "worktree-cleaned",
+        "type": "worktree",
+        "issue": "task",
+        "present": false
+      },
+      {
+        "id": "no-restart",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "task-still-closed",
+        "type": "state",
+        "issue": "task",
+        "state": "closed"
       },
       {
         "id": "no-new-issue",
         "type": "issues",
         "count": 0,
         "new": true
-      },
-      {
-        "id": "still-closed",
-        "type": "state",
-        "issue": "task",
-        "state": "closed"
       }
     ],
     "judge": [
       {
-        "id": "report",
-        "q": "新しいコメントは、片付いたこと（列見出しを「品目コード」にしたマージ済みの PR #<<pr>> が根拠）、片付かなかったこと、計画に影響する発見の 3 点を報告しているか。後二者はなしでよい。",
-        "source": "issues",
-        "issues": {
-          "issue": "task"
-        },
-        "fields": ["comments"],
-        "new_comments": true
+        "id": "completion-reported",
+        "q": "返事が、請求書の一覧に締め日を出す単独タスクが完了した（PR がマージされ Issue が閉じた）ことと、その作業の worktree を片付けたことを、利用者に伝えているか。"
       }
     ]
   },
   "oracle": {
     "commands": [
       [
-        "gh",
-        "issue",
-        "comment",
-        "<<task>>",
-        "--body",
-        "## 片付いたこと\n棚卸し一覧の列見出しを「品目コード」に統一しました。PR #<<pr>> はマージ済みで、作業 Issue は閉じています。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        "orca",
+        "orchestration",
+        "check",
+        "--terminal",
+        "run:run_5c0e7d21a9f3"
+      ],
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<task>>",
+        "--delete-branch"
       ]
-    ]
+    ],
+    "reply": "前の窓口が受けていなかった単独タスク #<<task>> の完了の通知を受けました。PR #<<pr>> はマージ済みで、Issue も閉じているので、作業の worktree を片付けました。請求書の一覧に締め日が YYYY-MM-DD で表示されるようになっています。"
   },
   "bad": {
     "commands": [
       [
-        "gh",
-        "issue",
-        "comment",
-        "<<epic>>",
-        "--body",
-        "## 片付いたこと\n棚卸し一覧の列見出しを「品目コード」に統一しました。PR #<<pr>> はマージ済みで、作業 Issue は閉じています。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_5c0e7d21a9f3"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--task",
+        "task_fake0000",
+        "--worktree",
+        "issue:<<task>>",
+        "--agent",
+        "claude"
       ]
-    ]
+    ],
+    "reply": "止まっていた単独タスクのワーカーを起こし直しました。"
   }
 }

@@ -14,10 +14,11 @@
     "run_id": "run_b740d15398aa",
     "run_objective": "チームの作業",
     "worktrees": [],
-    "workers": []
+    "workers": [],
+    "next_run_id": "run_b740d15398ab"
   },
   "expect": {
-    "summary": "最初の返事では着手するかだけを確認する。了承後に困りごとと事実だけの Epic を 1 件作って親に渡す。",
+    "summary": "最初の返事では着手するかだけを確認する。了承後に困りごとと事実だけの Epic を 1 件作り、窓口の Run から worker-start --keep-open で親を起こす。",
     "checks": [
       {
         "id": "one-issue",
@@ -50,17 +51,55 @@
       {
         "id": "no-issue-created-before-reply",
         "type": "no_first_issues"
+      },
+      {
+        "id": "create-launch-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-create"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "no-agent-on-worktree-create",
+        "type": "calls",
+        "match": [
+          "worktree",
+          "create"
+        ],
+        "flags": [
+          "--agent"
+        ],
+        "count": 0
+      },
+      {
+        "id": "start-parent-from-launch-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "flags": [
+          "--keep-open"
+        ],
+        "options": {
+          "--run": "run_b740d15398ab"
+        },
+        "count": 1,
+        "success": true
       }
     ],
     "judge": [
       {
         "id": "first-only",
-        "q": "最初の返事は、今この要望に着手するかという一問だけを尋ね、計画、技術案、追加の質問を出していないか。",
+        "q": "最初の返事が、今この要望に着手するかという一問だけでできているか。計画・技術案・追加の質問が含まれていれば no。",
         "source": "first_reply"
       },
       {
         "id": "epic-facts-only",
-        "q": "作った Epic は経費精算を楽にしたいという困りごとと分かっている事実だけを書き、未確認の事実を作らず、完了の状態、計画、子 Issue の予定を書いていないか。",
+        "q": "作った Epic の題名と本文が、経費精算を楽にしたいという困りごとと分かっている事実だけでできているか。未確認の事実を確かなこととして書いていたり、完了の状態・計画・子 Issue の予定を書いていたりすれば no。",
         "source": "issues",
         "issues": {
           "new": true,
@@ -68,7 +107,10 @@
             "type": "Feature"
           }
         },
-        "fields": ["title", "body"]
+        "fields": [
+          "title",
+          "body"
+        ]
       }
     ]
   },
@@ -88,7 +130,7 @@
       [
         "sh",
         "-c",
-        "set -eu\nnumber=$(gh issue list --json number --jq '.[0].number')\norca worktree create --name \"$number-epic-expense-report\" --issue \"$number\" --no-parent --agent claude --prompt \"Epic #$number の親のセッションを担当してください。\""
+        "set -eu\nnumber=$(gh issue list --json number --jq '.[0].number')\norca orchestration run-create --objective \"sanojimaru/ipe-1#$number の親を起こす\"\norca worktree create --name \"$number-epic-expense-report\" --issue \"$number\" --no-parent\ngh issue comment \"$number\" --body \"Epic #$number の親のセッションを担当し、issue-planning の親の手順を読んでください。\"\norca orchestration worker-start --run run_b740d15398ab --spec \"Epic #$number の親のセッションを担当し、issue-planning の親の手順を読んでください。\" --worktree \"path:/fake/worktrees/$number-epic-expense-report\" --agent claude --model claude-opus-5-5 --effort high --keep-open"
       ]
     ],
     "reply": "経費精算の Epic を作り、親に渡しました。",
