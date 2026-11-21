@@ -19,8 +19,13 @@ def cmd_labels(args):
     out.mkdir(parents=True, exist_ok=True)
     paths = [p for d in args.dir for p in sorted([*Path(d).glob("*/try*/trial.json"), *Path(d).glob("trial.json")])]  # batch の形と、trial --out の形
     trials = [(p.parent, json.loads(p.read_text())) for p in paths]
-    trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["grade"].get("judge_inputs")]
+    for _, r in trials:  # 証拠が空の問いは判定器を呼ばず allow_empty で決まるので、較正に入れない
+        inputs = (r.get("grade") or {}).get("judge_inputs", {})
+        r["judged"] = {j: v for j, v in (r.get("grade") or {}).get("judge", {}).items() if inputs.get(j, {}).get("evidence", "").strip()}
+    trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["judged"]]
     random.Random(args.seed).shuffle(trials)  # 条件（有・無）が並びから分からないように混ぜる
+    if len(trials) < args.count:
+        raise SystemExit(f"判定器の問いがある試行が {len(trials)} 件しかありません（{args.count} 件が要る）。dev の試行を足してください")
     trials = trials[:args.count]
     lines, answers = ["# 判定器の較正: 判定器の証拠に yes/no を付ける", "",
                       "問いごとに、判定器に渡したものと同じ証拠を読み、yes か no を human.json に書いてください。判定器の答えは別のファイル（answers.json）にあり、ここには出していません。", ""], {}
@@ -29,12 +34,12 @@ def cmd_labels(args):
         key = f"L{i:02d}"
         lines += [f"## {key}", ""]
         for j in case["expect"].get("judge", []):
-            if j["id"] not in r["grade"]["judge_inputs"]:
+            if j["id"] not in r["judged"]:
                 continue
             item = r["grade"]["judge_inputs"][j["id"]]
             lines += [f"### {key}/{j['id']}", "", f"問い: {item['q']}（yes / no）", "",
                       f"判定器に渡した証拠（{j.get('source', 'reply')}）:", "", quote(item["evidence"]), ""]
-        answers[key] = {"trial": str(d), "case": r["case"], "cond": r["cond"], "judge": r["grade"]["judge"]}
+        answers[key] = {"trial": str(d), "case": r["case"], "cond": r["cond"], "judge": r["judged"]}
     (out / "labels.md").write_text("\n".join(lines))
     (out / "answers.json").write_text(json.dumps(answers, ensure_ascii=False, indent=2))
     (out / "human.json").write_text(json.dumps({k: {j: None for j in v["judge"]} for k, v in answers.items()}, ensure_ascii=False, indent=2))
