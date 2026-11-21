@@ -121,6 +121,7 @@ def orca_state(case, nums, clone):
         "workers": [{"issue": nums[w["issue"]], "liveness": w["liveness"], "state": w["state"]} for w in o["workers"]],
         "tasks": o.get("tasks", []),
         "messages": messages,
+        "next_run_id": o.get("next_run_id"),
         "ask_reply": orca_message(recordings, {"kind": "reply", **reply}, nums, rid, len(messages) + 1) if reply else None,
     }
 

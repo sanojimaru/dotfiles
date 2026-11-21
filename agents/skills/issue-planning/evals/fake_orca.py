@@ -165,11 +165,15 @@ def dispatch(argv, started):
     elif cmd == "run-current":
         ok({"runId": state["run_id"], "objective": state["run_objective"]})
     elif cmd == "run-create":
+        if next_run_id := state.pop("next_run_id", None):
+            state.setdefault("previous_runs", {})[state["run_id"]] = state["run_objective"]
+            state["run_id"] = next_run_id
         state["run_objective"] = opt(argv, "--objective") or state["run_objective"]
         save(state_path, state)
         ok({"runId": state["run_id"], "objective": state["run_objective"]})
     elif cmd == "run-list":
-        ok({"runs": [{"id": state["run_id"], "objective": state["run_objective"]}]})
+        runs = {**state.get("previous_runs", {}), state["run_id"]: state["run_objective"]}
+        ok({"runs": [{"id": run_id, "objective": objective} for run_id, objective in runs.items()]})
     elif cmd in ("inbox", "check", "ask", "reply", "send"):
         mail(cmd, argv, state, state_path)
     elif cmd == "task-create":
