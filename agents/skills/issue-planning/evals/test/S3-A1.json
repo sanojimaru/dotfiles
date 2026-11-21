@@ -46,7 +46,9 @@
         "type": "issues",
         "minimum": 1,
         "new": true,
-        "labels": ["backlog"],
+        "labels": [
+          "backlog"
+        ],
         "fields": {
           "state": "OPEN"
         }
@@ -58,6 +60,29 @@
         "issues": {
           "new": true
         }
+      },
+      {
+        "id": "run-id-recorded",
+        "type": "issues",
+        "issue": "epic",
+        "count": 1,
+        "contains": {
+          "body": "run_19f7add5b736"
+        }
+      },
+      {
+        "id": "backlog-linked",
+        "type": "issue_links",
+        "issue": "epic",
+        "targets": {
+          "new": true,
+          "labels": [
+            "backlog"
+          ],
+          "fields": {
+            "state": "OPEN"
+          }
+        }
       }
     ],
     "judge": [
@@ -68,7 +93,9 @@
         "issues": {
           "issue": "epic"
         },
-        "fields": ["body"]
+        "fields": [
+          "body"
+        ]
       },
       {
         "id": "walking-skeleton",
@@ -77,11 +104,13 @@
         "issues": {
           "issue": "epic"
         },
-        "fields": ["body"]
+        "fields": [
+          "body"
+        ]
       },
       {
-        "id": "backlog-and-run",
-        "q": "Epic に Run id run_19f7add5b736 があり、識別可能な拡張または対象外の各項目が新しい、対応する backlog Issue にリンクされているか。",
+        "id": "extension-outside-mvp",
+        "q": "新しい backlog の課題は今回の会議 1 件の検索とは別に延期できる拡張・対象外を記録しており、Epic がそれを今回の完了の状態に含めていないか。",
         "source": "combined",
         "parts": [
           {
@@ -89,15 +118,22 @@
             "issues": {
               "issue": "epic"
             },
-            "fields": ["body"]
+            "fields": [
+              "body"
+            ]
           },
           {
             "source": "issues",
             "issues": {
               "new": true,
-              "labels": ["backlog"]
+              "labels": [
+                "backlog"
+              ]
             },
-            "fields": ["title", "body"]
+            "fields": [
+              "title",
+              "body"
+            ]
           }
         ]
       },
@@ -109,7 +145,13 @@
   },
   "oracle": {
     "commands": [
-      ["orca", "orchestration", "run-create", "--objective", "会議の記録を Claude Code から探せるようにする"],
+      [
+        "orca",
+        "orchestration",
+        "run-create",
+        "--objective",
+        "会議の記録を Claude Code から探せるようにする"
+      ],
       [
         "sh",
         "-c",

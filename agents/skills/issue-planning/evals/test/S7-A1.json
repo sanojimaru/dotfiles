@@ -16,7 +16,9 @@
         "key": "branches",
         "title": "他拠点の予約が、受付の検索結果に出ない",
         "body": "別拠点の担当者は、受付に電話して自分の拠点の予約を確認している。",
-        "labels": ["backlog"]
+        "labels": [
+          "backlog"
+        ]
       },
       {
         "key": "epic",
@@ -31,7 +33,9 @@
         "type": "Task",
         "parent": "epic",
         "state": "closed",
-        "comments": ["## 片付いたこと\n受付番号から担当者と時刻を確認できました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"]
+        "comments": [
+          "## 片付いたこと\n受付番号から担当者と時刻を確認できました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       }
     ]
   },
@@ -66,7 +70,9 @@
         "type": "issues",
         "count": 1,
         "new": true,
-        "labels": ["backlog"],
+        "labels": [
+          "backlog"
+        ],
         "fields": {
           "state": "OPEN"
         }
@@ -86,7 +92,9 @@
             "issue": "epic",
             "targets": {
               "new": true,
-              "labels": ["backlog"]
+              "labels": [
+                "backlog"
+              ]
             }
           },
           {
@@ -95,7 +103,10 @@
           },
           {
             "event": "orca",
-            "match": ["worktree", "rm"]
+            "match": [
+              "worktree",
+              "rm"
+            ]
           }
         ]
       }
@@ -111,21 +122,32 @@
             "issues": {
               "issue": "epic"
             },
-            "fields": ["body"]
+            "fields": [
+              "body"
+            ]
           },
           {
             "source": "issues",
             "issues": {
               "new": true,
-              "labels": ["backlog"]
+              "labels": [
+                "backlog"
+              ]
             },
-            "fields": ["title", "body"]
+            "fields": [
+              "title",
+              "body"
+            ]
           }
         ]
       },
       {
-        "id": "user-summary",
-        "q": "利用者に、受付番号で担当者と時刻が確認できること、および他拠点検索と CSV の課題の所在を伝えているか。具体的な Issue 番号、題名、またはリンクの場所があればよい。"
+        "id": "user-outcome",
+        "q": "利用者への報告に、受付番号を入力して担当者と来訪時刻を確認できるようになったという説明があるか。"
+      },
+      {
+        "id": "user-backlog-location",
+        "q": "他拠点の検索と前日来訪者の CSV について、どの作業 Issue に残したか、あるいはどこからそのリンクをたどれるかが、利用者に分かるか。Issue 番号を直接書かなくてもよい。"
       }
     ]
   },
@@ -139,15 +161,43 @@
         "<<epic>>",
         "## 完了の状態\n- [x] 受付担当が来訪予約を番号で検索し、該当する予約の時刻と担当者を読める。\n\n## 計画\n番号検索は #<<task>> で完了しました。\n\n## 対象外\n- 他拠点の予約を同時に検索する。（#<<branches>>）\n- 前日の来訪者一覧を CSV で取り出す。（#BACKLOG）\n\nRun id: run_e6c156d67d67"
       ],
-      ["gh", "issue", "close", "<<epic>>", "--reason", "completed"],
-      ["orca", "worktree", "rm", "--worktree", "issue:<<epic>>", "--delete-branch"]
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<epic>>",
+        "--reason",
+        "completed"
+      ],
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<epic>>",
+        "--delete-branch"
+      ]
     ],
-    "reply": "受付番号で時刻と担当者を確認できるようになったので Epic を閉じました。残りの他拠点検索は #<<branches>>、前日の来訪者一覧の CSV は、Epic の対象外欄からたどれる「前日の来訪者一覧を CSV で確認できない」という backlog Issue に残しました。"
+    "reply": "受付担当は来訪予約の番号を入れて、担当者と来訪時刻を確認できるようになりました。残りは別々の backlog Issue に残しました。他拠点検索は #<<branches>> です。前日来訪者の CSV は、この Epic の対象外欄にリンクした「前日の来訪者一覧を CSV で確認できない」です。"
   },
   "bad": {
     "commands": [
-      ["gh", "issue", "close", "<<epic>>", "--reason", "completed"],
-      ["orca", "worktree", "rm", "--worktree", "issue:<<epic>>", "--delete-branch"]
+      [
+        "gh",
+        "issue",
+        "close",
+        "<<epic>>",
+        "--reason",
+        "completed"
+      ],
+      [
+        "orca",
+        "worktree",
+        "rm",
+        "--worktree",
+        "issue:<<epic>>",
+        "--delete-branch"
+      ]
     ],
     "reply": "作業は閉じました。"
   }
