@@ -25,6 +25,8 @@ orca-nested python3 run_eval.py trial CASE --holdout-repo OWNER/REPO \
 
 `history` と `prompt` は、`<<issue_key>>` を種の番号に置き換えます。スキルありの条件だけに渡す案内は `<!--skill-->` と `<!--/skill-->` の間に書きます。
 
+読み込みの記録には、入口の `SKILL.md` と、そこから読む節の参照ファイルを含めます。
+
 ## Orca の着信
 
 `orca.messages` に `kind` を指定したレコードを並べます。利用できる `kind` は `ask`、`reply`、`send`、`worker_done`、`escalation` です。`id`・`body`・`subject`・`payload` などの指定で、記録の値を差し替えます。例えば、`ask` の `payload` にある `question` と本文には同じ質問を書けます。

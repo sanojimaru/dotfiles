@@ -84,6 +84,8 @@ def mail(cmd, argv, state, state_path):
     if cmd in ("inbox", "check"):
         inspect_only = cmd == "inbox" or "--all" in argv or "--peek" in argv
         visible = messages if cmd == "inbox" or "--all" in argv else [m for m in messages if not m["read"]]
+        terminal, run_id = opt(argv, "--terminal"), opt(argv, "--run")
+        visible = [m for m in visible if (not terminal or m["to_handle"] == terminal) and (not run_id or m["run_id"] == run_id)]
         kinds = opt(argv, "--types")
         if kinds and inspect_only:
             visible = [m for m in visible if m["type"] in kinds.split(",")]
@@ -100,12 +102,14 @@ def mail(cmd, argv, state, state_path):
     if cmd == "ask":
         if not opt(argv, "--question"):
             fail("invalid_args", "ask requires --question")
+        sequence = len(messages) + 1
+        thread_id = f"thread_eval_question_{sequence}"
         answer = state["ask_reply"]
         if answer:
-            answer = {**answer, "id": f'{answer["id"]}_{len(messages) + 1}', "sequence": len(messages) + 1}
+            answer = {**answer, "id": f'{answer["id"]}_{sequence}', "thread_id": thread_id, "sequence": sequence}
             messages.append(answer)
             save(state_path, state)
-        ok({"messageId": f"msg_eval_question_{len(messages)}"})
+        ok({"messageId": f"msg_eval_question_{sequence}", "threadId": thread_id})
         return
     if cmd == "reply" and not any(m["id"] == opt(argv, "--id") and m["type"] == "question" for m in messages):
         fail("message_not_found", "reply に対応する question がありません")

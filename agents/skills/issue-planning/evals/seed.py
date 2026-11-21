@@ -105,23 +105,32 @@ def orca_state(case, nums, clone):
         name = subst(w["name"], nums)
         wts.append({"issue": issue, "name": name, "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"})
     recordings = json.loads((HERE / "orca-recordings.json").read_text())
-    messages = [orca_message(recordings, message, nums, i) for i, message in enumerate(o.get("messages", []), 1)]
+    rid = o["run_id"]
+    messages = [orca_message(recordings, message, nums, rid, i) for i, message in enumerate(o.get("messages", []), 1)]
     reply = o.get("ask_reply")
     return {
         "repo_id": "fake-repo", "run_id": o["run_id"], "run_objective": o["run_objective"], "worktrees": wts,
         "workers": [{"issue": nums[w["issue"]], "liveness": w["liveness"], "state": w["state"]} for w in o["workers"]],
         "tasks": o.get("tasks", []),
         "messages": messages,
-        "ask_reply": orca_message(recordings, {"kind": "reply", **reply}, nums, len(messages) + 1) if reply else None,
+        "ask_reply": orca_message(recordings, {"kind": "reply", **reply}, nums, rid, len(messages) + 1) if reply else None,
     }
 
 
-def orca_message(recordings, spec, nums, sequence):
+def orca_message(recordings, spec, nums, run_id, sequence):
     kind = spec["kind"]
     # escalation の本文・payload はケースから渡し、共通のメッセージフィールドは録画を使う。
     record = dict(recordings["send" if kind == "escalation" else kind])
+    record.update(run_id=run_id, id=f'{record["id"]}_{sequence}')
     if kind == "escalation":
-        record["type"] = kind
+        record.update(type=kind, from_handle="dispatch:ctx_eval")
+    if kind in ("ask", "worker_done", "escalation"):
+        payload = spec.get("payload") or {}
+        record["to_handle"] = f"run:{run_id}"
+        if isinstance(payload, dict) and payload.get("dispatchId"):
+            record["from_handle"] = f'dispatch:{payload["dispatchId"]}'
+    else:
+        record["from_handle"] = f"run:{run_id}"
     record.update({k: subst(v, nums) if isinstance(v, str) else v for k, v in spec.items() if k != "kind"})
     if isinstance(record["payload"], dict):
         record["payload"] = subst(json.dumps(record["payload"], ensure_ascii=False), nums)
