@@ -50,7 +50,7 @@ Run の objective は `<owner>/<repo>#<番号> ` で始まる（S2・S3）。一
 - 単独タスクの worker が、`worker_done` を出さずに（`outcome` が `succeeded`・`failed` でない）`exited`・`lost` になっている。
 - 単独タスクの Run の受信箱に、未読の `worker_done`・`question` がある。前の窓口のセッションが受けていない。ワーカーは Issue を閉じてから `worker_done` を送るので、Issue が閉じていても、objective に番号がある Run の受信箱は確かめる。
 
-Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。どの Run の `worker-list` でも、その worktree で動く worker が親にあたる。窓口が S2 で起こした親と立て直した親は、窓口の Run（`... の親を起こす`・`... の親を立て直す`）に出る。以前の手順で立て直した親は、Epic の Run に出る。古い起こし方（`worktree create --agent`）で起こされた親は、どの Run の worker でもないので `worker-list` に出ず、下の「worker が見つからない」親として扱う。
+Epic の候補は、親の生死を確かめる。未読の通知や開いている子が無いことは、調べるきっかけで、親が止まった証拠ではない。親の worktree は、`worktree list` の `linkedIssue` が Epic の番号で、`displayName` が `<番号>-epic-` で始まるもの。どの Run の `worker-list` でも、その worktree で動く worker が親にあたる。同じ worktree の worker が複数の Run に出ているときは、すべて集めてから判断する（起こした Run に止まった親、立て直した Run に新しい親が出る）。窓口が S2 で起こした親と立て直した親は、窓口の Run（`... の親を起こす`・`... の親を立て直す`）に出る。以前の手順で立て直した親は、Epic の Run に出る。古い起こし方（`worktree create --agent`）で起こされた親は、どの Run の worker でもないので `worker-list` に出ず、下の「worker が見つからない」親として扱う。
 
 - `liveness` が `live` の親は、次の子を立てる途中か、子の質問を処理中。手を出さない。二重に起こすと、2 つの親が同じ Epic を進める
 - `exited`・`lost` の親は、止まっている。立て直す
@@ -121,7 +121,7 @@ orca orchestration worker-start --run <窓口の Run の id> --spec-file <spec �
 
 spec は、Epic の番号と、このスキルの親の手順（上の「Epic の親が読む節」）を読むことを書く。ワーカーを起動する前に、spec の全文を Epic にコメントする。窓口の Run の id は本文に書かない。親が S3 の手順 2 で Epic の Run を作り、本文に Run の id を書く。
 
-親が子を待ってターンを終えたときに届く `stopReason`: `finished` の escalation は、窓口の確認（1）の立て直しと同じく、対応しない。
+親が子を待つか、計画の承認を待ってターンを終えたときに届く `stopReason`: `finished` の escalation は、窓口の確認（1）の立て直しと同じく、対応しない。`exited`・`lost` は対応する。
 
 ## 単独タスクのワーカーを起動する
 
