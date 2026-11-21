@@ -94,32 +94,15 @@
     ]
   },
   "oracle": [
-    [
-      "gh",
-      "issue",
-      "comment",
-      "<<task>>",
-      "--body",
+    ["gh", "issue", "comment", "<<task>>", "--body",
       "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
     ],
-    [
-      "orca",
-      "orchestration",
-      "reply",
-      "--id",
-      "msg_ipe_s5",
-      "--body",
+    ["orca", "orchestration", "reply", "--id", "msg_ipe_s5", "--body",
       "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
     ]
   ],
   "bad": [
-    [
-      "orca",
-      "orchestration",
-      "reply",
-      "--id",
-      "msg_ipe_s5",
-      "--body",
+    ["orca", "orchestration", "reply", "--id", "msg_ipe_s5", "--body",
       "Epic の計画に従い、BOM なしの UTF-8 で出力してください。"
     ]
   ]
