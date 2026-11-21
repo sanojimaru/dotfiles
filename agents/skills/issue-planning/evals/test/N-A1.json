@@ -26,14 +26,18 @@
     ],
     "judge": [
       {
-        "id": "explained-install",
-        "q": "install.sh が ./.local/team-tool ディレクトリを作り、config/default.ini を settings.ini としてコピーすることを説明しているか。実行は不要。"
+        "id": "creates-local-directory",
+        "q": "返事は、作業ディレクトリ内の .local/team-tool ディレクトリを作成すると説明しているか。"
+      },
+      {
+        "id": "copies-config",
+        "q": "返事は、元の config/default.ini をコピーし、コピー先のファイル名が settings.ini になると説明しているか。"
       }
     ]
   },
   "oracle": {
     "commands": [],
-    "reply": "作業ディレクトリ内に ./.local/team-tool を用意し、このリポジトリの config/default.ini をそこへ settings.ini としてコピーします。"
+    "reply": "install.sh はカレントディレクトリ内に .local/team-tool ディレクトリを作成します。そのディレクトリへ config/default.ini をコピーし、コピー先を .local/team-tool/settings.ini とします。"
   },
   "bad": {
     "commands": [],
