@@ -7,7 +7,7 @@ import sys
 
 TEST_PATH = "agents/skills/issue-planning/evals/test"
 TEST_EXCLUDE = f"!/{TEST_PATH}/"
-ACCESS = re.compile(r"""(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[/*?\[\s"'\\]))""")
+ACCESS = re.compile(r"(?<![\w.-])evals/test(?:/([\w-]+)\.json(?![\w.-])|(?=$|[^\w.-]))")
 
 
 def hide_test(worktree):
