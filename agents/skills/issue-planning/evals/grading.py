@@ -67,7 +67,8 @@ def matching_issues(spec, ctx):
     return [(n, issue) for n, issue in rows if all(
         issue[field] == (nums[value] if field == "parent" and value is not None else value)
         for field, value in spec.get("fields", {}).items()
-    ) and set(spec.get("labels", [])) <= set(issue["labels"])
+    ) and all(subst(text, nums) in issue[field] for field, text in spec.get("contains", {}).items())
+        and set(spec.get("labels", [])) <= set(issue["labels"])
         and not set(spec.get("without_labels", [])).intersection(issue["labels"])]
 
 
@@ -110,6 +111,10 @@ def run_check(chk, ctx):
     if t == "issues":
         count = len(matching_issues(chk, ctx))
         return count == chk["count"] if "count" in chk else count >= chk["minimum"]
+    if t == "issue_links":
+        issue = ctx["after"].get(ctx["nums"][chk["issue"]], {})
+        references = {int(n) for n in re.findall(r"(?:#|/issues/)(\d+)\b", issue.get("body", ""))}
+        return any(n in references for n, _ in matching_issues(chk["targets"], ctx))
     if t == "workers":
         expected = {n for n, _ in matching_issues(chk["issues"], ctx)}
         started = [w for w in ctx["state"]["workers"] if w.get("dispatch_id")]
