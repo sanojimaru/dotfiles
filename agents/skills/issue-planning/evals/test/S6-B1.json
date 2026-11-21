@@ -90,7 +90,8 @@
           "backlog"
         ],
         "fields": {
-          "state": "OPEN"
+          "state": "OPEN",
+          "parent": null
         }
       }
     ],

@@ -19,7 +19,9 @@
         "parent": "epic",
         "type": "Task",
         "state": "closed",
-        "comments": ["## 片付いたこと\n予約 1 件が受付番号で検索できることを確認しました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"]
+        "comments": [
+          "## 片付いたこと\n予約 1 件が受付番号で検索できることを確認しました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       },
       {
         "key": "b",
@@ -35,7 +37,9 @@
         "parent": "epic",
         "type": "Task",
         "state": "closed",
-        "comments": ["## 片付いたこと\n担当者の手順を記録しました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"]
+        "comments": [
+          "## 片付いたこと\n担当者の手順を記録しました。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
       }
     ]
   },
@@ -59,7 +63,9 @@
         "state": "running"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "B は稼働中なので起動せず、先行が閉じていない C の Issue も立てない。",
@@ -67,7 +73,10 @@
       {
         "id": "worker-start",
         "type": "calls",
-        "match": ["orchestration", "worker-start"],
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
         "count": 0,
         "fail_on_any": true
       },
@@ -77,7 +86,8 @@
         "count": 0,
         "issues": {
           "new": true
-        }
+        },
+        "fail_on_any": true
       },
       {
         "id": "no-new-issue",

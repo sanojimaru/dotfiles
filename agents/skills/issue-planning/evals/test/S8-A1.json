@@ -18,7 +18,9 @@
         "body": "すべての表示行に荷物の倉庫を識別できる番号を追加する。",
         "type": "Task",
         "parent": "epic",
-        "comments": ["倉庫の番号は社内 ID と配送先コードのどちらを表示しますか。"]
+        "comments": [
+          "倉庫の番号は社内 ID と配送先コードのどちらを表示しますか。"
+        ]
       }
     ]
   },
@@ -42,7 +44,9 @@
         "state": "running"
       }
     ],
-    "tasks": ["task_fake0000"]
+    "tasks": [
+      "task_fake0000"
+    ]
   },
   "expect": {
     "summary": "種にある Run を再開し、未回答の質問に答えをコメントしてから元のワーカーへ送る。稼働中の子に二重起動はしない。",
@@ -50,7 +54,10 @@
       {
         "id": "run-use",
         "type": "calls",
-        "match": ["orchestration", "run-use"],
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
         "minimum": 1,
         "success": true,
         "options": {
@@ -60,7 +67,10 @@
       {
         "id": "send",
         "type": "calls",
-        "match": ["orchestration", "send"],
+        "match": [
+          "orchestration",
+          "send"
+        ],
         "count": 1,
         "success": true,
         "options": {
@@ -71,13 +81,28 @@
         "id": "send-commented",
         "type": "comment_matches_message",
         "issue": "task",
-        "match": ["orchestration", "send"]
+        "match": [
+          "orchestration",
+          "send"
+        ]
       },
       {
         "id": "worker-start",
         "type": "calls",
-        "match": ["orchestration", "worker-start"],
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
         "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-second-worktree-worker",
+        "type": "workers",
+        "count": 0,
+        "issues": {
+          "issue": "task"
+        },
         "fail_on_any": true
       }
     ],
@@ -86,15 +111,31 @@
         "id": "answered-warehouse-question",
         "q": "元の子に、倉庫の表示には配送先コードでなく社内 ID（拠点 ID）を使うよう回答しているか。",
         "source": "orca",
-        "match": ["orchestration", "send"],
+        "match": [
+          "orchestration",
+          "send"
+        ],
         "success": true
       }
     ]
   },
   "oracle": {
     "commands": [
-      ["orca", "orchestration", "run-use", "--id", "run_4f84670786b0"],
-      ["gh", "issue", "comment", "<<task>>", "--body", "倉庫は社内 ID を表示してください。Epic 本文で合意済みの「拠点 ID」です。"],
+      [
+        "orca",
+        "orchestration",
+        "run-use",
+        "--id",
+        "run_4f84670786b0"
+      ],
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "倉庫は社内 ID を表示してください。Epic 本文で合意済みの「拠点 ID」です。"
+      ],
       [
         "orca",
         "orchestration",
@@ -110,16 +151,24 @@
   },
   "bad": {
     "commands": [
-      ["orca", "orchestration", "run-use", "--id", "run_4f84670786b0"],
       [
         "orca",
         "orchestration",
-        "worker-start",
-        "--worktree",
-        "issue:<<task>>",
+        "run-use",
+        "--id",
+        "run_4f84670786b0"
+      ],
+      [
+        "orca",
+        "worktree",
+        "create",
+        "--name",
+        "<<epic>>.<<task>>-duplicate-warehouse",
+        "--issue",
+        "<<task>>",
         "--agent",
         "claude",
-        "--spec",
+        "--prompt",
         "同じ倉庫表示の作業をもう一度実行してください。"
       ]
     ]
