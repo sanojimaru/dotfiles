@@ -14,8 +14,13 @@ ORCA_REAL = "@@ORCA_REAL@@"  # 試行ごとにコピーするとき、本物の 
 
 
 def log(argv, started, rc):
+    path = opt(argv, "--spec-file") if argv[:2] in (["orchestration", "task-create"], ["orchestration", "worker-start"]) else None
+    details = {}
+    if path and os.path.isfile(path):
+        with open(path) as f:
+            details["spec"] = f.read()
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
-        f.write(json.dumps({"ts": started, "tool": "orca", "argv": argv, "rc": rc}, ensure_ascii=False) + "\n")
+        f.write(json.dumps({"ts": started, "tool": "orca", "argv": argv, "rc": rc, **details}, ensure_ascii=False) + "\n")
 
 
 def ok(result=None):
@@ -28,7 +33,12 @@ def fail(code, message):
 
 
 def opt(argv, name):
-    return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
+    for i, value in enumerate(argv):
+        if value == name and i + 1 < len(argv):
+            return argv[i + 1]
+        if value.startswith(name + "="):
+            return value.split("=", 1)[1]
+    return None
 
 
 def save(path, state):
@@ -38,7 +48,8 @@ def save(path, state):
 
 def selector_hits(sel, w):
     kind, _, val = sel.partition(":")
-    return {"issue": str(w.get("issue")), "path": w["path"], "identity": w["identity"], "name": w["name"]}.get(kind) == val
+    return {"issue": str(w.get("issue")), "path": w["path"], "identity": w["identity"], "name": w["name"],
+            "branch": w["name"]}.get(kind) == (val.removeprefix("refs/heads/") if kind == "branch" else val)
 
 
 def worktrees(state):
@@ -61,14 +72,14 @@ def workers(state):
     by_issue = {w["issue"]: w for w in state["worktrees"] if w.get("issue")}
     out = []
     for i, w in enumerate(state["workers"]):
-        wt = by_issue[w["issue"]]
+        wt = by_issue.get(w["issue"], w.get("worktree", {}))
         row = {
-            "dispatchId": f"ctx_fake{i:04d}",
-            "taskId": f"task_fake{i:04d}",
+            "dispatchId": w.get("dispatch_id", f"ctx_fake{i:04d}"),
+            "taskId": w.get("task_id", f"task_fake{i:04d}"),
             "state": w["state"],
             "liveness": w["liveness"],
             "agent": w.get("agent", "claude/claude-opus-5-5"),
-            "workspace": f"{state['repo_id']}::{wt['path']}",
+            "workspace": f"{state['repo_id']}::{wt.get('path', '')}",
             "host": "local",
         }
         if w["liveness"] == "live":
@@ -143,6 +154,10 @@ def dispatch(argv, started):
         ok({"runId": rid, "objective": state["run_objective"]})
     elif cmd == "run-current":
         ok({"runId": state["run_id"], "objective": state["run_objective"]})
+    elif cmd == "run-create":
+        state["run_objective"] = opt(argv, "--objective") or state["run_objective"]
+        save(state_path, state)
+        ok({"runId": state["run_id"], "objective": state["run_objective"]})
     elif cmd == "run-list":
         ok({"runs": [{"id": state["run_id"], "objective": state["run_objective"]}]})
     elif cmd in ("inbox", "check", "ask", "reply", "send"):
@@ -163,16 +178,37 @@ def dispatch(argv, started):
         if opt(argv, "--task") not in state.get("tasks", []):
             fail("task_not_found", f"Task {opt(argv, '--task')} does not exist. Create it with task-create first.")
         sel = opt(argv, "--worktree")
-        if sel and not any(selector_hits(sel, w) for w in state["worktrees"]):
+        if sel and sel != "current" and not any(selector_hits(sel, w) for w in state["worktrees"]):
             fail("worktree_not_found", f"No worktree matches {sel}")
         state["seq"] = state.get("seq", 0) + 1
         wt = next((w for w in state["worktrees"] if sel and selector_hits(sel, w)), None)
         if wt and wt.get("issue"):  # 起こした親は、以後の worker-list に live で出る
-            state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready", "agent": opt(argv, "--agent")})
+            state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
+                                     "agent": opt(argv, "--agent"), "worktree": wt,
+                                     "dispatch_id": f"ctx_new{state['seq']:04d}", "task_id": opt(argv, "--task")})
         save(state_path, state)
         ok({"dispatchId": f"ctx_new{state['seq']:04d}", "taskId": opt(argv, "--task"), "state": "ready", "liveness": "live"})
     elif argv[:2] == ["worktree", "create"]:
-        ok({"worktree": {"path": "/tmp/fake-worktree", "displayName": opt(argv, "--name")}})
+        name, issue = opt(argv, "--name"), opt(argv, "--issue")
+        if not name:
+            fail("invalid_args", "worktree create requires --name")
+        wt = {"name": name, "issue": int(issue) if issue else None, "has_parent": "--no-parent" not in argv,
+              "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"}
+        state["worktrees"].append(wt)
+        if opt(argv, "--agent") and opt(argv, "--prompt"):
+            state["seq"] = state.get("seq", 0) + 1
+            state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
+                                     "worktree": wt, "dispatch_id": f"ctx_new{state['seq']:04d}"})
+        save(state_path, state)
+        ok({"worktree": worktrees(state)[-1]})
+    elif argv[:2] == ["worktree", "rm"]:
+        selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
+        wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
+        if wt is None or wt["issue"] is None:
+            fail("worktree_not_found", f"No removable worktree matches {selector}")
+        state["worktrees"].remove(wt)
+        save(state_path, state)
+        ok({"removed": True})
     else:
         ok({})
 

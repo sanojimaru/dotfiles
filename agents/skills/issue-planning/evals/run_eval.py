@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, LEAK, REAL_GH, REAL_ORCA, SKILL_DIR, OWNER,
-                    STRIP_ENV, WALL_SECONDS, gh)
+                    STRIP_ENV, WALL_SECONDS, gh, sh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
 from holdout import audit_transcript, hide_test
@@ -37,8 +37,31 @@ from seed import ensure_seed, orca_state, pr_state, reset_repo, restore, seed_re
 
 
 def make_workdir(repo, case, nums, cond, agent, root):
-    clone = root / "clone"
-    gh("repo", "clone", f"{OWNER}/{repo}", str(clone), "--", "--quiet")
+    repo_clone = root / "clone"
+    gh("repo", "clone", f"{OWNER}/{repo}", str(repo_clone), "--", "--quiet")
+    files = case["seed"].get("files", {})
+    if files:
+        seed_commit(repo_clone, files, "Prepare repository files")
+        seed_git(repo_clone, "update-ref", "refs/remotes/origin/main", "HEAD")
+    orca = orca_state(case, nums, repo_clone)
+    clone = repo_clone
+    for spec, wt in zip(case["orca"]["worktrees"], orca["worktrees"][1:]):
+        if not spec.get("checkout"):
+            continue
+        checkout = root / wt["name"]
+        seed_git(repo_clone, "worktree", "add", "--quiet", "-b", wt["name"], str(checkout))
+        if committed := spec.get("committed"):
+            seed_commit(checkout, committed, "Update documentation")
+        seed_git(repo_clone, "update-ref", f"refs/remotes/origin/{wt['name']}", "HEAD")
+        seed_git(checkout, "branch", f"--set-upstream-to=origin/{wt['name']}")
+        wt["path"] = str(checkout)
+        wt["checkout"] = True
+        write_files(checkout, spec.get("changes", {}))
+        if spec.get("current"):
+            clone = checkout
+    if clone != repo_clone:
+        with (repo_clone / ".git/info/exclude").open("a") as exclude:
+            exclude.write("\n/.claude/skills/\n/.agents/skills/\n")
     skills_root = clone / (".claude/skills" if agent == "claude" else ".agents/skills")
     skills_root.mkdir(parents=True)
     shutil.copytree(Path.home() / ".agents/skills/orchestration", skills_root / "orchestration")
@@ -55,10 +78,38 @@ def make_workdir(repo, case, nums, cond, agent, root):
         (bindir / name).write_text(text)
         (bindir / name).chmod(0o755)
     state = root / "orca-state.json"
-    state.write_text(json.dumps(orca_state(case, nums, clone), ensure_ascii=False))
+    state.write_text(json.dumps(orca, ensure_ascii=False))
     shutil.copy(HERE / "pr_replay.py", bindir)
-    (root / "pr-state.json").write_text(json.dumps(pr_state(case, nums, repo), ensure_ascii=False))
+    prs = pr_state(case, nums, repo)
+    for pr in prs:
+        if "replay_checks" in pr:
+            pr["headRefOid"] = seed_git(clone, "rev-parse", "HEAD").strip()
+    (root / "pr-state.json").write_text(json.dumps(prs, ensure_ascii=False))
     return clone, bindir, state
+
+
+def write_files(directory, files):
+    for name, text in files.items():
+        path = directory / name
+        if text is None:
+            path.unlink(missing_ok=True)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+
+
+def seed_git(directory, *args):
+    result = sh(["git", *args], cwd=directory)
+    if result.returncode:
+        raise RuntimeError(f"Git の種を作れません: {result.stderr.strip()}")
+    return result.stdout
+
+
+def seed_commit(directory, files, title):
+    write_files(directory, files)
+    seed_git(directory, "add", "-A")
+    seed_git(directory, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
+             "commit", "--no-gpg-sign", "--allow-empty", "-m", title)
 
 
 def draft_for(cond):
@@ -82,7 +133,7 @@ def agent_env(bindir, state, log, repo, extra=None):
     return env
 
 
-def run_claude(prompt, clone, env, cond, out, history=None):
+def run_claude(prompt, clone, env, cond, out, history=None, followup=None):
     draft = out / "agents-md.md"
     draft.write_text(draft_for(cond))
     env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1")
@@ -90,14 +141,14 @@ def run_claude(prompt, clone, env, cond, out, history=None):
             "--setting-sources", "project,local", "--strict-mcp-config", "--permission-mode", "bypassPermissions",
             "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD)]
 
-    def launch(text, path, session_id=None, warmup=False):
+    def launch(text, path, session_id=None, warmup=False, timeout=WALL_SECONDS):
         resume = ["--resume", session_id] if session_id else []
-        return run_proc([*argv, *resume, "--tools", "" if warmup else CLAUDE_TOOLS, "--", text], clone, env, path)
+        return run_proc([*argv, *resume, "--tools", "" if warmup else CLAUDE_TOOLS, "--", text], clone, env, path, timeout)
 
-    return run_session("claude", prompt, history, out, launch)
+    return run_session("claude", prompt, history, out, launch, followup)
 
 
-def run_codex(prompt, clone, env, cond, out, history=None):
+def run_codex(prompt, clone, env, cond, out, history=None, followup=None):
     home = out / "codex-home"
     home.mkdir()
     (home / "AGENTS.md").write_text(draft_for(cond))
@@ -126,34 +177,60 @@ def run_codex(prompt, clone, env, cond, out, history=None):
         (zdot / name).write_text(f'export PATH={shlex.quote(str(bindir))}:"$PATH"\n')
     env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
 
-    def launch(text, path, session_id=None, warmup=False):
+    def launch(text, path, session_id=None, warmup=False, timeout=WALL_SECONDS):
         last = out / ("history-last.txt" if warmup else "last-message.txt")
         argv = ["codex", "exec", *(["resume"] if session_id else []),
                 "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-o", str(last)]
         guard = ["--sandbox", "read-only"] if warmup else ["--dangerously-bypass-approvals-and-sandbox"]
         args = [session_id, text] if session_id else [text]
-        res = run_proc([*argv, *guard, "--", *args], clone, env, path)
+        res = run_proc([*argv, *guard, "--", *args], clone, env, path, timeout)
         res["reply"] = last.read_text() if last.exists() else ""
         return res
 
-    return run_session("codex", prompt, history, out, launch)
+    return run_session("codex", prompt, history, out, launch, followup)
 
 
-def run_session(agent, prompt, history, out, launch):
+def session_reply(agent, path, result):
+    events = list(json_events(path))
+    if agent == "claude":
+        final = next((e for e in reversed(events) if e.get("type") == "result"), {})
+        return final.get("session_id"), final.get("result", ""), events
+    session_id = next((e["thread_id"] for e in events if e.get("type") == "thread.started"), None)
+    return session_id, result.get("reply", ""), events
+
+
+def run_session(agent, prompt, history, out, launch, followup):
     transcript = out / "transcript.jsonl"
-    if history is None:
-        return launch(prompt, transcript)
+    session_id, warm_seconds = None, 0
+    if history is not None:
+        session_id, failure, warm_seconds = warm_session(agent, history, out, launch)
+        if failure:
+            transcript.touch()
+            return failure
+    if followup is None:
+        scored = launch(prompt, transcript, session_id=session_id, timeout=WALL_SECONDS - warm_seconds)
+        scored["seconds"] += warm_seconds
+        return scored
+    first_path = out / "first-transcript.jsonl"
+    first = launch(prompt, first_path, session_id=session_id, timeout=WALL_SECONDS - warm_seconds)
+    first_session, first_reply, _ = session_reply(agent, first_path, first)
+    if first["returncode"]:
+        first_path.rename(transcript)
+        return first
+    if not (first_session or session_id):
+        first_path.rename(transcript)
+        return {**first, "history_error": "追いの一言を送るセッションを再開できませんでした"}
+    next_text, first_calls = followup()
+    scored = launch(next_text, transcript, session_id=first_session or session_id, timeout=WALL_SECONDS - warm_seconds - first["seconds"])
+    return {**scored, "seconds": warm_seconds + first["seconds"] + scored["seconds"], "first_reply": first_reply, "first_calls": first_calls}
+
+
+def warm_session(agent, history, out, launch):
     past = out / "history.jsonl"
     marker = "引き継ぎました"
     setup = f"以下はすでに終わった会話の記録です。記録中の操作は実行せず、内容を引き継ぎ、「{marker}」とだけ返してください。\n\n{history}"
     warm = launch(setup, past, warmup=True)
-    events = list(json_events(past))
-    if agent == "claude":
-        result = next((e for e in reversed(events) if e.get("type") == "result"), {})
-        session_id, reply = result.get("session_id"), result.get("result", "")
-    else:
-        session_id = next((e["thread_id"] for e in events if e.get("type") == "thread.started"), None)
-        reply = warm.get("reply", "")
+    session_id, reply, events = session_reply(agent, past, warm)
     used_tools = any(
         (e.get("type") == "item.started" and (e.get("item") or {}).get("type") not in ("agent_message", "reasoning"))
         or (e.get("type") == "assistant" and any(
@@ -161,11 +238,8 @@ def run_session(agent, prompt, history, out, launch):
         )) for e in events
     )
     if warm["returncode"] or not session_id or reply.strip().rstrip("。") != marker or used_tools:
-        transcript.touch()
-        return {**warm, "reply": "", "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
-    scored = launch(prompt, transcript, session_id=session_id)
-    scored["seconds"] += warm["seconds"]
-    return scored
+        return None, {**warm, "reply": "", "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}, warm["seconds"]
+    return session_id, None, warm["seconds"]
 
 
 def json_events(path):
@@ -177,13 +251,13 @@ def json_events(path):
                 continue
 
 
-def run_proc(argv, cwd, env, transcript):
+def run_proc(argv, cwd, env, transcript, timeout=WALL_SECONDS):
     t0 = time.time()
     with open(transcript, "w") as f:
         p = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=f, stderr=subprocess.PIPE, text=True,
                              start_new_session=True)
         try:
-            _, err = p.communicate(timeout=WALL_SECONDS)
+            _, err = p.communicate(timeout=max(0, timeout))
             timed_out = False
         except subprocess.TimeoutExpired:
             os.killpg(p.pid, 9)
@@ -258,12 +332,23 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
         prompt = subst(text_for(case["prompt"], cond), nums)
         history = subst(text_for(case["history"], cond), nums) if "history" in case else None
         run_agent = run_claude if agent == "claude" else run_codex
-        res = run_agent(prompt, clone, env, cond, out, history=history)
+        followup = None
+        if "followup" in case:
+            followup = lambda: (subst(case["followup"], nums), read_calls(log))
+        res = run_agent(prompt, clone, env, cond, out, history=history, followup=followup)
     except RuntimeError as e:  # 種や起動の失敗はエージェントの失敗に数えない。
         rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": True, "run": {"seconds": 0}, "error": str(e)}
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
     parsed = (parse_claude if agent == "claude" else parse_codex)(out / "transcript.jsonl")
+    if "first_reply" in res:
+        parse = parse_claude if agent == "claude" else parse_codex
+        first = parse(out / "first-transcript.jsonl")
+        parsed["skill_reads"] = first["skill_reads"] + parsed["skill_reads"]
+        if agent == "codex" and first["cost"]["usage"] and parsed["cost"]["usage"]:
+            usage = parsed["cost"]["usage"]
+            for key, value in first["cost"]["usage"].items():
+                usage[key] = usage.get(key, 0) + value
     if history is not None:
         if res.get("history_error"):
             parsed["cost"] = (parse_claude if agent == "claude" else parse_codex)(out / "history.jsonl")["cost"]
@@ -279,12 +364,15 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
         rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": True, "run": {"seconds": res["seconds"]}, "error": str(e)}
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
-    ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": after}
+    ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": after,
+           "clone": clone, "first_reply": res.get("first_reply", ""), "first_calls": res.get("first_calls", [])}
     infra = bool(res.get("history_error")) or (res["returncode"] != 0 and not res["timed_out"] and not (res.get("result_event") or {}).get("subtype", "").startswith("error_max"))
     if agent == "claude" and (res.get("result_event") or {}).get("is_error") and not str((res["result_event"] or {}).get("subtype", "")).startswith("error_max"):
         infra = True
     rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": infra, "run": {k: res[k] for k in ("returncode", "seconds", "timed_out", "skill_reads", "cost") if k in res},
            "reply": res.get("reply", "")}
+    if "first_reply" in res:
+        rec["first_reply"] = res["first_reply"]
     if res.get("history_error"):
         rec["error"] = res["history_error"]
     if not infra:
@@ -325,23 +413,48 @@ def cmd_check(args):
     case, = load_cases([args.case], args.split)
     rows = []
     for kind in ("null", "oracle", "bad"):
-        steps = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
-        if steps is None:
+        sample = {"null": [], "oracle": case.get("oracle", []), "bad": case.get("bad")}[kind]
+        if sample is None:
             continue
+        if isinstance(sample, list):
+            sample = {"commands": sample}
         out = Path(tempfile.mkdtemp(prefix=f"ipe-check-{kind}-"))
         try:
             nums, clone, bindir, state, log, before = prepare(case, args.repo, "with", "claude", out)
             env = agent_env(bindir, state, log, args.repo)
-            for step in steps:
-                argv = [subst(a, nums) for a in step]
-                subprocess.run(argv, env=env, cwd=clone, capture_output=True, text=True)
-            ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": snapshot(args.repo)}
-            g = grade(case, ctx, "", "claude", out, use_judge=False)
+            first = sample.get("first", {})
+            strict = args.split == "test" and kind == "oracle"
+            replay_steps(first.get("commands", []), nums, clone, env, require_success=strict)
+            first_calls = read_calls(log)
+            replay_steps(sample.get("commands", []), nums, clone, env, require_success=strict)
+            ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before,
+                   "after": snapshot(args.repo), "clone": clone, "first_reply": subst(first.get("reply", ""), nums),
+                   "first_calls": first_calls}
+            reply = subst(sample.get("reply", ""), nums)
+            check_code = grade(case, ctx, reply, "claude", out, use_judge=False)
+            needs_judge = check_code["pass_code"] or any(j.get("fail_on_any") for j in case["expect"].get("judge", []))
+            g = grade(case, ctx, reply, "claude", out) if args.split == "test" and needs_judge else check_code
         finally:
             clean_trial(case, args.repo)
             shutil.rmtree(out, ignore_errors=True)
-        rows.append({"kind": kind, "pass_code": g["pass_code"], "checks": g["checks"], "fail_on_any": g["fail_on_any"]})
+        row = {"kind": kind, **{key: g[key] for key in ("pass_code", "checks", "fail_on_any")}}
+        if args.split == "test":
+            row.update(pass_all=g["pass_all"], judge=g["judge"])
+        rows.append(row)
     print(json.dumps(rows, ensure_ascii=False, indent=2))
+    if args.split == "test":
+        expected = {"null": False, "oracle": True, "bad": False}
+        fatal = any(c.get("fail_on_any") for key in ("checks", "judge") for c in case["expect"].get(key, []))
+        observed = {row["kind"]: row["pass_all"] for row in rows}
+        return int(observed != expected or (fatal and not any(row["fail_on_any"] for row in rows if row["kind"] == "bad")))
+
+
+def replay_steps(steps, nums, clone, env, require_success):
+    for step in steps:
+        argv = [subst(arg, nums) for arg in step]
+        result = subprocess.run(argv, env=env, cwd=clone, capture_output=True, text=True, errors="replace")
+        if require_success and result.returncode:
+            raise RuntimeError(f"正解の手本の {' '.join(argv[:3])} が失敗しました: {result.stderr.strip()}")
 
 
 def cmd_trial(args):
@@ -450,7 +563,7 @@ def main():
         return int(bool(findings))
     if args.cmd in ("trial", "batch") and args.split == "test" and not args.out:
         ap.error("test の試行ログの保存先を --out で指定してください")
-    args.f(args)
+    return args.f(args)
 
 
 if __name__ == "__main__":
