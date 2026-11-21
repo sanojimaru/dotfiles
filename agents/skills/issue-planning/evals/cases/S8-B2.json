@@ -1,0 +1,145 @@
+{
+  "id": "S8-B2",
+  "split": "dev",
+  "section": "S8",
+  "prompt": "Epic #<<epic>> の親のセッション（coordinator）を担当する。<!--skill-->`issue-planning` の親の手順を読んでから始める。<!--/skill-->前の親のセッションは止まった。Epic の本文と Issue のコメントから続ける。",
+  "seed": {
+    "files": {
+      "README.md": "# 報告管理\n"
+    },
+    "issues": [
+      {
+        "key": "epic",
+        "type": "Feature",
+        "title": "報告を CSV でダウンロードできるようにする",
+        "body": "## 完了の状態\n- [ ] 担当者として、報告を 1 件 CSV でダウンロードできる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. CSV を出力する] --> B[2. ダウンロードの画面]\n```"
+      },
+      {
+        "key": "task",
+        "parent": "epic",
+        "type": "Task",
+        "title": "CSV を出力する",
+        "body": "## 受け入れ条件\n- [ ] 報告を CSV で出力できる\n",
+        "comments": [
+          "作業の途中: 出力の実装を進めている。テストを書いている。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s8_other",
+    "run_objective": "別のリポジトリの調査",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-report-csv"
+      },
+      {
+        "issue": "task",
+        "name": "<<epic>>.<<task>>-csv-export"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "next_run_id": "run_ipe_s8_b2_new"
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "new-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-create"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "run-id-in-epic",
+        "type": "issues",
+        "issue": "epic",
+        "count": 1,
+        "contains": {
+          "body": "run_ipe_s8_b2_new"
+        }
+      },
+      {
+        "id": "no-double-start",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-new-issue",
+        "type": "issues",
+        "new": true,
+        "count": 0
+      }
+    ],
+    "judge": [
+      {
+        "id": "run-id-recorded-as-run-id",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "body"
+        ],
+        "q": "Epic の本文に、Run の id が Run の id として（「Run id」などの見出しや説明を付けて）書かれ、計画の本文を消していないか"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "run-create",
+        "--objective",
+        "Epic: 報告の CSV ダウンロード"
+      ],
+      [
+        "gh",
+        "issue",
+        "edit",
+        "<<epic>>",
+        "--body",
+        "## 完了の状態\n- [ ] 担当者として、報告を 1 件 CSV でダウンロードできる\n\n## 計画（案）\n\n```mermaid\nflowchart LR\n    A[1. CSV を出力する] --> B[2. ダウンロードの画面]\n```\n\nRun id: `run_ipe_s8_b2_new`"
+      ]
+    ],
+    "reply": "Epic に Run の id が無かったので、新しい Run を作って本文に書きました。子 #<<task>> は作業中なので、起動していません。"
+  },
+  "bad": {
+    "commands": [
+      [
+        "orca",
+        "orchestration",
+        "task-create",
+        "--spec",
+        "x"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--task",
+        "task_new0001",
+        "--worktree",
+        "issue:<<task>>",
+        "--agent",
+        "claude"
+      ]
+    ]
+  }
+}
