@@ -1,0 +1,108 @@
+{
+  "id": "S1b-A1",
+  "split": "test",
+  "section": "S1b",
+  "prompt": "次は何をする？",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "品目の棚卸しを迷わず始める",
+        "body": "棚卸しの一覧を整える。Run id: `run_c399e283484d`",
+        "type": "Feature"
+      },
+      {
+        "key": "task",
+        "title": "一覧の列見出しを統一する",
+        "body": "棚卸し一覧で品目を識別する列に「品目コード」と表示する。",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed"
+      }
+    ],
+    "prs": [
+      {
+        "key": "pr",
+        "title": "棚卸し一覧の列名を品目コードに統一する",
+        "body": "棚卸し一覧の画面と出力に使う列名を統一した。Closes #<<task>>",
+        "state": "MERGED",
+        "closes": ["task"]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_c399e283484d",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-inventory-list"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "epic",
+        "liveness": "live",
+        "state": "running"
+      }
+    ]
+  },
+  "expect": {
+    "summary": "閉じた子に PR と Issue の状態に基づく 3 項目の報告を足し、他の Issue を変えない。",
+    "checks": [
+      {
+        "id": "unrelated-issues-unchanged",
+        "type": "unchanged",
+        "issues": ["epic"]
+      },
+      {
+        "id": "no-new-issue",
+        "type": "issues",
+        "count": 0,
+        "new": true
+      },
+      {
+        "id": "still-closed",
+        "type": "state",
+        "issue": "task",
+        "state": "closed"
+      }
+    ],
+    "judge": [
+      {
+        "id": "report",
+        "q": "新しいコメントは、片付いたこと（列見出しを「品目コード」にしたマージ済みの PR #<<pr>> が根拠）、片付かなかったこと、計画に影響する発見の 3 点を報告しているか。後二者はなしでよい。",
+        "source": "issues",
+        "issues": {
+          "issue": "task"
+        },
+        "fields": ["comments"],
+        "new_comments": true
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "## 片付いたこと\n棚卸し一覧の列見出しを「品目コード」に統一しました。PR #<<pr>> はマージ済みで、作業 Issue は閉じています。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<epic>>",
+        "--body",
+        "## 片付いたこと\n棚卸し一覧の列見出しを「品目コード」に統一しました。PR #<<pr>> はマージ済みで、作業 Issue は閉じています。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+      ]
+    ]
+  }
+}

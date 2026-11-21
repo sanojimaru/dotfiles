@@ -1,0 +1,42 @@
+{
+  "id": "N-A1",
+  "split": "test",
+  "section": "N",
+  "prompt": "`install.sh` は何をしている？",
+  "seed": {
+    "issues": [],
+    "files": {
+      "install.sh": "#!/bin/sh\nset -eu\nconfig_dir=\"$HOME/.config/team-tool\"\nmkdir -p \"$config_dir\"\ncp config/default.ini \"$config_dir/settings.ini\"\n",
+      "config/default.ini": "[display]\nlocale=ja\n"
+    }
+  },
+  "orca": {
+    "run_id": "run_b96cb7838f3d",
+    "run_objective": "チームの作業",
+    "worktrees": [],
+    "workers": []
+  },
+  "expect": {
+    "summary": "install.sh を読んだうえで働きを説明し、Issue を変えない。",
+    "checks": [
+      {
+        "id": "issues-unchanged",
+        "type": "all_issues_unchanged"
+      }
+    ],
+    "judge": [
+      {
+        "id": "explained-install",
+        "q": "install.sh が ~/.config/team-tool ディレクトリを作り、config/default.ini を settings.ini としてコピーすることを説明しているか。実行は不要。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [],
+    "reply": "ユーザーのホームに ~/.config/team-tool を用意し、このリポジトリの config/default.ini をそこへ settings.ini としてコピーします。"
+  },
+  "bad": {
+    "commands": [],
+    "reply": "GitHub に Issue を登録してから起動するスクリプトです。"
+  }
+}

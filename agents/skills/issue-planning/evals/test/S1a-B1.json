@@ -1,0 +1,109 @@
+{
+  "id": "S1a-B1",
+  "split": "test",
+  "section": "S1a",
+  "prompt": "次は何をする？",
+  "note": "質問の経過時間は子 Issue のコメント本文に記録する。GitHub のコメント作成時刻は変更しない。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "部署別に申請を絞り込めるようにする",
+        "body": "## 完了の状態\n担当者が部署を選んで申請を絞り込める。\n\n## 計画\n部署の選択欄と検索結果をつなぐ。作業は #<<task>> で進めている。\n\nRun id: `run_a8b3bcb9798e`",
+        "type": "Feature",
+        "comments": ["絞り込み表示の作業に着手しました。"]
+      },
+      {
+        "key": "task",
+        "title": "部署を指定する検索欄をつなぐ",
+        "body": "部署を一つ指定すると、対応する申請だけが表示される。",
+        "type": "Task",
+        "parent": "epic",
+        "comments": ["2 時間前の状況:\n\n絞り込みに使う部署コードは、組織台帳の ID と経費台帳の記号のどちらでしょうか。"]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_a8b3bcb9798e",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-department-filter"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "epic",
+        "liveness": "exited",
+        "state": "failed"
+      }
+    ]
+  },
+  "expect": {
+    "summary": "停止した親を 1 回だけ起こし、未回答の質問を引き継ぐ。立て直したことを利用者に伝える。",
+    "checks": [
+      {
+        "id": "worker-start",
+        "type": "calls",
+        "match": ["orchestration", "worker-start"],
+        "count": 1,
+        "worktree_of": "epic",
+        "success": true
+      }
+    ],
+    "judge": [
+      {
+        "id": "question-handed-off",
+        "q": "起動の指示か Epic に新しく残したコメントに、子 #<<task>> の部署コードの質問が未回答で引き継ぐべきだと分かる記述があるか。",
+        "source": "combined",
+        "parts": [
+          {
+            "source": "orca",
+            "match": ["orchestration", "worker-start"],
+            "success": true
+          },
+          {
+            "source": "orca",
+            "match": ["orchestration", "task-create"],
+            "success": true
+          },
+          {
+            "source": "issues",
+            "issues": {
+              "issue": "epic"
+            },
+            "fields": ["comments"],
+            "new_comments": true
+          }
+        ]
+      },
+      {
+        "id": "restart-reported",
+        "q": "止まっていた親を、予定や提案ではなく既に立て直したと利用者に伝えているか。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      ["gh", "issue", "comment", "<<epic>>", "--body", "前の親から引き継いでください。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"],
+      ["orca", "orchestration", "run-use", "--id", "run_a8b3bcb9798e"],
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--worktree",
+        "issue:<<epic>>",
+        "--agent",
+        "claude",
+        "--spec",
+        "前の親から引き継いでください。子 #<<task>> のコメントに、部署コードについて未回答の質問があります。"
+      ]
+    ],
+    "reply": "止まっていた親を立て直し、部署コードの未回答の質問を引き継ぎました。"
+  },
+  "bad": {
+    "commands": [],
+    "reply": "止まっている親を立て直した方がよさそうです。"
+  }
+}

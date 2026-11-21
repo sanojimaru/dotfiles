@@ -1,0 +1,103 @@
+{
+  "id": "S9-A1",
+  "split": "test",
+  "section": "S9",
+  "prompt": "Run `run_ee5f5d0e5e02` に Orca からワーカーの通知が届きました。",
+  "history": "利用者: この小さな変更を進めてください。\n\n窓口: 単独タスク #<<task>> のワーカーを起動しました。質問や完了の通知を私が受け取ります。",
+  "seed": {
+    "issues": [
+      {
+        "key": "task",
+        "title": "月次の表に日付を出す",
+        "body": "## 受け入れ条件\n月次の表に締め日を表示する。利用者と合意済みの日付書式は YYYY-MM-DD。\n\nRun id: `run_ee5f5d0e5e02`",
+        "type": "Task",
+        "comments": ["締め日の表示は YYYY-MM-DD と M/D のどちらにしますか。"]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ee5f5d0e5e02",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<task>>-standalone-change"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "ask",
+        "body": "締め日の表示は YYYY-MM-DD と M/D のどちらにしますか。",
+        "payload": {
+          "taskId": "task_fake0000",
+          "dispatchId": "ctx_fake0000",
+          "question": "締め日の表示は YYYY-MM-DD と M/D のどちらにしますか。",
+          "options": []
+        },
+        "id": "msg_standalone",
+        "subject": "月次の表に日付を出す"
+      }
+    ],
+    "tasks": ["task_fake0000"]
+  },
+  "expect": {
+    "summary": "決定済みの方針を作業 Issue にコメントしてからワーカーへ返す。",
+    "checks": [
+      {
+        "id": "reply",
+        "type": "calls",
+        "match": ["orchestration", "reply"],
+        "count": 1,
+        "success": true,
+        "options": {
+          "--id": "msg_standalone"
+        }
+      },
+      {
+        "id": "reply-commented",
+        "type": "comment_matches_message",
+        "issue": "task",
+        "match": ["orchestration", "reply"]
+      }
+    ],
+    "judge": [
+      {
+        "id": "reply-content",
+        "q": "ワーカーに、締め日を YYYY-MM-DD で表示すると答えているか。",
+        "source": "orca",
+        "match": ["orchestration", "reply"],
+        "success": true
+      },
+      {
+        "id": "no-user-question",
+        "q": "利用者に判断や確認を求めていないか。",
+        "allow_empty": true
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      ["gh", "issue", "comment", "<<task>>", "--body", "締め日の表示は、本文で合意済みの YYYY-MM-DD で進めてください。"],
+      [
+        "orca",
+        "orchestration",
+        "reply",
+        "--id",
+        "msg_standalone",
+        "--body",
+        "締め日の表示は、本文で合意済みの YYYY-MM-DD で進めてください。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [],
+    "reply": "日付は YYYY-MM-DD と M/D のどちらにしますか？"
+  }
+}

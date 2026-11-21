@@ -1,0 +1,124 @@
+{
+  "id": "S2-B1",
+  "split": "test",
+  "section": "S2",
+  "prompt": "社内の経費精算を楽にしたい",
+  "followup": "やる",
+  "seed": {
+    "issues": [],
+    "files": {
+      "README.md": null
+    }
+  },
+  "orca": {
+    "run_id": "run_b740d15398aa",
+    "run_objective": "チームの作業",
+    "worktrees": [],
+    "workers": []
+  },
+  "expect": {
+    "summary": "最初の返事は着手の確認だけ。了承後に困りごとと事実だけの Epic を 1 件作り親に渡す。",
+    "checks": [
+      {
+        "id": "one-issue",
+        "type": "issues",
+        "count": 1
+      },
+      {
+        "id": "standalone-feature",
+        "type": "issues",
+        "count": 1,
+        "new": true,
+        "fields": {
+          "type": "Feature",
+          "state": "OPEN",
+          "parent": null
+        }
+      },
+      {
+        "id": "top-level-epic-started",
+        "type": "workers",
+        "count": 1,
+        "issues": {
+          "new": true,
+          "fields": {
+            "type": "Feature"
+          }
+        },
+        "top_level": true
+      },
+      {
+        "id": "no-issue-created-before-reply",
+        "type": "no_first_issues"
+      }
+    ],
+    "judge": [
+      {
+        "id": "first-only",
+        "q": "最初の返事は、今この要望に着手するかという一問だけを尋ね、計画、技術案、追加の質問を出していないか。",
+        "source": "first_reply"
+      },
+      {
+        "id": "epic-facts-only",
+        "q": "作った Epic は経費精算を楽にしたいという困りごとと分かっている事実だけを書き、未確認の事実を作らず、完了の状態、計画、子 Issue の予定を書いていないか。",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "fields": {
+            "type": "Feature"
+          }
+        },
+        "fields": ["title", "body"]
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "create",
+        "--title",
+        "経費精算の負担を減らす",
+        "--body",
+        "## 困りごと\n依頼者は、社内の経費精算を楽にしたいと話しています。どの手順が負担かは、まだ確認できていません。",
+        "--type",
+        "Feature"
+      ],
+      [
+        "sh",
+        "-c",
+        "set -eu\nnumber=$(gh issue list --json number --jq '.[0].number')\norca worktree create --name \"$number-epic-expense-report\" --issue \"$number\" --no-parent --agent claude --prompt \"Epic #$number の親のセッションを担当してください。\""
+      ]
+    ],
+    "reply": "経費精算の Epic を作り、親に渡しました。",
+    "first": {
+      "commands": [],
+      "reply": "この件に今着手しますか？"
+    }
+  },
+  "bad": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "create",
+        "--title",
+        "経費精算の負担を減らす",
+        "--body",
+        "## 困りごと\n依頼者は、社内の経費精算を楽にしたいと話しています。どの手順が負担かは、まだ確認できていません。",
+        "--type",
+        "Feature"
+      ],
+      [
+        "sh",
+        "-c",
+        "set -eu\nnumber=$(gh issue list --json number --jq '.[0].number')\norca worktree create --name \"$number-epic-expense-report\" --issue \"$number\" --no-parent --agent claude --prompt \"Epic #$number の親のセッションを担当してください。\""
+      ]
+    ],
+    "first": {
+      "commands": [],
+      "reply": "まず技術を決めましょう。請求書を OCR にかけますか？ 承認フローも作りますか？"
+    }
+  }
+}

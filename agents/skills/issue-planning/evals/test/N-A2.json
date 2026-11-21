@@ -1,0 +1,38 @@
+{
+  "id": "N-A2",
+  "split": "test",
+  "section": "N",
+  "prompt": "`gh stack` の使い方を教えて",
+  "seed": {
+    "issues": []
+  },
+  "orca": {
+    "run_id": "run_14290170810c",
+    "run_objective": "チームの作業",
+    "worktrees": [],
+    "workers": []
+  },
+  "expect": {
+    "summary": "gh stack の使い方を説明し、Issue を変えない。",
+    "checks": [
+      {
+        "id": "issues-unchanged",
+        "type": "all_issues_unchanged"
+      }
+    ],
+    "judge": [
+      {
+        "id": "explained-stack",
+        "q": "複数の依存する PR を積むコマンドだと説明し、gh stack init、add または submit を含む実行可能な基本例を示しているか。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [],
+    "reply": "gh stack は、依存する PR を積んで管理します。例えば gh stack init base-change で始め、変更をコミットした後、gh stack add next-change で上のブランチを作り、gh stack submit でまとめて GitHub に送ります。"
+  },
+  "bad": {
+    "commands": [],
+    "reply": "使い方は分かりません。"
+  }
+}
