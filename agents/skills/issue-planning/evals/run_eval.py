@@ -290,13 +290,14 @@ def run_proc(argv, cwd, env, transcript, timeout=WALL_SECONDS):
 def parse_claude(transcript):
     pending, reads, result, cost = {}, [], None, {}
     for ev in json_events(transcript):
-        content = ev.get("message", {}).get("content", [])
+        message = ev.get("message")
+        content = message.get("content", []) if isinstance(message, dict) else []  # API の失敗の記録は message が文字列
         for b in content if isinstance(content, list) else []:
             if ev.get("type") == "assistant" and b.get("type") == "tool_use":
                 inp = b.get("input", {})
                 if b["name"] == "Skill" and "issue-planning" in str(inp.get("skill", "")):
                     pending[b["id"]] = "Skill"
-                if b["name"] == "Read" and "issue-planning" in str(inp.get("file_path", "")):
+                if b["name"] == "Read" and re.search(r"issue-planning/(SKILL\.md|references/)", str(inp.get("file_path", ""))):
                     pending[b["id"]] = inp["file_path"]
             if ev.get("type") == "user" and b.get("type") == "tool_result" and b.get("tool_use_id") in pending and not b.get("is_error"):
                 reads.append(pending.pop(b["tool_use_id"]))  # 読み込みは、成功した結果が返ったものだけ数える
@@ -345,12 +346,25 @@ def prepare(case, repo, cond, agent, out):
     return nums, clone, bindir, state, log, before
 
 
+def spec_prompt(case, nums, repo, clone):
+    """ワーカーのケースは、`references/spec.md` の型に番号とパスを入れて渡す。型を直すと、次の試行から変わった型で走る。"""
+    block = re.search(r"```text\n(.*?)```", (SKILL_DIR / "references/spec.md").read_text(), re.S)[1]
+    spec = case["spec"]
+    text = (block.replace("<owner>/<repo>#<作業 Issue の番号>", f"{OWNER}/{repo}#{nums[spec['issue']]}")
+            .replace("（Epic #<番号> の親、または単独タスクを担当する窓口）", f"（Epic #{nums[spec['epic']]} の親）")
+            .replace("<この Issue の作業時間の目安>", spec["hours"])
+            .replace("path:<worktree の絶対パス>", f"path:{clone}"))
+    if leftover := re.findall(r"<(?:owner|番号|作業 Issue の番号|この Issue の作業時間の目安|worktree の絶対パス)[^<>\n]*>", text):
+        raise RuntimeError(f"spec の型に埋めていない箇所があります: {leftover}")
+    return text
+
+
 def _trial(case, repo, cond, agent, out, use_judge=True):
     out.mkdir(parents=True, exist_ok=True)
     try:
         nums, clone, bindir, state, log, before = prepare(case, repo, cond, agent, out)
         env = agent_env(bindir, state, log, repo)
-        prompt = subst(text_for(case["prompt"], cond), nums)
+        prompt = spec_prompt(case, nums, repo, clone) if "spec" in case else subst(text_for(case["prompt"], cond), nums)
         history = subst(text_for(case["history"], cond), nums) if "history" in case else None
         run_agent = run_claude if agent == "claude" else run_codex
         followup = None
