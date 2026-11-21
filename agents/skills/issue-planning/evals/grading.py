@@ -54,6 +54,8 @@ def run_check(chk, ctx):
         return bool(starts) and bool(comments) and min(comments) < min(starts)
     if t == "unchanged":
         return all(ctx["before"][ctx["nums"][k]] == ctx["after"].get(ctx["nums"][k]) for k in chk["issues"])
+    if t == "all_issues_unchanged":
+        return ctx["before"] == ctx["after"]
     if t == "state":
         issue = ctx["after"].get(ctx["nums"][chk["issue"]])  # エージェントが Issue を消したときは、失敗
         return issue is not None and issue["state"].lower() == chk["state"]

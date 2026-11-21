@@ -1,0 +1,95 @@
+{
+  "id": "S1b-B1",
+  "split": "dev",
+  "section": "S1b",
+  "prompt": "次は何をする？",
+  "seed": {
+    "issues": [
+      {
+        "key": "task",
+        "type": "Task",
+        "title": "README のクイックスタートの例を直す",
+        "body": "## 受け入れ条件\nREADME のクイックスタートの例を 1 つ更新する。\n\n単独タスクの Run id: `run_ipe_s1b`",
+        "comments": [
+          "途中の報告: クイックスタートの古い例を特定しました。README は未変更です。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_ipe_s1b",
+    "run_objective": "単独タスク: クイックスタートの例",
+    "tasks": [
+      "task_fake0000"
+    ],
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<task>>-quickstart-example"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "exited",
+        "state": "failed"
+      }
+    ]
+  },
+  "expect": {
+    "checks": [
+      {
+        "id": "same-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "restart-task",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 1,
+        "worktree_of": "task",
+        "success": true
+      },
+      {
+        "id": "comment-before-start",
+        "type": "comment_before_call",
+        "issue": "task",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ]
+      }
+    ]
+  },
+  "oracle": [
+    [
+      "gh",
+      "issue",
+      "comment",
+      "<<task>>",
+      "--body",
+      "README の例を直す単独タスクのワーカーを起こし直します。"
+    ],
+      ["orca", "orchestration", "run-use", "--id", "run_ipe_s1b"],
+    [
+      "orca",
+      "orchestration",
+      "worker-start",
+      "--task",
+      "task_fake0000",
+      "--worktree",
+      "issue:<<task>>",
+      "--agent",
+      "claude"
+    ]
+  ]
+}

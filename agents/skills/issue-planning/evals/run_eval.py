@@ -30,7 +30,7 @@ from common import (BUDGET_USD, CLAUDE_MODEL, CLAUDE_TOOLS, CODEX_MODEL, HERE, L
                     STRIP_ENV, WALL_SECONDS, gh)
 from calibrate import cmd_agreement, cmd_labels
 from grading import grade, read_calls
-from seed import ensure_seed, orca_state, restore, snapshot, subst
+from seed import ensure_seed, orca_state, pr_state, restore, snapshot, subst
 
 
 def make_workdir(repo, case, nums, cond, agent, root):
@@ -53,6 +53,8 @@ def make_workdir(repo, case, nums, cond, agent, root):
         (bindir / name).chmod(0o755)
     state = root / "orca-state.json"
     state.write_text(json.dumps(orca_state(case, nums, clone), ensure_ascii=False))
+    shutil.copy(HERE / "pr_replay.py", bindir)
+    (root / "pr-state.json").write_text(json.dumps(pr_state(case, nums, repo), ensure_ascii=False))
     return clone, bindir, state
 
 
@@ -67,7 +69,7 @@ def agent_env(bindir, state, log, repo, extra=None):
     env = {k: v for k, v in os.environ.items() if not STRIP_ENV.match(k)}
     env.update({
         "PATH": f"{bindir}:{env['PATH']}", "ORCA_FAKE_STATE": str(state), "ORCA_FAKE_LOG": str(log),
-        "GH_GUARD_REPO": f"{OWNER}/{repo}", "GIT_TERMINAL_PROMPT": "0",
+        "GH_GUARD_REPO": f"{OWNER}/{repo}", "IPE_PR_STATE": str(state.with_name("pr-state.json")), "GIT_TERMINAL_PROMPT": "0",
     })
     env.update(extra or {})
     return env

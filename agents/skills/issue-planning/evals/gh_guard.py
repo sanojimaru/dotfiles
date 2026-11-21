@@ -13,13 +13,14 @@ import re
 import subprocess
 import sys
 import time
+from pr_replay import replay
 
 REPO = os.environ["GH_GUARD_REPO"]
 GH_REAL = "@@GH_REAL@@"  # 試行ごとにコピーするとき、本物の gh のパスを埋める（環境変数に出すと、エージェントが直接呼べてしまう）
 # 通すのは、評価で使うコマンドだけ（`issue transfer`・`issue delete`・`repo delete`・`auth` などは通さない）
 ALLOW = {
     "issue": {"list", "view", "comment", "close", "reopen", "edit", "create", "status"},
-    "pr": {"list", "view", "diff", "checks", "status"},
+    "pr": {"list", "ls", "view"},
     "label": {"list", "create"},
     "repo": {"view"},
     "api": None,
@@ -30,6 +31,19 @@ VALUE_FLAGS = {"-X", "--method", "-H", "--header", "-f", "--raw-field", "-F", "-
 def deny(msg):
     print(f"gh_guard: {msg}", file=sys.stderr)
     return 1
+
+
+def api_path(argv):
+    skip = False
+    for a in argv[1:]:
+        if skip:
+            skip = False
+        elif a in VALUE_FLAGS:
+            skip = True
+        elif not a.startswith("-"):
+            owner, _, name = REPO.partition("/")
+            return a.lstrip("/").replace("{owner}", owner).replace("{repo}", name)
+    return ""
 
 
 def check(argv):
@@ -52,16 +66,7 @@ def check(argv):
             if owner_repo != REPO:
                 return f"{REPO} 以外のリポジトリは触れません"
     if argv[:1] == ["api"]:
-        path, skip = "", False
-        for a in argv[1:]:
-            if skip:
-                skip = False
-            elif a in VALUE_FLAGS:
-                skip = True
-            elif not a.startswith("-"):
-                owner, _, name = REPO.partition("/")  # gh は `{owner}`・`{repo}` を GH_REPO で展開する
-                path = a.lstrip("/").replace("{owner}", owner).replace("{repo}", name)
-                break
+        path = api_path(argv)
         if path == "graphql":
             joined = " ".join(argv)
             if any(a == "--input" or a.startswith("--input=") for a in argv) or re.search(r"query=@|query=-", joined):
@@ -84,7 +89,9 @@ def main():
     argv = sys.argv[1:]
     started = time.time()
     reason = check(argv)
-    rc = deny(reason) if reason else subprocess.call([GH_REAL] + argv, env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1"))
+    rc = deny(reason) if reason else replay(argv, REPO, api_path(argv) if argv[0] == "api" else "")
+    if rc is None:
+        rc = subprocess.call([GH_REAL] + argv, env=dict(os.environ, GH_REPO=REPO, GH_GUARD_ACTIVE="1"))
     with open(os.environ["ORCA_FAKE_LOG"], "a") as f:
         f.write(json.dumps({"ts": started, "end": time.time(), "tool": "gh", "argv": argv, "rc": rc}, ensure_ascii=False) + "\n")
     sys.exit(rc)
