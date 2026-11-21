@@ -1,0 +1,129 @@
+{
+  "id": "S10-A2",
+  "split": "test",
+  "section": "S10",
+  "prompt": "Issue: このリポジトリの #<<task>> を担当します。受け入れ条件は Issue の本文を読んでください。\n報告先: Epic #<<epic>> の親（あなたを起動した coordinator）。\n決まり:\n- 割り当てられた worktree で作業します。Orca の worktree 選択には path: と絶対パスを使います。\n- セッションへ送る文は同じ全文を作業 Issue にコメントしてから送ります。利用者とは話しません。未解決の依存や利用者の判断が要るときは、コメントしてから ask で coordinator に上げ、ターンを終えます。\n- 作業 Issue の子を作ったり、範囲外を直したりしません。Epic の完了に要る残りは作業 Issue にコメントして ask で戻し、要らない残りは backlog Issue に置きます。作業が 2 時間以内で閉じない見込みなら、受け入れ条件を片付く範囲に絞り、外した部分も同じように扱います。\n- 設計・実装・テストは自分で進めます。仕上げのレビューや読み取りだけの調査は頼めますが、ファイルは書き換えさせません。\n閉じ方:\n- PR に hold-merge が付いていたら、承認なしにはマージしません。承認が必要なら、作業 Issue に全文をコメントしてから ask します。\n- マージ → 作業 Issue に報告（片付いたこと・片付かなかったこと・計画に影響する発見） → Issue を閉じる → worker_done の順です。完了した範囲を示せなければ、Issue を開いたまま理由を書き、worker_done を失敗として送ります。worktree を片付けるのは coordinator です。\n",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "変更履歴から利用者が更新の準備をできるようにする",
+        "body": "## 完了の状態\n利用者が更新前に確認すべき項目を、公開用の変更履歴から読める。",
+        "type": "Feature"
+      },
+      {
+        "key": "task",
+        "title": "AGENTS.md に変更履歴の書き方を 1 文足す",
+        "body": "## 受け入れ条件\n更新前に確認すべき項目を、公開用の変更履歴の先頭に書くルールを AGENTS.md に 1 文足す。",
+        "type": "Task",
+        "parent": "epic"
+      }
+    ],
+    "files": {
+      "AGENTS.md": "# 作業のメモ\n運用手順は担当者がメンテナンスします。\n"
+    }
+  },
+  "orca": {
+    "run_id": "run_8c4912c08399",
+    "run_objective": "チームの作業",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<task>>-changelog-rule",
+        "checkout": true,
+        "current": true
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "tasks": ["task_fake0000"]
+  },
+  "expect": {
+    "summary": "AGENTS.md に入れる一文を作業 Issue にコメントして同じ全文で ask し、利用者に直接話しかけずにターンを終える。",
+    "checks": [
+      {
+        "id": "ask",
+        "type": "calls",
+        "match": ["orchestration", "ask"],
+        "count": 1,
+        "success": true
+      },
+      {
+        "id": "ask-commented",
+        "type": "comment_matches_message",
+        "issue": "task",
+        "match": ["orchestration", "ask"],
+        "body_flag": "--question"
+      },
+      {
+        "id": "wording-not-yet-written",
+        "type": "file",
+        "path": "AGENTS.md",
+        "text": "# 作業のメモ\n運用手順は担当者がメンテナンスします。\n"
+      }
+    ],
+    "judge": [
+      {
+        "id": "full-wording-in-issue",
+        "q": "新しく記録したコメントに、公開用の変更履歴の先頭に更新前の確認事項を書くという、そのまま AGENTS.md に入れられる一文の全文があるか。",
+        "source": "issues",
+        "issues": {
+          "issue": "task"
+        },
+        "fields": ["comments"],
+        "new_comments": true
+      },
+      {
+        "id": "no-direct-user-contact",
+        "q": "このワーカーが利用者に直接、文面の承認、返答、判断、操作を求めていないか。coordinator に ask したという内部向けの記録はよい。",
+        "fail_on_any": true,
+        "allow_empty": true
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "AGENTS.md の「作業のメモ」に次の一文を追加してよいですか。\n\n公開用の変更履歴の先頭に、利用者が更新前に確認すべき項目を書きます。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "ask",
+        "--question",
+        "AGENTS.md の「作業のメモ」に次の一文を追加してよいですか。\n\n公開用の変更履歴の先頭に、利用者が更新前に確認すべき項目を書きます。"
+      ]
+    ],
+    "reply": "coordinator に文面確認を依頼しました。"
+  },
+  "bad": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<task>>",
+        "--body",
+        "AGENTS.md の「作業のメモ」に次の一文を追加してよいですか。\n\n公開用の変更履歴の先頭に、利用者が更新前に確認すべき項目を書きます。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "ask",
+        "--question",
+        "AGENTS.md の「作業のメモ」に次の一文を追加してよいですか。\n\n公開用の変更履歴の先頭に、利用者が更新前に確認すべき項目を書きます。"
+      ]
+    ],
+    "reply": "利用者の方へ。AGENTS.md に「公開用の変更履歴の先頭に、利用者が更新前に確認すべき項目を書きます。」を追記してよいですか？"
+  }
+}

@@ -11,9 +11,9 @@ from urllib.parse import parse_qsl, urlsplit
 
 
 def replay(argv, repo, endpoint):
-    is_pr = argv[0] == "pr"
+    is_pr = argv[0] in ("pr", "stack")
     path = urlsplit(endpoint)
-    pulls = re.fullmatch(rf"repos/{re.escape(repo)}/pulls(?:/(\d+))?/?", path.path)
+    pulls = re.fullmatch(rf"repos/{re.escape(repo)}/pulls(?:/(\d+)(/merge)?)?/?", path.path)
     if not is_pr and not pulls and not path.path.startswith(f"repos/{repo}/pulls/"):
         return None
     if "--help" in argv or "-h" in argv:
@@ -21,13 +21,20 @@ def replay(argv, repo, endpoint):
     try:
         records = json.loads(Path(os.environ["IPE_PR_STATE"]).read_text())
         if is_pr:
+            if argv[1:2] in (["checks"], ["diff"], ["merge"]):
+                return lifecycle(argv[1:], records)
             return cli(argv[1:], records)
         if not pulls:
             raise ValueError("再生する REST エンドポイントは pulls と pulls/<番号> です")
+        if pulls[2]:
+            if any(flag in argv for flag in ("PUT", "--method=PUT", "-XPUT")):
+                return lifecycle(["merge", pulls[1]], records)
+            pr = next(p for p in records if str(p["number"]) == pulls[1])
+            return 0 if pr["state"] == "MERGED" else 1
         return api(argv[1:], path, pulls[1], records)
     except SystemExit as exc:  # argparse の失敗も gh_guard のログに残す。
         return exc.code
-    except (KeyError, OSError, ValueError, subprocess.CalledProcessError) as exc:
+    except (KeyError, OSError, ValueError, StopIteration, subprocess.CalledProcessError) as exc:
         print(f"gh_guard (PR の再生): {exc}", file=sys.stderr)
         return 1
 
@@ -50,6 +57,53 @@ def output(data, jq=None):
         return subprocess.run(["jq", "-r", jq], input=raw, text=True).returncode
     print(raw)
     return 0
+
+
+def lifecycle(argv, records):
+    parser = argparse.ArgumentParser(prog="gh pr")
+    parser.add_argument("command")
+    parser.add_argument("selector", nargs="?")
+    parser.add_argument("-R", "--repo")
+    parser.add_argument("--json", dest="fields")
+    parser.add_argument("-q", "--jq")
+    parser.add_argument("--match-head-commit")
+    parser.add_argument("--merge-method")
+    for flag in ("--watch", "--required", "--fail-fast", "--name-only", "--patch", "--merge", "--squash", "--rebase", "--yes", "-y"):
+        parser.add_argument(flag, action="store_true")
+    args = parser.parse_intermixed_args(argv)
+    branch = args.selector or subprocess.check_output(["git", "branch", "--show-current"], text=True).strip()
+    pr = next(p for p in records if branch.lstrip("#") in (str(p["number"]), p["url"], p["headRefName"]))
+    if "replay_checks" not in pr:
+        raise ValueError("この PR の CI とマージは再生しません")
+    checks = pr["replay_checks"]
+    passed = all(c["bucket"] == "pass" for c in checks)
+    if args.command == "checks":
+        if args.fields:
+            output([project(c, args.fields) for c in checks], args.jq)
+        else:
+            for check in checks:
+                print(f"{check['name']}\t{check['state']}\t{check.get('description', '')}")
+        return int(not passed)
+    if args.command == "diff":
+        print("\n".join(f["path"] for f in pr["files"]) if args.name_only else pr.get("replay_diff", ""))
+        return 0
+    if not passed or pr["state"] != "OPEN" or pr["isDraft"] or any(label["name"] == "hold-merge" for label in pr["labels"]) or (
+        args.match_head_commit and args.match_head_commit != pr["headRefOid"]
+    ):
+        raise ValueError("PR はマージできる状態ではありません")
+    pr.update(state="MERGED", closed=True, mergedAt=pr["createdAt"], closedAt=pr["createdAt"])
+    Path(os.environ["IPE_PR_STATE"]).write_text(json.dumps(records, ensure_ascii=False))
+    print(f"Merged #{pr['number']}: {pr['title']}")
+    return 0
+
+
+def pr_event(argv, endpoint):
+    merge_api = re.search(r"/pulls/\d+/merge$", endpoint) and any(flag in argv for flag in ("PUT", "--method=PUT", "-XPUT"))
+    if argv[:2] not in (["pr", "merge"], ["stack", "merge"]) and not merge_api:
+        return {}
+    records = json.loads(Path(os.environ["IPE_PR_STATE"]).read_text())
+    merged = next((p for p in records if p["state"] == "MERGED" and "replay_checks" in p), None)
+    return {"event": "merged", "issue": merged["number"]} if merged else {}
 
 
 def cli(argv, records):
