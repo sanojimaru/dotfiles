@@ -83,12 +83,9 @@ def check_hook():
         return 0
     try:
         event = json.load(sys.stdin)
-        if not isinstance(event, dict) or "tool_input" not in event:
-            raise ValueError
     except ValueError:
-        print("issue-planning: フックに渡されたツール入力を検査できません。", file=sys.stderr)
-        return 2
-    if not test_access(event["tool_input"]):
+        return 0
+    if not isinstance(event, dict) or not test_access(event.get("tool_input")):
         return 0
     # sparse-checkout を設定した子だけを対象にし、通常の checkout で作業する TC を止めない。
     cwd = event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
