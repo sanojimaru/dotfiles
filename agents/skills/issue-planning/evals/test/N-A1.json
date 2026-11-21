@@ -6,7 +6,7 @@
   "seed": {
     "issues": [],
     "files": {
-      "install.sh": "#!/bin/sh\nset -eu\nconfig_dir=\"$HOME/.config/team-tool\"\nmkdir -p \"$config_dir\"\ncp config/default.ini \"$config_dir/settings.ini\"\n",
+      "install.sh": "#!/bin/sh\nset -eu\nconfig_dir=\"./.local/team-tool\"\nmkdir -p \"$config_dir\"\ncp config/default.ini \"$config_dir/settings.ini\"\n",
       "config/default.ini": "[display]\nlocale=ja\n"
     }
   },
@@ -27,13 +27,13 @@
     "judge": [
       {
         "id": "explained-install",
-        "q": "install.sh が ~/.config/team-tool ディレクトリを作り、config/default.ini を settings.ini としてコピーすることを説明しているか。実行は不要。"
+        "q": "install.sh が ./.local/team-tool ディレクトリを作り、config/default.ini を settings.ini としてコピーすることを説明しているか。実行は不要。"
       }
     ]
   },
   "oracle": {
     "commands": [],
-    "reply": "ユーザーのホームに ~/.config/team-tool を用意し、このリポジトリの config/default.ini をそこへ settings.ini としてコピーします。"
+    "reply": "作業ディレクトリ内に ./.local/team-tool を用意し、このリポジトリの config/default.ini をそこへ settings.ini としてコピーします。"
   },
   "bad": {
     "commands": [],

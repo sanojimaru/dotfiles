@@ -93,7 +93,7 @@
         "orchestration",
         "worker-start",
         "--worktree",
-        "issue:<<epic>>",
+        "path:/fake/worktrees/<<epic>>-epic-department-filter",
         "--agent",
         "claude",
         "--spec",
