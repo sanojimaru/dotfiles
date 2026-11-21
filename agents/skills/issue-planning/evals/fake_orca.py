@@ -79,6 +79,41 @@ def workers(state):
     return out
 
 
+def mail(cmd, argv, state, state_path):
+    messages = state["messages"]
+    if cmd in ("inbox", "check"):
+        inspect_only = cmd == "inbox" or "--all" in argv or "--peek" in argv
+        visible = messages if cmd == "inbox" or "--all" in argv else [m for m in messages if not m["read"]]
+        kinds = opt(argv, "--types")
+        if kinds and inspect_only:
+            visible = [m for m in visible if m["type"] in kinds.split(",")]
+        if cmd == "inbox":
+            limit = int(opt(argv, "--limit") or "50")
+            ok({"count": len(visible[-limit:]), "messages": visible[-limit:]})
+        else:
+            ok({"messages": visible})
+            if not inspect_only:
+                for message in visible:
+                    message["read"] = 1
+                save(state_path, state)
+        return
+    if cmd == "ask":
+        if not opt(argv, "--question"):
+            fail("invalid_args", "ask requires --question")
+        answer = state["ask_reply"]
+        if answer:
+            answer = {**answer, "id": f'{answer["id"]}_{len(messages) + 1}', "sequence": len(messages) + 1}
+            messages.append(answer)
+            save(state_path, state)
+        ok({"messageId": f"msg_eval_question_{len(messages)}"})
+        return
+    if cmd == "reply" and not any(m["id"] == opt(argv, "--id") and m["type"] == "question" for m in messages):
+        fail("message_not_found", "reply に対応する question がありません")
+    if cmd == "send" and opt(argv, "--type") == "worker_done" and opt(argv, "--outcome") not in ("succeeded", "failed"):
+        fail("invalid_args", "worker_done requires --outcome succeeded or failed")
+    ok({"messageId": "msg_eval_sent"})
+
+
 def dispatch(argv, started):
     if argv[:1] == ["skills"]:
         log(argv, started, None)
@@ -106,6 +141,8 @@ def dispatch(argv, started):
         ok({"runId": state["run_id"], "objective": state["run_objective"]})
     elif cmd == "run-list":
         ok({"runs": [{"id": state["run_id"], "objective": state["run_objective"]}]})
+    elif cmd in ("inbox", "check", "ask", "reply", "send"):
+        mail(cmd, argv, state, state_path)
     elif cmd == "task-create":
         if "--spec" not in argv and "--spec-file" not in argv:
             fail("invalid_args", "task-create requires --spec or --spec-file")

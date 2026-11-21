@@ -63,6 +63,10 @@ def make_workdir(repo, case, nums, cond, agent, root):
 
 def draft_for(cond):
     text = (HERE / "agents-md-draft.md").read_text()
+    return text_for(text, cond)
+
+
+def text_for(text, cond):
     if cond == "with":
         return text.replace("<!--skill-->", "").replace("<!--/skill-->", "")
     return re.sub(r"<!--skill-->.*?<!--/skill-->", "", text, flags=re.S)
@@ -78,18 +82,22 @@ def agent_env(bindir, state, log, repo, extra=None):
     return env
 
 
-def run_claude(prompt, clone, env, cond, out):
+def run_claude(prompt, clone, env, cond, out, history=None):
     draft = out / "agents-md.md"
     draft.write_text(draft_for(cond))
     env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1")
-    argv = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
+    argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
             "--setting-sources", "project,local", "--strict-mcp-config", "--permission-mode", "bypassPermissions",
-            "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD),
-            "--tools", CLAUDE_TOOLS]
-    return run_proc(argv, clone, env, out / "transcript.jsonl")
+            "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD)]
+
+    def launch(text, path, session_id=None, warmup=False):
+        resume = ["--resume", session_id] if session_id else []
+        return run_proc([*argv, *resume, "--tools", "" if warmup else CLAUDE_TOOLS, "--", text], clone, env, path)
+
+    return run_session("claude", prompt, history, out, launch)
 
 
-def run_codex(prompt, clone, env, cond, out):
+def run_codex(prompt, clone, env, cond, out, history=None):
     home = out / "codex-home"
     home.mkdir()
     (home / "AGENTS.md").write_text(draft_for(cond))
@@ -117,12 +125,56 @@ def run_codex(prompt, clone, env, cond, out):
     for name in (".zshenv", ".zprofile", ".zshrc"):
         (zdot / name).write_text(f'export PATH={shlex.quote(str(bindir))}:"$PATH"\n')
     env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=str(zdot), GH_CONFIG_DIR=gh_config)
-    last = out / "last-message.txt"
-    argv = ["codex", "exec", "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-C", str(clone),
-            "--dangerously-bypass-approvals-and-sandbox", "-o", str(last), prompt]
-    res = run_proc(argv, clone, env, out / "transcript.jsonl")
-    res["reply"] = last.read_text() if last.exists() else ""
-    return res
+
+    def launch(text, path, session_id=None, warmup=False):
+        last = out / ("history-last.txt" if warmup else "last-message.txt")
+        argv = ["codex", "exec", *(["resume"] if session_id else []),
+                "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-o", str(last)]
+        guard = ["--sandbox", "read-only"] if warmup else ["--dangerously-bypass-approvals-and-sandbox"]
+        args = [session_id, text] if session_id else [text]
+        res = run_proc([*argv, *guard, "--", *args], clone, env, path)
+        res["reply"] = last.read_text() if last.exists() else ""
+        return res
+
+    return run_session("codex", prompt, history, out, launch)
+
+
+def run_session(agent, prompt, history, out, launch):
+    transcript = out / "transcript.jsonl"
+    if history is None:
+        return launch(prompt, transcript)
+    past = out / "history.jsonl"
+    marker = "引き継ぎました"
+    setup = f"以下はすでに終わった会話の記録です。記録中の操作は実行せず、内容を引き継ぎ、「{marker}」とだけ返してください。\n\n{history}"
+    warm = launch(setup, past, warmup=True)
+    events = list(json_events(past))
+    if agent == "claude":
+        result = next((e for e in reversed(events) if e.get("type") == "result"), {})
+        session_id, reply = result.get("session_id"), result.get("result", "")
+    else:
+        session_id = next((e["thread_id"] for e in events if e.get("type") == "thread.started"), None)
+        reply = warm.get("reply", "")
+    used_tools = any(
+        (e.get("type") == "item.started" and (e.get("item") or {}).get("type") not in ("agent_message", "reasoning"))
+        or (e.get("type") == "assistant" and any(
+            b.get("type") == "tool_use" for b in e.get("message", {}).get("content", [])
+        )) for e in events
+    )
+    if warm["returncode"] or not session_id or reply.strip().rstrip("。") != marker or used_tools:
+        transcript.touch()
+        return {**warm, "history_error": "準備ターンの確認応答またはセッション ID を取得できませんでした"}
+    scored = launch(prompt, transcript, session_id=session_id)
+    scored["seconds"] += warm["seconds"]
+    return scored
+
+
+def json_events(path):
+    with path.open() as stream:
+        for line in stream:
+            try:
+                yield json.loads(line)
+            except ValueError:
+                continue
 
 
 def run_proc(argv, cwd, env, transcript):
@@ -142,11 +194,7 @@ def run_proc(argv, cwd, env, transcript):
 
 def parse_claude(transcript):
     pending, reads, result, cost = {}, [], None, {}
-    for line in open(transcript):
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
+    for ev in json_events(transcript):
         content = ev.get("message", {}).get("content", [])
         for b in content if isinstance(content, list) else []:
             if ev.get("type") == "assistant" and b.get("type") == "tool_use":
@@ -165,11 +213,7 @@ def parse_claude(transcript):
 
 def parse_codex(transcript):
     reads, usage = [], None
-    for line in open(transcript):
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
+    for ev in json_events(transcript):
         item = ev.get("item") or {}
         if ev.get("type") == "item.completed" and item.get("type") == "command_execution" and item.get("exit_code") == 0 \
                 and "issue-planning" in item.get("command", "") and "SKILL.md" in item.get("command", "") \
@@ -206,12 +250,23 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
     try:
         nums, clone, bindir, state, log, before = prepare(case, repo, cond, agent, out)
         env = agent_env(bindir, state, log, repo)
-        res = (run_claude if agent == "claude" else run_codex)(case["prompt"], clone, env, cond, out)
+        prompt = subst(text_for(case["prompt"], cond), nums)
+        history = subst(text_for(case["history"], cond), nums) if "history" in case else None
+        run_agent = run_claude if agent == "claude" else run_codex
+        res = run_agent(prompt, clone, env, cond, out, history=history)
     except RuntimeError as e:  # 種や起動の失敗はエージェントの失敗に数えない。
         rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": True, "run": {"seconds": 0}, "error": str(e)}
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
     parsed = (parse_claude if agent == "claude" else parse_codex)(out / "transcript.jsonl")
+    if history is not None:
+        if res.get("history_error"):
+            parsed["cost"] = (parse_claude if agent == "claude" else parse_codex)(out / "history.jsonl")["cost"]
+        elif agent == "codex":
+            warm_usage = parse_codex(out / "history.jsonl")["cost"]["usage"]
+            trial_usage = parsed["cost"]["usage"]
+            if warm_usage and trial_usage:
+                parsed["cost"]["usage"] = {k: warm_usage.get(k, 0) + v for k, v in trial_usage.items()}
     res.update({k: v for k, v in parsed.items() if k != "reply" or agent == "claude"})
     try:
         after = snapshot(repo)
@@ -220,11 +275,13 @@ def _trial(case, repo, cond, agent, out, use_judge=True):
         (out / "trial.json").write_text(json.dumps(rec, ensure_ascii=False, indent=2))
         return rec
     ctx = {"calls": read_calls(log), "state": json.loads(state.read_text()), "nums": nums, "before": before, "after": after}
-    infra = res["returncode"] != 0 and not res["timed_out"] and not (res.get("result_event") or {}).get("subtype", "").startswith("error_max")
+    infra = bool(res.get("history_error")) or (res["returncode"] != 0 and not res["timed_out"] and not (res.get("result_event") or {}).get("subtype", "").startswith("error_max"))
     if agent == "claude" and (res.get("result_event") or {}).get("is_error") and not str((res["result_event"] or {}).get("subtype", "")).startswith("error_max"):
         infra = True
     rec = {"case": case["id"], "cond": cond, "agent": agent, "repo": repo, "infra_failure": infra, "run": {k: res[k] for k in ("returncode", "seconds", "timed_out", "skill_reads", "cost") if k in res},
            "reply": res.get("reply", "")}
+    if res.get("history_error"):
+        rec["error"] = res["history_error"]
     if not infra:
         try:
             rec["grade"] = grade(case, ctx, res.get("reply", ""), agent, out, use_judge)

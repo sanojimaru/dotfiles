@@ -6,7 +6,7 @@ import re
 import threading
 from pathlib import Path
 
-from common import OWNER, check_eval_repo, gh
+from common import HERE, OWNER, check_eval_repo, gh
 
 # 評価用リポジトリごとに、立ててある種（ケース・番号・読んだときの状態）を覚える。試行の後は、エージェントが変えたものだけを戻す
 STATE_FILE = Path.home() / ".cache/issue-planning-eval/repo-state.json"
@@ -104,11 +104,29 @@ def orca_state(case, nums, clone):
         issue = nums[w["issue"]]
         name = subst(w["name"], nums)
         wts.append({"issue": issue, "name": name, "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"})
+    recordings = json.loads((HERE / "orca-recordings.json").read_text())
+    messages = [orca_message(recordings, message, nums, i) for i, message in enumerate(o.get("messages", []), 1)]
+    reply = o.get("ask_reply")
     return {
         "repo_id": "fake-repo", "run_id": o["run_id"], "run_objective": o["run_objective"], "worktrees": wts,
         "workers": [{"issue": nums[w["issue"]], "liveness": w["liveness"], "state": w["state"]} for w in o["workers"]],
         "tasks": o.get("tasks", []),
+        "messages": messages,
+        "ask_reply": orca_message(recordings, {"kind": "reply", **reply}, nums, len(messages) + 1) if reply else None,
     }
+
+
+def orca_message(recordings, spec, nums, sequence):
+    kind = spec["kind"]
+    # escalation の本文・payload はケースから渡し、共通のメッセージフィールドは録画を使う。
+    record = dict(recordings["send" if kind == "escalation" else kind])
+    if kind == "escalation":
+        record["type"] = kind
+    record.update({k: subst(v, nums) if isinstance(v, str) else v for k, v in spec.items() if k != "kind"})
+    if isinstance(record["payload"], dict):
+        record["payload"] = subst(json.dumps(record["payload"], ensure_ascii=False), nums)
+    record["sequence"] = sequence
+    return record
 
 
 def _load_state():
