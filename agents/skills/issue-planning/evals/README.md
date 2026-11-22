@@ -61,6 +61,13 @@ python3 run_eval.py agreement "$LABEL_DIR/human.json" "$LABEL_DIR/answers.json"
 
 `labels.md` には、問いごとに判定器に渡した証拠（返事、Issue の本文やコメント、`orca` の呼び出し）をそのまま出します。条件（スキルの有無）は並びから分からないよう混ぜ、判定器の答えは `answers.json` に分けます。
 
+新しく書いた判定の問いを較正するときは、`--count` の代わりに `--cover` を付けます。ケースの問いがそれぞれ 1 回以上入るまで試行を選び、どの試行でも証拠が空で入れられなかった問いを表示します。評価データセットの試行も渡せます。判定器の違う組（被験が Claude の試行と Codex の試行）を 1 回のラベル付けにまとめるときは、組ごとに `--prefix` を変え、2 組目から `--append` を付けます。`agreement` は、キーの頭の英字の組ごとに一致率を出します。
+
+```sh
+python3 run_eval.py labels "$CODEX_DEV_OUTPUT" --out "$LABEL_DIR" --count 20 --prefix A --title "組 A"
+python3 run_eval.py labels "$CLAUDE_HOLDOUT_OUTPUT" --out "$LABEL_DIR" --cover --prefix B --append --title "組 B"
+```
+
 ## 会話の途中から始める
 
 `history` に、着信前に終わった会話を話者付きで書きます。評価器は手前の会話を新しいセッションの準備ターンで読み込ませ、確認応答のあとに、同じセッション ID で再開して `prompt` を送ります。準備ターンではケースの操作を実行せず、採点には再開後のターンだけを使います。準備ターンと再開後の記録は、それぞれ `history.jsonl` と `transcript.jsonl` に保存します。
