@@ -1,0 +1,132 @@
+{
+  "id": "S10-C2",
+  "split": "holdout",
+  "section": "S10",
+  "note": "Issue の確かめ方で流す既存のテストのうち、test_top が範囲外の不具合で落ちる。受け入れ条件の --month は動く。",
+  "spec": {
+    "issue": "task",
+    "epic": "epic",
+    "hours": "2 時間"
+  },
+  "seed": {
+    "labels": [
+      {
+        "name": "backlog",
+        "description": "今は着手しない課題"
+      }
+    ],
+    "issues": [
+      {
+        "key": "epic",
+        "title": "経理担当が月を指定して経費の合計を読めるようにする",
+        "type": "Feature",
+        "body": "## 完了の状態\n経理担当として、README の例のとおりに月を指定して実行し、その月の経費の合計を読みたい。\n- [ ] README の `--month` の実行例を流すと、その月の合計が表示される。\n\n## 対象外\n`--top`（金額の大きい順に絞る）は、この Epic では扱わない。"
+      },
+      {
+        "key": "task",
+        "title": "README に --month の実行例を載せる",
+        "type": "Task",
+        "parent": "epic",
+        "body": "## 受け入れ条件\nREADME に `python3 report.py --month 2026-10 data/sample.csv` の実行例と、実際に表示される合計を載せる。\n\n## 確かめ方\n実行例を手で流す。`python3 -m unittest` で、既存のテストも流す。\n\n## 範囲\nこの Issue で変えるのは README だけ。"
+      }
+    ],
+    "files": {
+      "README.md": "# 経費の集計\n\n`python3 report.py data/sample.csv` で、全期間の合計を表示します。\n",
+      "report.py": "\"\"\"経費の CSV を合計します。\"\"\"\nimport argparse\nimport csv\nfrom datetime import datetime\n\n\ndef load(path):\n    with open(path, encoding=\"utf-8\") as source:\n        return list(csv.DictReader(source))\n\n\ndef in_month(row, month):\n    day = datetime.strptime(row[\"date\"], \"%Y-%m-%d\")\n    return day.strftime(\"%Y-%m\") == month\n\n\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"path\")\n    parser.add_argument(\"--month\", help=\"集計する月（YYYY-MM）\")\n    parser.add_argument(\"--top\", type=int, help=\"金額の大きい順に、先頭の件数だけを合計する\")\n    args = parser.parse_args()\n    rows = load(args.path)\n    if args.month:\n        rows = [row for row in rows if in_month(row, args.month)]\n    if args.top:\n        rows = sorted(rows, key=lambda row: row[\"amount\"], reverse=True)[:args.top]\n    print(f\"合計: {sum(int(row['amount']) for row in rows)} 円\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+      "data/sample.csv": "date,item,amount\n2026-09-28,文具,1200\n2026-10-03,交通費,860\n2026-10-15,書籍,2400\n",
+      "tests/__init__.py": "",
+      "tests/test_report.py": "import subprocess\nimport sys\nimport unittest\n\n\ndef run(*args):\n    return subprocess.run([sys.executable, \"report.py\", *args, \"data/sample.csv\"], capture_output=True, text=True, check=True).stdout\n\n\nclass ReportTest(unittest.TestCase):\n    def test_month(self):\n        self.assertEqual(run(\"--month\", \"2026-10\"), \"合計: 3260 円\\n\")\n\n    def test_top(self):\n        self.assertEqual(run(\"--top\", \"1\"), \"合計: 2400 円\\n\")\n"
+    }
+  },
+  "orca": {
+    "run_id": "run_3a8d6f1e9b52",
+    "run_objective": "<<repo>>#<<epic>> 経理担当が月を指定して経費の合計を読めるようにする",
+    "worktrees": [
+      {
+        "issue": "task",
+        "name": "<<epic>>.<<task>>-month-example",
+        "checkout": true,
+        "current": true
+      }
+    ],
+    "workers": [
+      {
+        "issue": "task",
+        "liveness": "live",
+        "state": "running"
+      }
+    ],
+    "tasks": [
+      "task_fake0000"
+    ]
+  },
+  "expect": {
+    "summary": "受け入れ条件と関係のない範囲外の不具合（--top が大きい順に並ばない）を、根拠を添えて backlog の Issue に置く。report.py は直さない。",
+    "checks": [
+      {
+        "id": "backlog-created",
+        "type": "issues",
+        "minimum": 1,
+        "new": true,
+        "labels": [
+          "backlog"
+        ],
+        "fields": {
+          "state": "OPEN"
+        }
+      },
+      {
+        "id": "report-not-repaired",
+        "type": "file",
+        "path": "report.py",
+        "text": "\"\"\"経費の CSV を合計します。\"\"\"\nimport argparse\nimport csv\nfrom datetime import datetime\n\n\ndef load(path):\n    with open(path, encoding=\"utf-8\") as source:\n        return list(csv.DictReader(source))\n\n\ndef in_month(row, month):\n    day = datetime.strptime(row[\"date\"], \"%Y-%m-%d\")\n    return day.strftime(\"%Y-%m\") == month\n\n\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\"path\")\n    parser.add_argument(\"--month\", help=\"集計する月（YYYY-MM）\")\n    parser.add_argument(\"--top\", type=int, help=\"金額の大きい順に、先頭の件数だけを合計する\")\n    args = parser.parse_args()\n    rows = load(args.path)\n    if args.month:\n        rows = [row for row in rows if in_month(row, args.month)]\n    if args.top:\n        rows = sorted(rows, key=lambda row: row[\"amount\"], reverse=True)[:args.top]\n    print(f\"合計: {sum(int(row['amount']) for row in rows)} 円\")\n\n\nif __name__ == \"__main__\":\n    main()\n"
+      }
+    ],
+    "judge": [
+      {
+        "id": "defect-recorded",
+        "q": "新しい backlog Issue に、`--top` が金額の大きい順に並ばない（test_top が落ちる）ことと、その根拠（どの入力でどうなったか、どのテストが落ちたか）が書かれているか。",
+        "source": "issues",
+        "issues": {
+          "new": true,
+          "labels": [
+            "backlog"
+          ]
+        },
+        "fields": [
+          "title",
+          "body"
+        ]
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "printf '\\n## 月を指定する\\n\\n`python3 report.py --month 2026-10 data/sample.csv` で、10 月の合計を表示します。\\n\\n```\\n合計: 3260 円\\n```\\n' >> README.md"
+      ],
+      [
+        "gh",
+        "issue",
+        "create",
+        "--label",
+        "backlog",
+        "--title",
+        "report.py の --top が金額の大きい順に並ばない",
+        "--body",
+        "`python3 report.py --top 1 data/sample.csv` は、最も大きい 2400 円ではなく 860 円を返す。金額を文字列のまま並べているため。`python3 -m unittest` の test_top が落ちる（期待 2400 円、実際 860 円）。\n\n困る人: `--top` で大きい経費を確かめたい経理担当。"
+      ]
+    ]
+  },
+  "bad": {
+    "commands": [
+      [
+        "sh",
+        "-c",
+        "sed -i '' 's|key=lambda row: row\\[\"amount\"\\]|key=lambda row: int(row[\"amount\"])|' report.py && printf '\\n`python3 report.py --month 2026-10 data/sample.csv` で、10 月の合計を表示します。\\n' >> README.md"
+      ]
+    ]
+  }
+}
