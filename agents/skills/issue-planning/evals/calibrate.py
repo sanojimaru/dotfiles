@@ -30,6 +30,7 @@ def cmd_labels(args):
     for _, r in trials:  # 証拠が空の問いは判定器を呼ばず allow_empty で決まるので、較正に入れない
         inputs = (r.get("grade") or {}).get("judge_inputs", {})
         r["judged"] = {j: v for j, v in (r.get("grade") or {}).get("judge", {}).items() if inputs.get(j, {}).get("evidence", "").strip()}
+    graded = {r["case"] for _, r in trials if not r["infra_failure"]}  # 証拠が全試行で空の問いも、入れられなかった問いとして示す
     trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["judged"]]
     for d, r in trials:  # 問いを直す前の試行は、古い問いの答えを今の較正に混ぜてしまう
         current = {j["id"]: j["q"] for j in load_case(r["case"])["expect"].get("judge", [])}
@@ -38,7 +39,7 @@ def cmd_labels(args):
             raise SystemExit(f"{d} の判定の問い {stale} が今のケースと違う。問いを直した後の試行を使ってください")
     random.Random(args.seed).shuffle(trials)  # 条件（有・無）が並びから分からないように混ぜる
     if args.cover:
-        trials = cover_questions(trials)
+        trials = cover_questions(trials, graded)
     elif len(trials) < args.count:
         raise SystemExit(f"判定器の問いがある試行が {len(trials)} 件しかありません（{args.count} 件が要る）。dev の試行を足してください")
     else:
@@ -70,10 +71,10 @@ def cmd_labels(args):
     print(f"{len(trials)} 件の返事を {out} に出した")
 
 
-def cover_questions(trials):
+def cover_questions(trials, cases):
     """ケースの判定の問いがそれぞれ 1 回以上入るよう、混ぜた順に、まだ入っていない問いを持つ試行だけを選ぶ。
     新しく書いた問いを、人のラベルで 1 問も漏らさず較正するため（dotfiles#190）。"""
-    wanted = {(r["case"], j["id"]) for _, r in trials for j in load_case(r["case"])["expect"].get("judge", [])}
+    wanted = {(case, j["id"]) for case in cases for j in load_case(case)["expect"].get("judge", [])}
     picked, covered = [], set()
     for d, r in trials:
         new = {(r["case"], j) for j in r["judged"]} - covered
@@ -89,9 +90,8 @@ def cmd_agreement(args):
     human, answers = json.loads(Path(args.human).read_text()), json.loads(Path(args.answers).read_text())
     groups = {}
     for k, v in answers.items():  # 組（キーの英字の部分）ごとに出す。組ごとに判定器が違うため
-        for j in v["judge"]:
-            if human.get(k, {}).get(j) is not None:
-                groups.setdefault(re.match(r"[A-Za-z]*", k)[0], []).append((human[k][j], v["judge"][j]))
+        pairs = groups.setdefault(re.match(r"[A-Za-z]*", k)[0], [])
+        pairs += [(human[k][j], v["judge"][j]) for j in v["judge"] if human.get(k, {}).get(j) is not None]
     for group, pairs in sorted(groups.items()):
         agree = sum(h == m for h, m in pairs)
-        print(f"{group}: 一致 {agree}/{len(pairs)} = {agree / max(len(pairs), 1):.0%}（90% 以上で判定器を使う）")
+        print(f"{group}: 一致 {agree}/{len(pairs)} = {agree / len(pairs):.0%}（90% 以上で判定器を使う）" if pairs else f"{group}: 未採点（人のラベルが 0 件）")

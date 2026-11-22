@@ -673,6 +673,8 @@ def main():
             ap.error(str(exc))
         print(json.dumps(findings, ensure_ascii=False, indent=2))
         return int(bool(findings))
+    if args.cmd == "labels" and not re.fullmatch(r"[A-Za-z]+", args.prefix):
+        ap.error("--prefix は英字だけにしてください（agreement はキーの頭の英字で組を分ける）")
     if args.cmd in ("trial", "batch") and args.split == "holdout" and not args.out:
         ap.error("評価データセットの試行ログの保存先を --out で指定してください")
     return args.f(args)
