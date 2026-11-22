@@ -38,6 +38,8 @@ def replay(argv, repo, endpoint, event, fields=None):
                 if not active:
                     print("残りのスタック層はありません。")
                 return 0
+            if argv[1:2] == ["close"]:
+                return close(argv[2:], records, event)
             if argv[1:2] in (["checks"], ["diff"], ["merge"]):
                 return lifecycle(argv[1:], records, event)
             return cli(argv[1:], records, event)
@@ -143,6 +145,29 @@ def lifecycle(argv, records, event, rest_output=False):
         output({"merged": True, "sha": pr["mergeCommit"]["oid"], "message": "Pull Request successfully merged"})
     else:
         print(f"Merged #{pr['number']}: {pr['title']}")
+    return 0
+
+
+def close(argv, records, event):
+    """取り下げの片付けで、マージしない PR を閉じる（dotfiles#190 の S7-C1）。"""
+    parser = argparse.ArgumentParser(prog="gh pr close")
+    parser.add_argument("selector")  # 本物も、番号・URL・ブランチのどれかを要る
+    parser.add_argument("-R", "--repo")
+    parser.add_argument("-c", "--comment")
+    parser.add_argument("-d", "--delete-branch", action="store_true")
+    args = parser.parse_intermixed_args(argv)
+    if args.delete_branch:  # ブランチの削除は再生しない。黙って成功させると、片付けが済んだと読まれる
+        raise ValueError("評価では `gh pr close --delete-branch` を再生しません。ブランチは git で消してください")
+    pr = find_pr(records, args.selector)
+    if pr["state"] != "OPEN":
+        raise ValueError(f"Pull request #{pr['number']} is already {pr['state'].lower()}")
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    pr.update(state="CLOSED", closed=True, closedAt=now)
+    if args.comment:
+        pr.setdefault("comments", []).append({"body": args.comment, "author": pr["author"]})
+    Path(os.environ["IPE_PR_STATE"]).write_text(json.dumps(records, ensure_ascii=False))
+    event.update(event="pr_closed", issue=pr["number"])
+    print(f"✓ Closed pull request #{pr['number']} ({pr['title']})")
     return 0
 
 

@@ -11,6 +11,52 @@
         "description": "今は着手しない課題"
       }
     ],
+    "prs": [
+      {
+        "key": "pr_a",
+        "title": "顧客番号で問い合わせを検索する",
+        "body": "Closes #<<a>>",
+        "closes": [
+          "a"
+        ],
+        "state": "MERGED",
+        "headRefName": "<<epic>>.<<a>>-customer-search",
+        "files": [
+          {
+            "path": "inquiry/search.py",
+            "additions": 9,
+            "deletions": 0
+          }
+        ],
+        "merged_files": {
+          "inquiry/__init__.py": "",
+          "inquiry/search.py": "\"\"\"顧客番号で問い合わせを探す。\"\"\"\n\n\ndef by_customer(inquiries, customer_id):\n    \"\"\"その顧客の問い合わせを新しい順に返す。\"\"\"\n    rows = [i for i in inquiries if i[\"customer_id\"] == customer_id]\n    return sorted(rows, key=lambda i: i[\"received_at\"], reverse=True)\n"
+        }
+      },
+      {
+        "key": "pr_b",
+        "title": "検索結果から問い合わせの詳細を開く",
+        "body": "Closes #<<b>>",
+        "closes": [
+          "b"
+        ],
+        "state": "MERGED",
+        "headRefName": "<<epic>>.<<b>>-inquiry-detail",
+        "files": [
+          {
+            "path": "inquiry/detail.py",
+            "additions": 6,
+            "deletions": 0
+          }
+        ],
+        "merged_files": {
+          "inquiry/detail.py": "\"\"\"問い合わせの詳細を開く。\"\"\"\n\n\ndef open_detail(inquiries, inquiry_id):\n    return next(i for i in inquiries if i[\"id\"] == inquiry_id)\n"
+        }
+      }
+    ],
+    "files": {
+      "README.md": "# 問い合わせ管理\n\n`inquiry/` に問い合わせの検索と詳細の表示があります。\n"
+    },
     "issues": [
       {
         "key": "epic",

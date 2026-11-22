@@ -27,6 +27,7 @@ VALID_FLAGS = {
         "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup",
         "spec", "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
     },
+    ("orchestration", "worker-stop"): {"dispatch", "environment", "full", "help", "json", "pairing-code", "retry-request"},
     ("worktree", "set"): {
         "comment", "display-name", "environment", "gitlab-issue", "gitlab-mr", "help", "issue", "json", "linear-issue",
         "no-parent", "pairing-code", "parent-environment", "parent-worktree", "pr", "read", "unread", "workspace-status",
@@ -224,6 +225,17 @@ def dispatch(argv, started):
         ok({"worktrees": worktrees(state)})
     elif cmd == "worker-list":
         ok({"workers": workers(state), "nextCursor": None, "scope": {"source": "all"}, "warnings": []})
+    elif cmd == "worker-stop":
+        # 止めたワーカーが一覧で live のまま残ると、被験は止まっていないと読んで片付けを中断する（dotfiles#190 の S7-C1）
+        dispatch_id = opt(argv, "--dispatch")
+        if not dispatch_id:
+            fail("invalid_argument", "Missing required --dispatch")
+        worker = next((w for i, w in enumerate(state["workers"]) if w.get("dispatch_id", f"ctx_fake{i:04d}") == dispatch_id), None)
+        if worker is None:
+            fail("dispatch_not_found", f"Dispatch {dispatch_id} does not exist")
+        worker.update(liveness="exited", state="stopped")
+        save(state_path, state)
+        ok({"dispatchId": dispatch_id, "state": "stopped", "processAction": "closed_agent_terminal", "helpers": []})
     elif cmd in ("run-use", "run-show"):
         rid = opt(argv, "--id")
         if rid != state["run_id"]:
