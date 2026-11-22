@@ -1,0 +1,137 @@
+"""判定器の較正のラベルを、利用者の代わりに付けるラベラー（dotfiles#193）。
+
+labels.md の問いと証拠だけを読み、別の会社の 2 モデルに yes・no・unsure と理由を答えさせる。
+2 つが同じ yes か no なら採用し、unsure か食い違いなら保留（null）にする。1 つのモデルだと、
+test のどちらかの組で判定器と同じモデルになり、被験と同じ系統のモデルだけでラベルが決まるため。
+answers.json（判定器の答え）と human.json（利用者のラベル）は開かない。
+"""
+import argparse
+import concurrent.futures
+import json
+import os
+import re
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+from common import CLAUDE_MODEL, CODEX_MODEL, STRIP_ENV, sh
+
+MODELS = {"claude": CLAUDE_MODEL, "codex": CODEX_MODEL}
+PROMPT = """あなたは、AI エージェントの評価で、人の代わりに yes/no のラベルを付けます。
+下の証拠は、評価の試行でエージェントが残したもの（{source}）です。問いに、証拠だけから答えてください。
+
+- 問いが求めることを、証拠の記述で確かめられるときだけ yes にします。
+- 証拠に問いが求めることが無いか、反する記述があれば no にします。
+- 証拠を読んでも yes とも no とも決められないときは unsure にします。推測で yes や no を選ばないでください。
+
+---
+{evidence}
+---
+問い: {question}
+
+次の JSON だけを 1 行で答えてください。reason は日本語で 1〜2 文にし、根拠にした証拠の箇所を書きます。
+{{"answer": "yes" | "no" | "unsure", "reason": "..."}}"""
+SOURCES = {"reply": "利用者への返事", "first_reply": "最初の返事", "issues": "Issue の本文やコメントの JSON", "orca": "orca コマンドの呼び出し", "combined": "返事と記録を合わせたもの"}
+
+
+def parse_labels(text):
+    """labels.md から [(key, qid, source, question, evidence)] を取り出す（calibrate.py の cmd_labels が書く形）。"""
+    items, cur = [], None
+    for line in text.split("\n"):
+        if m := re.fullmatch(r"### ([A-Za-z]+\d+)/(\S+)", line):
+            cur = {"key": m[1], "qid": m[2], "q": None, "source": "reply", "evidence": []}
+            items.append(cur)
+        elif line.startswith("#"):
+            cur = None
+        elif cur is None:
+            continue
+        elif m := re.fullmatch(r"問い: (.*)（yes / no）", line):
+            cur["q"] = m[1]
+        elif m := re.fullmatch(r"判定器に渡した証拠（(\w+)）:", line):
+            cur["source"] = m[1]
+        elif line.startswith(">"):
+            cur["evidence"].append(line[2:] if line.startswith("> ") else line[1:])
+    for it in items:
+        if it["q"] is None:
+            raise SystemExit(f"{it['key']}/{it['qid']} の問いを labels.md から読めなかった")
+        it["evidence"] = "\n".join(it["evidence"])
+    return items
+
+
+def call(kind, prompt):
+    """{"answer", "reason", "usage", "seconds"} を返す。答えが読めなければ answer は None。"""
+    env = {k: v for k, v in os.environ.items() if not STRIP_ENV.match(k)}
+    start = time.monotonic()
+    with tempfile.TemporaryDirectory() as tmp:  # 被験の試行と同じく、空のディレクトリで動かして手元のファイルを読ませない
+        if kind == "codex":
+            out = Path(tmp) / "answer.txt"
+            r = sh(["codex", "exec", "-m", MODELS[kind], "-s", "read-only", "--skip-git-repo-check", "--ephemeral", "--json", "-o", str(out), prompt], env=env, cwd=tmp)
+            text = out.read_text() if out.exists() else ""
+            usage = [json.loads(l).get("usage") for l in r.stdout.splitlines() if l.startswith("{") and '"turn.completed"' in l]
+            usage = usage[-1] if usage else None
+        else:
+            env.update(CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1")
+            r = sh(["claude", "-p", prompt, "--model", MODELS[kind], "--output-format", "json", "--setting-sources", "project,local", "--strict-mcp-config", "--tools", ""], env=env, cwd=tmp)
+            try:
+                res = json.loads(r.stdout)
+                u = res.get("usage") or {}
+                text, usage = res.get("result", ""), {"cost_usd": res.get("total_cost_usd"), **{f: u.get(f, 0) for f in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")}}
+            except json.JSONDecodeError:
+                text, usage = "", None
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        ans = json.loads(m[0]) if m else {}
+    except json.JSONDecodeError:
+        ans = {}
+    answer = ans.get("answer") if ans.get("answer") in ("yes", "no", "unsure") else None
+    return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or r.stderr.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
+
+
+def ask(kind, item):
+    prompt = PROMPT.format(source=SOURCES.get(item["source"], item["source"]), evidence=item["evidence"], question=item["q"])
+    res = call(kind, prompt)
+    if res["answer"] is None:  # 一時的な失敗か書式の崩れ。1 回だけ呼び直す
+        res = call(kind, prompt) | {"retried": True}
+    return res
+
+
+def decide(answers):
+    """2 モデルの答えから、True・False・None（保留）を決める。"""
+    got = {a["answer"] for a in answers.values()}
+    return {"yes": True, "no": False}.get(got.pop()) if len(got) == 1 else None
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("labels", type=Path, help="labels.md のパス（同じディレクトリの answers.json・human.json は読まない）")
+    ap.add_argument("--out", type=Path, required=True, help="agent.json と reasons.json を書くディレクトリ")
+    ap.add_argument("--jobs", type=int, default=4, help="モデルごとの並列数")
+    ap.add_argument("--only", help="この正規表現に合う key/qid だけを付ける（動作の確認用）")
+    args = ap.parse_args()
+    items = parse_labels(args.labels.read_text())
+    if args.only:
+        items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
+    args.out.mkdir(parents=True, exist_ok=True)
+    start = time.monotonic()
+    with concurrent.futures.ThreadPoolExecutor(args.jobs * len(MODELS)) as pool:
+        futures = {(i, kind): pool.submit(ask, kind, it) for i, it in enumerate(items) for kind in MODELS}
+        results = {k: f.result() for k, f in futures.items()}
+    agent, reasons = {}, {}
+    for i, it in enumerate(items):
+        answers = {kind: results[(i, kind)] for kind in MODELS}
+        agent.setdefault(it["key"], {})[it["qid"]] = decide(answers)
+        reasons.setdefault(it["key"], {})[it["qid"]] = {"q": it["q"], **answers}
+    meta = {"models": MODELS, "items": len(items), "seconds": round(time.monotonic() - start, 1),
+            "cost_usd": {"claude": round(sum((results[(i, "claude")]["usage"] or {}).get("cost_usd") or 0 for i in range(len(items))), 4)},
+            "tokens": {"codex": {f: sum((results[(i, "codex")]["usage"] or {}).get(f, 0) for i in range(len(items))) for f in ("input_tokens", "cached_input_tokens", "output_tokens")}},
+            "parse_errors": sum(r["answer"] is None for r in results.values())}
+    (args.out / "agent.json").write_text(json.dumps(agent, ensure_ascii=False, indent=2))
+    (args.out / "reasons.json").write_text(json.dumps({"meta": meta, "items": reasons}, ensure_ascii=False, indent=2))
+    held = sum(v is None for q in agent.values() for v in q.values())
+    print(f"{len(items)} 問にラベルを付けた（保留 {held}、読めなかった答え {meta['parse_errors']}、{meta['seconds']} 秒）: {args.out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
