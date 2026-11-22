@@ -7,7 +7,6 @@
 """
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -82,14 +81,15 @@ def command_words(argv):
 
 
 def help_path(argv):
-    """ヘルプで本物へ渡すコマンドの語。本物の `orca --help` が挙げるコマンドに沿って取り、末端のコマンドの後ろの
-    位置引数は渡さない（`claude-teams <prompt> --help` のように、位置引数があると本物は起動の処理に入る）。
+    """ヘルプで本物へ渡すコマンドの語。本物の `orca agent-context --json` が挙げるコマンドに沿って取り、末端のコマンドの
+    後ろの位置引数は渡さない（`claude-teams <prompt> --help` のように、位置引数があると本物は起動の処理に入る）。
     グループの後ろの知らない語は、本物が Unknown command で返すよう残す。"""
-    listing = subprocess.run([ORCA_REAL, "--help"], capture_output=True, text=True).stdout
-    commands = {tuple(m[1].split()) for m in re.finditer(r"^  ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*)*)(?: |$)", listing, re.M)}
+    schema = json.loads(subprocess.run([ORCA_REAL, "agent-context", "--json"], capture_output=True, text=True).stdout)
+    commands = {tuple(c["path"]) for c in schema["commands"]}
     groups = {c[:i] for c in commands for i in range(1, len(c))}
+    words = command_words(argv)
     path = []
-    for word in command_words(argv):
+    for word in words[1:] if words[:1] == ["help"] else words:
         if tuple(path + [word]) in commands | groups:
             path.append(word)
             continue
@@ -104,10 +104,10 @@ def save(path, state):
         json.dump(state, f)
 
 
-def selector_hits(sel, w):
+def selector_hits(sel, w, repo_id):
     kind, _, val = sel.partition(":")
-    if kind == "id":  # `worktree list` の id は `<repo の id>::<path>`
-        return val.partition("::")[2] == w["path"]
+    if kind == "id":  # `worktree list` の id
+        return val == f"{repo_id}::{w['path']}"
     return {"issue": str(w.get("issue")), "path": w["path"], "identity": w["identity"], "name": w["name"],
             "branch": w["name"]}.get(kind) == (val.removeprefix("refs/heads/") if kind == "branch" else val)
 
@@ -209,6 +209,10 @@ def dispatch(argv, started):
             # 状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
             argv = help_path(argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
+    i = 0
+    while i < len(argv) and argv[i].startswith("-"):
+        i += 1 if "=" in argv[i] or argv[i] in BOOLEAN_FLAGS or i + 1 == len(argv) else 2
+    argv = argv[i:] + argv[:i]
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
         state = json.load(f)
@@ -273,7 +277,7 @@ def dispatch(argv, started):
                   "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"}
             state["worktrees"].append(wt)
         else:
-            wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w)), None)
+            wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w, state["repo_id"])), None)
         if wt is None:
             fail("worktree_not_found", f"No worktree matches {sel}")
         state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
@@ -301,25 +305,29 @@ def dispatch(argv, started):
         selector, issue = opt(argv, "--worktree"), opt(argv, "--issue")
         if not selector:
             fail("invalid_argument", "Missing required --worktree")
-        if issue is not None and issue != "null" and not issue.isdecimal():
+        if "--issue" in argv and issue is None or issue is not None and issue != "null" and not issue.isdecimal():
             fail("invalid_argument", "--issue requires a number or null")
-        wt = current_worktree(state) if selector in ("current", "active") else next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
+        wt = current_worktree(state) if selector in ("current", "active") else next((w for w in state["worktrees"] if selector_hits(selector, w, state["repo_id"])), None)
         if wt is None:
             fail("selector_not_found", f"No worktree matches {selector}")
+        # 本物は worktree に Issue や親を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue と
+        # worktree を読むので、起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
+        # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
+        ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
+                or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
         if issue is not None:
-            # 本物は worktree に Issue を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue を読むので、
-            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
-            # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
-            ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
-                    or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
             wt["issue"] = None if issue == "null" else int(issue)
-            for worker in ours:
-                worker["issue"], worker["worktree"] = wt["issue"], wt
-            save(state_path, state)
+        if {"--no-parent", "--no-parent=true"}.intersection(argv):
+            wt["has_parent"] = False
+        elif opt(argv, "--parent-worktree"):
+            wt["has_parent"] = True
+        for worker in ours:
+            worker["issue"], worker["worktree"] = wt["issue"], wt
+        save(state_path, state)
         ok({"worktree": next(row for row in worktrees(state) if row["path"] == wt["path"])})
     elif argv[:2] == ["worktree", "rm"]:
         selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
-        wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
+        wt = next((w for w in state["worktrees"] if selector_hits(selector, w, state["repo_id"])), None)
         if wt is None or wt is state["worktrees"][0]:
             fail("worktree_not_found", f"No removable worktree matches {selector}")
         if wt.get("checkout") and not {"--force", "--force=true"}.intersection(argv):
