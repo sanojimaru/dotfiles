@@ -170,12 +170,31 @@ def isolated_zdotdir(out):
     return str(zdot)
 
 
+def tmp_sandbox(out):
+    """並行する試行や前のセッションと `/tmp` の固定名のファイルを共有しないよう、被験から `/private/tmp` を読み書きさせない。
+    Claude Code 自身が使う `/private/tmp/claude-<uid>` だけは許す。被験が書いた `/tmp/x.md` が、別の試行の同名の
+    ファイルの中身のまま Issue と `ask` に送られた（dotfiles#171）。Codex は自分で sandbox-exec を使い、入れ子にできないので対象外。"""
+    profile = out / "tmp-sandbox.sb"
+    profile.write_text(
+        "(version 1)\n(allow default)\n"
+        '(deny file-read* file-write* (subpath "/private/tmp"))\n'
+        f'(allow file-read* file-write* (literal "/private/tmp") (subpath "/private/tmp/claude-{os.getuid()}"))\n'
+        # Claude Code の Bash ツールは、コマンドごとの作業ディレクトリを乱数の名前の /tmp/claude-<hex>-cwd に書く
+        '(allow file-read* file-write* (regex #"^/private/tmp/claude-[0-9a-f]+-cwd$"))\n'
+        # 出力先が /tmp の下でも、被験は自分の試行のファイル（指示書の下書き・clone・代役）を読み書きする
+        f'(allow file-read* file-write* (subpath "{out.resolve()}"))\n'
+    )
+    return ["sandbox-exec", "-f", str(profile)]
+
+
 def run_claude(prompt, clone, env, cond, out, history=None, followup=None):
     draft = out / "agents-md.md"
     draft.write_text(draft_for(cond))
+    # zsh はヒアドキュメントの一時ファイルを $TMPPREFIX（既定 /tmp/zsh）に作るので、隔離した /tmp の外に向ける
+    (out / "zsh-tmp").mkdir()
     env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1",
-               CLAUDE_CODE_SHELL="/bin/zsh", ZDOTDIR=isolated_zdotdir(out))
-    argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
+               CLAUDE_CODE_SHELL="/bin/zsh", ZDOTDIR=isolated_zdotdir(out), TMPPREFIX=str(out / "zsh-tmp" / "zsh"))
+    argv = [*tmp_sandbox(out), "claude", "-p", "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
             "--setting-sources", "project,local", "--strict-mcp-config", "--permission-mode", "bypassPermissions",
             "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD)]
 

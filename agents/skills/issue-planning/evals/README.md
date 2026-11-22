@@ -75,6 +75,12 @@ python3 run_eval.py agreement "$LABEL_DIR/human.json" "$LABEL_DIR/answers.json"
 
 ワーカーの worktree には `checkout` と `current: true` を付け、同名のブランチの PR を種に置きます。マージまで確かめるケースの PR には、`replay_checks`（`bucket: pass` の CI）を付けます。
 
+## 試行の隔離
+
+Claude の被験は `sandbox-exec` の下で起動し、`/private/tmp` を読み書きさせません（Claude Code 自身が使う `/private/tmp/claude-<uid>` だけ許します）。被験が固定名の `/tmp/x.md` を使うと、並行する試行や前のセッションの同名のファイルと衝突し、別の試行の本文を Issue や `ask` に送ってしまうためです。`mktemp` は `TMPDIR` を使うので止まりません。Codex は自分で `sandbox-exec` を使い入れ子にできないので、この隔離はかかりません。Codex の被験を並行で流すときは、試行どうしの `/tmp` の衝突を別に防いでください。
+
+代役の `orca` は、`--help` を本物に渡し、本物に無い `orchestration` のサブコマンドを本物と同じ `invalid_argument` で失敗させます。代役が知らないコマンドを成功で返すと、被験は誤ったコマンドのまま進むためです。
+
 ## Orca の着信
 
 `orca.messages` に `kind` を指定したレコードを並べます。利用できる `kind` は `ask`、`reply`、`send`、`worker_done`、`escalation` です。`id`・`body`・`subject`・`payload` などの指定で、記録の値を差し替えます。例えば、`ask` の `payload` にある `question` と本文には同じ質問を書けます。

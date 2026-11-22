@@ -360,6 +360,8 @@ def issue_cmd(state, cmd, argv, input_body):
         body = body_from(args, input_body)
         if body is None:
             raise ValueError("--body or --body-file required when not running interactively")
+        if not body.strip():  # 本物も空の本文を拒む。受けると、書けなかったファイルから空のコメントが残る（dotfiles#171）
+            raise ValueError("GraphQL: Body cannot be blank (addComment)")
         if args.edit_last and issue["comments"]:
             issue["comments"][-1]["body"] = body
             comment = issue["comments"][-1]
