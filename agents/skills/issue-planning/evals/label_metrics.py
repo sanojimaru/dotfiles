@@ -37,7 +37,7 @@ def group_of(key):
     return re.match(r"[A-Za-z]*", key)[0]
 
 
-def measure(rows, a_of, times, seed):
+def measure(rows, a_of, times, seed, groups):
     """rows は (key, qid, U, J, A) の並び。a_of で A を取り出す（代役を同じ式で測るため）。"""
     filled = [(a_of(r) if a_of(r) is not None else r[2], r[2]) for r in rows]
     kept = [(a_of(r), r[2]) for r in rows if a_of(r) is not None]
@@ -47,12 +47,15 @@ def measure(rows, a_of, times, seed):
            "kept_agree": rate(kept), "kept_alpha": alpha(kept),
            "user_no": len(no_rows), "user_no_caught": sum(a_of(r) is False for r in no_rows), "user_no_held": sum(a_of(r) is None for r in no_rows),
            "groups": {}}
-    for g in sorted({group_of(r[0]) for r in rows}):
+    for g in groups:
         sub = [r for r in rows if group_of(r[0]) == g]
+        if not sub:  # 利用者のラベルが無い組を黙って外すと、残りの組だけで合格と出てしまう
+            out["groups"][g] = {"n": 0, "judge_user": None, "judge_agent": None, "same_side": None}
+            continue
         ju = rate([(r[3], r[2]) for r in sub])
         ja = rate([(r[3], a_of(r) if a_of(r) is not None else r[2]) for r in sub])
         out["groups"][g] = {"n": len(sub), "judge_user": ju, "judge_agent": ja, "same_side": (ju >= JUDGE_LINE) == (ja >= JUDGE_LINE)}
-    out["pass"] = {"1": all(v["same_side"] for v in out["groups"].values()), "2": out["agree"] >= AGREE_LINE,
+    out["pass"] = {"1": None if any(v["same_side"] is None for v in out["groups"].values()) else all(v["same_side"] for v in out["groups"].values()), "2": out["agree"] >= AGREE_LINE,
                    "3": out["alpha"] is not None and out["alpha"] >= ALPHA_LINE, "4": out["held"] <= HOLD_LINE}
     return out
 
@@ -68,12 +71,16 @@ def num(x):
 def show(name, m):
     print(f"## {name}（{m['n']} 問）")
     for g, v in m["groups"].items():
+        if v["same_side"] is None:
+            print(f"- 合格線 1（組 {g}）: 未採点（利用者のラベルが 0 件）")
+            continue
         print(f"- 合格線 1（組 {g}、{v['n']} 問）: J と U {pct(v['judge_user'])}、J と A {pct(v['judge_agent'])} → 90% の線での合否が{'同じ' if v['same_side'] else '違う'}")
     ci = m["alpha_ci"]
     print(f"- 合格線 2: A と U の一致率 {pct(m['agree'])}（95% 以上）")
     print(f"- 合格線 3: A と U の α {num(m['alpha'])}（0.800 以上。問い単位の bootstrap の 95% 区間 {'算出不能' if ci is None else f'{ci[0]:.3f}〜{ci[1]:.3f}'}）")
     print(f"- 合格線 4: 保留 {pct(m['held'])}（20% 以下）")
-    print(f"- 判定: {'、'.join(f'{k} {chr(9675) if v else chr(215)}' for k, v in m['pass'].items())} → {'合格' if all(m['pass'].values()) else '不合格'}")
+    verdict = "未判定（未採点の組がある）" if None in m["pass"].values() else "合格" if all(m["pass"].values()) else "不合格"
+    print(f"- 判定: {'、'.join(f'{k} {chr(9675) if v else chr(215) if v is False else chr(8212)}' for k, v in m['pass'].items())} → {verdict}")
     print(f"- 報告だけ: 保留しなかった問いでの一致率 {pct(m['kept_agree'])}・α {num(m['kept_alpha'])}、"
           f"U の no {m['user_no']} 問のうち A も no {m['user_no_caught']} 問（保留 {m['user_no_held']} 問）")
 
@@ -95,11 +102,12 @@ def main():
             if human.get(k, {}).get(j) is not None]
     if not rows:
         raise SystemExit("利用者のラベルが付いた問いがありません")
-    result = {"all_yes": measure(rows, lambda r: True, args.boot, args.seed), "judge": measure(rows, lambda r: r[3], args.boot, args.seed)}
+    groups = sorted({group_of(k) for k in answers})
+    result = {"all_yes": measure(rows, lambda r: True, args.boot, args.seed, groups), "judge": measure(rows, lambda r: r[3], args.boot, args.seed, groups)}
     if args.agent:
         if missing := [f"{r[0]}/{r[1]}" for r in rows if r[1] not in agent.get(r[0], {})]:
             raise SystemExit(f"ラベラーが付けていない問いがあります: {missing}")
-        result["agent"] = measure(rows, lambda r: r[4], args.boot, args.seed)
+        result["agent"] = measure(rows, lambda r: r[4], args.boot, args.seed, groups)
         show("ラベラー（A）", result["agent"])
         result["disagree"] = [{"q": f"{r[0]}/{r[1]}", "user": r[2], "agent": r[4], "judge": r[3]} for r in rows if r[4] is not None and r[4] != r[2]]
         result["held"] = [{"q": f"{r[0]}/{r[1]}", "user": r[2], "judge": r[3]} for r in rows if r[4] is None]
