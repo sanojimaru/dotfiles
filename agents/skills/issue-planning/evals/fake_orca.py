@@ -7,6 +7,7 @@
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -20,11 +21,18 @@ ORCHESTRATION_COMMANDS = {
     "worker-abandon", "worker-release", "worker-keep-open", "worker-list", "dispatch", "request-show",
     "dispatch-show", "ask", "coordinator-start", "coordinator-stop", "gate-create", "gate-resolve", "gate-list", "reset",
 }
-# `orca orchestration worker-start --help` が挙げるフラグ。本物はこれ以外のフラグ（`--issue` など）を invalid_argument で拒む
-WORKER_START_FLAGS = {
-    "agent", "base-branch", "comment", "deps", "display-name", "effort", "environment", "from", "full", "help", "json",
-    "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup", "spec",
-    "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
+# 本物の `--help` が挙げるフラグ。本物はこれ以外のフラグ（`worker-start --issue` など）を invalid_argument で拒む
+VALID_FLAGS = {
+    ("orchestration", "worker-start"): {
+        "agent", "base-branch", "comment", "deps", "display-name", "effort", "environment", "from", "full", "help", "json",
+        "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup",
+        "spec", "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
+    },
+    ("worktree", "set"): {
+        "comment", "display-name", "environment", "gitlab-issue", "gitlab-mr", "help", "issue", "json", "linear-issue",
+        "no-parent", "pairing-code", "parent-environment", "parent-worktree", "pr", "read", "unread", "workspace-status",
+        "worktree",
+    },
 }
 # 値を取らないフラグ。これ以外の `--x` の次の語は、そのフラグの値として読む
 BOOLEAN_FLAGS = {"--help", "-h", "--json", "--full", "--keep-open", "--all", "--peek", "--no-parent", "--force", "--unread", "--read"}
@@ -73,6 +81,24 @@ def command_words(argv):
     return words
 
 
+def help_path(argv):
+    """ヘルプで本物へ渡すコマンドの語。本物の `orca --help` が挙げるコマンドに沿って取り、末端のコマンドの後ろの
+    位置引数は渡さない（`claude-teams <prompt> --help` のように、位置引数があると本物は起動の処理に入る）。
+    グループの後ろの知らない語は、本物が Unknown command で返すよう残す。"""
+    listing = subprocess.run([ORCA_REAL, "--help"], capture_output=True, text=True).stdout
+    commands = {tuple(m[1].split()) for m in re.finditer(r"^  ([a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*)*)(?: |$)", listing, re.M)}
+    groups = {c[:i] for c in commands for i in range(1, len(c))}
+    path = []
+    for word in command_words(argv):
+        if tuple(path + [word]) in commands | groups:
+            path.append(word)
+            continue
+        if not path or tuple(path) in groups:
+            path.append(word)
+        break
+    return path
+
+
 def save(path, state):
     with open(path, "w") as f:
         json.dump(state, f)
@@ -80,6 +106,8 @@ def save(path, state):
 
 def selector_hits(sel, w):
     kind, _, val = sel.partition(":")
+    if kind == "id":  # `worktree list` の id は `<repo の id>::<path>`
+        return val.partition("::")[2] == w["path"]
     return {"issue": str(w.get("issue")), "path": w["path"], "identity": w["identity"], "name": w["name"],
             "branch": w["name"]}.get(kind) == (val.removeprefix("refs/heads/") if kind == "branch" else val)
 
@@ -179,7 +207,7 @@ def dispatch(argv, started):
         if argv[:1] != ["skills"]:
             # 本物は `-h` をヘルプと読まず、`--comment --help` の `--help` を値として読むので、元の引数のまま渡すと
             # 状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
-            argv = command_words(argv) + ["--help"]
+            argv = help_path(argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
@@ -188,6 +216,10 @@ def dispatch(argv, started):
     if cmd is not None and cmd not in ORCHESTRATION_COMMANDS:
         # 本物と同じく、無いサブコマンドは失敗させる（成功で返すと、被験が誤ったコマンドのまま進む）
         fail("invalid_argument", f"Unknown command: {' '.join(command_words(argv))}")
+    if flags := VALID_FLAGS.get(tuple(argv[:2])):
+        unknown = next((a.split("=", 1)[0] for a in argv[2:] if a.startswith("--") and a[2:].split("=", 1)[0] not in flags), None)
+        if unknown:
+            fail("invalid_argument", f"Unknown flag {unknown} for command: {' '.join(argv[:2])}")
     if argv[:2] == ["worktree", "list"]:
         ok({"worktrees": worktrees(state)})
     elif cmd == "worker-list":
@@ -226,9 +258,6 @@ def dispatch(argv, started):
         save(state_path, state)
         ok({"taskId": task, "status": "ready"})
     elif cmd == "worker-start":
-        unknown = next((a for a in argv[2:] if a.startswith("--") and a[2:].split("=", 1)[0] not in WORKER_START_FLAGS), None)
-        if unknown:
-            fail("invalid_argument", f"Unknown flag {unknown.split('=', 1)[0]} for command: orchestration worker-start")
         if opt(argv, "--spec") or opt(argv, "--spec-file"):  # 本物は、--spec を渡すと Task を作って起動する
             state["seq"] = state.get("seq", 0) + 1
             state.setdefault("tasks", []).append(f"task_new{state['seq']:04d}")
@@ -279,11 +308,13 @@ def dispatch(argv, started):
             fail("selector_not_found", f"No worktree matches {selector}")
         if issue is not None:
             # 本物は worktree に Issue を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue を読むので、
-            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）
+            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
+            # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
+            ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
+                    or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
             wt["issue"] = None if issue == "null" else int(issue)
-            for worker in state["workers"]:
-                if worker.get("worktree", {}).get("path") == wt["path"]:
-                    worker["issue"], worker["worktree"] = wt["issue"], wt
+            for worker in ours:
+                worker["issue"], worker["worktree"] = wt["issue"], wt
             save(state_path, state)
         ok({"worktree": next(row for row in worktrees(state) if row["path"] == wt["path"])})
     elif argv[:2] == ["worktree", "rm"]:
