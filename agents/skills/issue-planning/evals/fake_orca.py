@@ -209,10 +209,6 @@ def dispatch(argv, started):
             # 状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
             argv = help_path(argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
-    i = 0
-    while i < len(argv) and argv[i].startswith("-"):
-        i += 1 if "=" in argv[i] or argv[i] in BOOLEAN_FLAGS or i + 1 == len(argv) else 2
-    argv = argv[i:] + argv[:i]
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
         state = json.load(f)
@@ -310,20 +306,16 @@ def dispatch(argv, started):
         wt = current_worktree(state) if selector in ("current", "active") else next((w for w in state["worktrees"] if selector_hits(selector, w, state["repo_id"])), None)
         if wt is None:
             fail("selector_not_found", f"No worktree matches {selector}")
-        # 本物は worktree に Issue や親を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue と
-        # worktree を読むので、起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
-        # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
-        ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
-                or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
         if issue is not None:
+            # 本物は worktree に Issue を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue を読むので、
+            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
+            # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
+            ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
+                    or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
             wt["issue"] = None if issue == "null" else int(issue)
-        if {"--no-parent", "--no-parent=true"}.intersection(argv):
-            wt["has_parent"] = False
-        elif opt(argv, "--parent-worktree"):
-            wt["has_parent"] = True
-        for worker in ours:
-            worker["issue"], worker["worktree"] = wt["issue"], wt
-        save(state_path, state)
+            for worker in ours:
+                worker["issue"], worker["worktree"] = wt["issue"], wt
+            save(state_path, state)
         ok({"worktree": next(row for row in worktrees(state) if row["path"] == wt["path"])})
     elif argv[:2] == ["worktree", "rm"]:
         selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
