@@ -70,7 +70,7 @@ python3 run_eval.py labels "$CLAUDE_HOLDOUT_OUTPUT" --out "$LABEL_DIR" --cover -
 
 ### ラベラー（エージェントのラベル）
 
-`labeler.py` は、`labels.md` の問いと証拠だけを読み、別の会社の 2 モデルが同じ yes か no を返した問いにそのラベルを、unsure か食い違いの問いに保留（`null`）を付けます（dotfiles#193）。被験と同じ系統のモデルだけでラベルを決めないためです。`label_metrics.py` は、`human.json`・`answers.json` とラベラーの `agent.json` から、#193 の事前登録の合格線 1〜4 と、報告だけの指標を出します。`agent.json` を省くと、すべて yes の代役と判定器だけを出します。
+`labeler.py` は、`labels.md` の問いと証拠だけを読み、別の会社の 2 モデルが同じ yes か no を返した問いにそのラベルを、unsure か食い違いの問いに保留（`null`）を付けます（dotfiles#193）。被験と同じ系統のモデルだけでラベルを決めないためです。`label_metrics.py` は、`human.json`・`answers.json` とラベラーの `agent.json` から、#193 の事前登録の合格線 1〜4 と、報告だけの指標を出します。`agent.json` を省くと、すべて yes の代役と判定器だけを出します。test（`190-labels`）を測るときは `--groups A,B` を付け、どちらかの組が `answers.json` に無ければ未判定にします。
 
 ```sh
 orca-nested python3 labeler.py "$LABEL_DIR/labels.md" --out "$AGENT_DIR"

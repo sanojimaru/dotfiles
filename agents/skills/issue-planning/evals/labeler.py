@@ -82,7 +82,12 @@ def call(kind, prompt, home, deny):
                 out = Path(tmp) / "answer.txt"
                 r = sh([*codex_args(home, deny), "-o", str(out), prompt], env=env, cwd=tmp)
                 text, err = out.read_text() if out.exists() and r.returncode == 0 else "", r.stderr or f"終了コード {r.returncode}"
-                events = [json.loads(l) for l in r.stdout.splitlines() if l.startswith("{")]
+                events = []
+                for line in r.stdout.splitlines():  # 異常終了で最後の行が切れていても、その呼び出しの失敗として扱う
+                    try:
+                        events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        pass
                 usage = next((e.get("usage") for e in reversed(events) if e.get("type") == "turn.completed"), None)
                 # 道具を使おうとした答えは、証拠のほかの何かに基づいた答えかもしれないので捨てる
                 tools = sorted({f"{it['type']}: {str(it.get('command', ''))[:80]}" for e in events if (it := e.get("item")) and it.get("type") not in ("agent_message", "reasoning")})
@@ -105,7 +110,7 @@ def call(kind, prompt, home, deny):
         ans = json.loads(m[0]) if m else {}
     except json.JSONDecodeError:
         ans = {}
-    if not isinstance(ans, dict) or not isinstance(ans.get("reason"), str):  # 理由の無い答えは、読めない答えとして呼び直す
+    if not isinstance(ans, dict) or not isinstance(ans.get("reason"), str) or not ans["reason"].strip():  # 理由の無い答えは、読めない答えとして呼び直す
         ans = {}
     answer = ans.get("answer") if ans.get("answer") in ("yes", "no", "unsure") else None
     return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
