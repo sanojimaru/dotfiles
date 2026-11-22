@@ -44,7 +44,7 @@ def measure(rows, a_of, times, seed, groups, incomplete=False):
     no_rows = [r for r in rows if r[2] is False]
     out = {"n": len(rows), "agree": rate(filled), "alpha": alpha(filled), "alpha_ci": bootstrap(filled, times, seed),
            "held": sum(a_of(r) is None for r in rows) / len(rows),
-           "kept_agree": rate(kept), "kept_alpha": alpha(kept),
+           "kept_agree": rate(kept), "kept_alpha": alpha(kept), "kept_judge_agree": rate([(a_of(r), r[3]) for r in rows if a_of(r) is not None]),
            "user_no": len(no_rows), "user_no_caught": sum(a_of(r) is False for r in no_rows), "user_no_held": sum(a_of(r) is None for r in no_rows),
            "groups": {}, "incomplete": incomplete}
     for g in groups:
@@ -82,6 +82,7 @@ def show(name, m):
     verdict = "未判定（利用者のラベルが無い問いがある）" if m.get("incomplete") else "未判定（未採点の組がある）" if None in m["pass"].values() else "合格" if all(m["pass"].values()) else "不合格"
     print(f"- 判定: {'、'.join(f'{k} {chr(9675) if v else chr(215) if v is False else chr(8212)}' for k, v in m['pass'].items())} → {verdict}")
     print(f"- 報告だけ: 保留しなかった問いでの一致率 {pct(m['kept_agree'])}・α {num(m['kept_alpha'])}、"
+          f"A と J の一致率 {pct(m['kept_judge_agree'])}、"
           f"U の no {m['user_no']} 問のうち A も no {m['user_no_caught']} 問（保留 {m['user_no_held']} 問）")
 
 

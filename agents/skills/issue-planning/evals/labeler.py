@@ -1,7 +1,8 @@
 """判定器の較正のラベルを、利用者の代わりに付けるラベラー（dotfiles#193）。
 
 labels.md の問いと証拠だけを読み、別の会社の 2 モデルに yes・no・unsure と理由を答えさせる。
-2 つが同じ yes か no なら採用し、unsure か食い違いなら保留（null）にする。1 つのモデルだと、
+2 つが同じ yes か no なら採用し、unsure か食い違いなら保留（null）にする。保留が問いの 20% に満たなければ、
+2 つの確信度の低い問いから、20% に達するまで保留に回す。1 つのモデルだと、
 test のどちらかの組で判定器と同じモデルになり、被験と同じ系統のモデルだけでラベルが決まるため。
 answers.json（判定器の答え）と human.json（利用者のラベル）は開かない。
 """
@@ -32,7 +33,8 @@ PROMPT = """あなたは、AI エージェントの評価で、人の代わり�
 問い: {question}
 
 次の JSON だけを 1 行で答えてください。reason は日本語で 1〜2 文にし、根拠にした証拠の箇所を書きます。
-{{"answer": "yes" | "no" | "unsure", "reason": "..."}}"""
+confidence は、あなたの答えに、同じ証拠を読んだ人が同じ答えを付ける見込みを 0〜100 の整数で書きます。問いの文言の読み方や、証拠のどこまでを満たしたと見るかで答えが変わりうるなら、低くします。
+{{"answer": "yes" | "no" | "unsure", "confidence": 0〜100, "reason": "..."}}"""
 SOURCES = {"reply": "利用者への返事", "first_reply": "最初の返事", "issues": "Issue の本文やコメントの JSON", "orca": "orca コマンドの呼び出し", "combined": "返事と記録を合わせたもの"}
 
 
@@ -112,8 +114,9 @@ def call(kind, prompt, home, deny):
         ans = {}
     if not isinstance(ans, dict) or not isinstance(ans.get("reason"), str) or not ans["reason"].strip():  # 理由の無い答えは、読めない答えとして呼び直す
         ans = {}
-    answer = ans.get("answer") if ans.get("answer") in ("yes", "no", "unsure") else None
-    return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
+    conf = ans.get("confidence")
+    answer = ans.get("answer") if ans.get("answer") in ("yes", "no", "unsure") and type(conf) is int and 0 <= conf <= 100 else None
+    return {"answer": answer, "confidence": ans.get("confidence"), "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
 
 
 def ask(kind, item, home, deny):
@@ -126,19 +129,30 @@ def ask(kind, item, home, deny):
     return res
 
 
-def decide(answers):
-    """2 モデルの答えから、True・False・None（保留）を決める。"""
-    got = {a["answer"] for a in answers.values()}
-    return {"yes": True, "no": False}.get(got.pop()) if len(got) == 1 else None
+def decide(results, budget):
+    """問いごとの 2 モデルの答えから、True・False・None（保留）の並びを決める。
+    食い違いと unsure は保留にし、残りを 2 モデルの確信度の小さいほうの低い順に、保留の合計が budget に達するまで保留に回す。
+    確信の低い判定を捨てると、個人の判定との一致が上がる（Dong ほか 2024）。保留の数を予算で決めるのは、利用者に回す問いの上限（#193 の合格線 4）を組の大きさによらず守るため。"""
+    labels = []
+    for answers in results:
+        got = {a["answer"] for a in answers.values()}
+        labels.append({"yes": True, "no": False}.get(got.pop()) if len(got) == 1 else None)
+    conf = lambda i: (min(a["confidence"] for a in results[i].values()), sum(a["confidence"] for a in results[i].values()), i)
+    for i in sorted((i for i, v in enumerate(labels) if v is not None), key=conf)[:max(0, budget - labels.count(None))]:
+        labels[i] = None
+    return labels
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("labels", type=Path, help="labels.md のパス（同じディレクトリの answers.json・human.json は読まない）")
     ap.add_argument("--out", type=Path, required=True, help="agent.json と reasons.json を書くディレクトリ")
+    ap.add_argument("--hold", type=float, default=0.20, help="確信度の低い問いを保留に回す上限（問いの数に対する割合。#193 の合格線 4）")
     ap.add_argument("--jobs", type=int, default=4, help="モデルごとの並列数")
     ap.add_argument("--only", help="この正規表現に合う key/qid だけを付ける（動作の確認用）")
     args = ap.parse_args()
+    if not 0 <= args.hold <= 1:  # nan もここで止まる。モデルを呼んだ後に止まると、費用だけかかって結果が残らない
+        ap.error("--hold は 0〜1 の割合で指定する（例: 0.2）")
     items = parse_labels(args.labels.read_text())
     if args.only:
         items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
@@ -159,9 +173,9 @@ def main():
         return [u or {} for i in range(len(items)) for u in results[(i, kind)].get("usages", [results[(i, kind)]["usage"]])]
 
     agent, reasons = {}, {}
-    for i, it in enumerate(items):
-        answers = {kind: results[(i, kind)] for kind in MODELS}
-        agent.setdefault(it["key"], {})[it["qid"]] = decide(answers)
+    per_item = [{kind: results[(i, kind)] for kind in MODELS} for i in range(len(items))]
+    for it, answers, label in zip(items, per_item, decide(per_item, int(args.hold * len(items)))):
+        agent.setdefault(it["key"], {})[it["qid"]] = label
         reasons.setdefault(it["key"], {})[it["qid"]] = {"q": it["q"], **answers}
     meta = {"models": MODELS, "items": len(items), "seconds": round(time.monotonic() - start, 1),
             "cost_usd": {"claude": round(sum(u.get("cost_usd") or 0 for u in usages("claude")), 4)},
