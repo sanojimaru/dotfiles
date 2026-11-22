@@ -20,6 +20,21 @@ ORCHESTRATION_COMMANDS = {
     "worker-abandon", "worker-release", "worker-keep-open", "worker-list", "dispatch", "request-show",
     "dispatch-show", "ask", "coordinator-start", "coordinator-stop", "gate-create", "gate-resolve", "gate-list", "reset",
 }
+# 本物の `--help` が挙げるフラグ。本物はこれ以外のフラグ（`worker-start --issue` など）を invalid_argument で拒む
+VALID_FLAGS = {
+    ("orchestration", "worker-start"): {
+        "agent", "base-branch", "comment", "deps", "display-name", "effort", "environment", "from", "full", "help", "json",
+        "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup",
+        "spec", "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
+    },
+    ("worktree", "set"): {
+        "comment", "display-name", "environment", "gitlab-issue", "gitlab-mr", "help", "issue", "json", "linear-issue",
+        "no-parent", "pairing-code", "parent-environment", "parent-worktree", "pr", "read", "unread", "workspace-status",
+        "worktree",
+    },
+}
+# 値を取らないフラグ。これ以外の `--x` の次の語は、そのフラグの値として読む
+BOOLEAN_FLAGS = {"--help", "-h", "--json", "--full", "--keep-open", "--all", "--peek", "--no-parent", "--force", "--unread", "--read"}
 
 
 def log(argv, started, rc):
@@ -52,13 +67,47 @@ def opt(argv, name):
     return None
 
 
+def command_words(argv):
+    """オプションとその値を除いた、コマンドの語。本物はオプションの後に書いたサブコマンドもコマンドとして読む。"""
+    words, skip = [], False
+    for a in argv:
+        if skip and not a.startswith("-"):
+            skip = False
+            continue
+        skip = a.startswith("-") and "=" not in a and a not in BOOLEAN_FLAGS
+        if not a.startswith("-"):
+            words.append(a)
+    return words
+
+
+def help_path(argv):
+    """ヘルプで本物へ渡すコマンドの語。本物の `orca agent-context --json` が挙げるコマンドに沿って取り、末端のコマンドの
+    後ろの位置引数は渡さない（`claude-teams <prompt> --help` のように、位置引数があると本物は起動の処理に入る）。
+    グループの後ろの知らない語は、本物が Unknown command で返すよう残す。"""
+    schema = json.loads(subprocess.run([ORCA_REAL, "agent-context", "--json"], capture_output=True, text=True).stdout)
+    commands = {tuple(c["path"]) for c in schema["commands"]}
+    groups = {c[:i] for c in commands for i in range(1, len(c))}
+    words = command_words(argv)
+    path = []
+    for word in words[1:] if words[:1] == ["help"] else words:
+        if tuple(path + [word]) in commands | groups:
+            path.append(word)
+            continue
+        if not path or tuple(path) in groups:
+            path.append(word)
+        break
+    return path
+
+
 def save(path, state):
     with open(path, "w") as f:
         json.dump(state, f)
 
 
-def selector_hits(sel, w):
+def selector_hits(sel, w, repo_id):
     kind, _, val = sel.partition(":")
+    if kind == "id":  # `worktree list` の id
+        return val == f"{repo_id}::{w['path']}"
     return {"issue": str(w.get("issue")), "path": w["path"], "identity": w["identity"], "name": w["name"],
             "branch": w["name"]}.get(kind) == (val.removeprefix("refs/heads/") if kind == "branch" else val)
 
@@ -156,8 +205,9 @@ def dispatch(argv, started):
             sys.exit("fake_orca: 本物の orca のパスが代役自身を指している")
         os.environ["ORCA_FAKE_ACTIVE"] = "1"
         if argv[:1] != ["skills"]:
-            # 本物は `-h` をヘルプと読まないので、元の引数のまま渡すと状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
-            argv = next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv) + ["--help"]
+            # 本物は `-h` をヘルプと読まず、`--comment --help` の `--help` を値として読むので、元の引数のまま渡すと
+            # 状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
+            argv = help_path(argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
@@ -165,8 +215,11 @@ def dispatch(argv, started):
     cmd = argv[1] if argv[:1] == ["orchestration"] and len(argv) > 1 else None
     if cmd is not None and cmd not in ORCHESTRATION_COMMANDS:
         # 本物と同じく、無いサブコマンドは失敗させる（成功で返すと、被験が誤ったコマンドのまま進む）
-        words = " ".join(next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv))
-        fail("invalid_argument", f"Unknown command: {words}")
+        fail("invalid_argument", f"Unknown command: {' '.join(command_words(argv))}")
+    if flags := VALID_FLAGS.get(tuple(argv[:2])):
+        unknown = next((a.split("=", 1)[0] for a in argv[2:] if a.startswith("--") and a[2:].split("=", 1)[0] not in flags), None)
+        if unknown:
+            fail("invalid_argument", f"Unknown flag {unknown} for command: {' '.join(argv[:2])}")
     if argv[:2] == ["worktree", "list"]:
         ok({"worktrees": worktrees(state)})
     elif cmd == "worker-list":
@@ -220,7 +273,7 @@ def dispatch(argv, started):
                   "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"}
             state["worktrees"].append(wt)
         else:
-            wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w)), None)
+            wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w, state["repo_id"])), None)
         if wt is None:
             fail("worktree_not_found", f"No worktree matches {sel}")
         state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
@@ -244,9 +297,29 @@ def dispatch(argv, started):
                                      "worktree": wt, "dispatch_id": f"ctx_new{state['seq']:04d}"})
         save(state_path, state)
         ok({"worktree": worktrees(state)[-1]})
+    elif argv[:2] == ["worktree", "set"]:
+        selector, issue = opt(argv, "--worktree"), opt(argv, "--issue")
+        if not selector:
+            fail("invalid_argument", "Missing required --worktree")
+        if "--issue" in argv and issue is None or issue is not None and issue != "null" and not issue.isdecimal():
+            fail("invalid_argument", "--issue requires a number or null")
+        wt = current_worktree(state) if selector in ("current", "active") else next((w for w in state["worktrees"] if selector_hits(selector, w, state["repo_id"])), None)
+        if wt is None:
+            fail("selector_not_found", f"No worktree matches {selector}")
+        if issue is not None:
+            # 本物は worktree に Issue を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue を読むので、
+            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）。
+            # 種のワーカーは worktree を持たず Issue で結び付くので、元の Issue で探す
+            ours = [w for w in state["workers"] if (w.get("worktree") or {}).get("path") == wt["path"]
+                    or (not w.get("worktree") and wt["issue"] is not None and w["issue"] == wt["issue"])]
+            wt["issue"] = None if issue == "null" else int(issue)
+            for worker in ours:
+                worker["issue"], worker["worktree"] = wt["issue"], wt
+            save(state_path, state)
+        ok({"worktree": next(row for row in worktrees(state) if row["path"] == wt["path"])})
     elif argv[:2] == ["worktree", "rm"]:
         selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
-        wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
+        wt = next((w for w in state["worktrees"] if selector_hits(selector, w, state["repo_id"])), None)
         if wt is None or wt is state["worktrees"][0]:
             fail("worktree_not_found", f"No removable worktree matches {selector}")
         if wt.get("checkout") and not {"--force", "--force=true"}.intersection(argv):

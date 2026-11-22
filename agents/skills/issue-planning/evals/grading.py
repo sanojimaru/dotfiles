@@ -107,7 +107,7 @@ def run_check(chk, ctx):
             if not calls or wt is None:
                 return not calls
             return all(
-                selector_hits(selector, wt) if (selector := option(c["argv"], "--worktree")) not in (None, "current") else
+                selector_hits(selector, wt, ctx["state"]["repo_id"]) if (selector := option(c["argv"], "--worktree")) not in (None, "current") else
                 bool(c.get("cwd")) and Path(c["cwd"]).is_relative_to(Path(wt["path"]).resolve())
                 for c in calls
             )

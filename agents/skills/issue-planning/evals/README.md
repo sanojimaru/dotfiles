@@ -77,7 +77,7 @@ python3 run_eval.py agreement "$LABEL_DIR/human.json" "$LABEL_DIR/answers.json"
 
 ## 試行の隔離
 
-Claude の被験は `sandbox-exec` の下で起動し、`/private/tmp` を読み書きさせません（Claude Code 自身が使う `/private/tmp/claude-<uid>` だけ許します）。被験が固定名の `/tmp/x.md` を使うと、並行する試行や前のセッションの同名のファイルと衝突し、別の試行の本文を Issue や `ask` に送ってしまうためです。`mktemp` は `TMPDIR` を使うので止まりません。Codex は自分で `sandbox-exec` を使い入れ子にできないので、この隔離はかかりません。Codex の被験を並行で流すときは、試行どうしの `/tmp` の衝突を別に防いでください。
+被験は `sandbox-exec` の下で起動し、`/private/tmp` を読み書きさせません（Claude Code 自身が使う `/private/tmp/claude-<uid>` だけ許します）。被験が固定名の `/tmp/x.md` を使うと、並行する試行や前のセッションの同名のファイルと衝突し、別の試行の本文を Issue や `ask` に送ってしまうためです。同じ理由で、`TMPDIR` は試行ごとの `<出力先>/tmp/` に向けます。macOS の `mktemp` は `TMPDIR` でなく利用者ごとの一時ディレクトリに乱数の名前で作るので、止まらず、衝突もしません。Codex の準備ターン（`--sandbox read-only`）だけは、Codex 自身が `sandbox-exec` を使い入れ子にできないので包みません。準備ターンは道具を使わないことを確かめているので、一時ファイルは書きません。
 
 代役の `orca` は、`--help` を本物に渡し、本物に無い `orchestration` のサブコマンドを本物と同じ `invalid_argument` で失敗させます。代役が知らないコマンドを成功で返すと、被験は誤ったコマンドのまま進むためです。
 

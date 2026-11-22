@@ -170,10 +170,24 @@ def isolated_zdotdir(out):
     return str(zdot)
 
 
+def trial_tmp(out):
+    """被験の一時ディレクトリを試行ごとに分ける。`$TMPDIR/x.md` のような固定名のファイルを、並行する試行と共有しないため
+    （dotfiles#173）。macOS の mktemp は TMPDIR でなく利用者ごとの一時ディレクトリに乱数の名前で作るので、衝突しない。
+    zsh はヒアドキュメントの一時ファイルを $TMPPREFIX（既定 /tmp/zsh）に作るので、隔離した /tmp の外に向ける。"""
+    (out / "tmp").mkdir()
+    (out / "zsh-tmp").mkdir()
+    return {"TMPDIR": f"{out / 'tmp'}/", "TMPPREFIX": str(out / "zsh-tmp" / "zsh")}
+
+
+def sb_string(path):
+    return '"' + str(path).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def tmp_sandbox(out):
     """並行する試行や前のセッションと `/tmp` の固定名のファイルを共有しないよう、被験から `/private/tmp` を読み書きさせない。
     Claude Code 自身が使う `/private/tmp/claude-<uid>` だけは許す。被験が書いた `/tmp/x.md` が、別の試行の同名の
-    ファイルの中身のまま Issue と `ask` に送られた（dotfiles#171）。Codex は自分で sandbox-exec を使い、入れ子にできないので対象外。"""
+    ファイルの中身のまま Issue と `ask` に送られた（dotfiles#171）。Codex は採点の起動で自分の sandbox を使わないので包める。
+    準備ターン（`--sandbox read-only`）は Codex が sandbox-exec を使い、入れ子にできないので包まない。"""
     profile = out / "tmp-sandbox.sb"
     profile.write_text(
         "(version 1)\n(allow default)\n"
@@ -182,7 +196,9 @@ def tmp_sandbox(out):
         # Claude Code の Bash ツールは、コマンドごとの作業ディレクトリを乱数の名前の /tmp/claude-<hex>-cwd に書く
         '(allow file-read* file-write* (regex #"^/private/tmp/claude-[0-9a-f]+-cwd$"))\n'
         # 出力先が /tmp の下でも、被験は自分の試行のファイル（指示書の下書き・clone・代役）を読み書きする
-        f'(allow file-read* file-write* (subpath "{out.resolve()}"))\n'
+        f'(allow file-read* file-write* (subpath {sb_string(out.resolve())}))\n'
+        # Codex は CODEX_HOME を正規化するので、出力先の祖先の stat を許す
+        + "".join(f"(allow file-read-metadata (literal {sb_string(p)}))\n" for p in out.resolve().parents)
     )
     return ["sandbox-exec", "-f", str(profile)]
 
@@ -190,10 +206,8 @@ def tmp_sandbox(out):
 def run_claude(prompt, clone, env, cond, out, history=None, followup=None):
     draft = out / "agents-md.md"
     draft.write_text(draft_for(cond))
-    # zsh はヒアドキュメントの一時ファイルを $TMPPREFIX（既定 /tmp/zsh）に作るので、隔離した /tmp の外に向ける
-    (out / "zsh-tmp").mkdir()
     env = dict(env, CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1",
-               CLAUDE_CODE_SHELL="/bin/zsh", ZDOTDIR=isolated_zdotdir(out), TMPPREFIX=str(out / "zsh-tmp" / "zsh"))
+               CLAUDE_CODE_SHELL="/bin/zsh", ZDOTDIR=isolated_zdotdir(out), **trial_tmp(out))
     argv = [*tmp_sandbox(out), "claude", "-p", "--output-format", "stream-json", "--verbose", "--model", CLAUDE_MODEL,
             "--setting-sources", "project,local", "--strict-mcp-config", "--permission-mode", "bypassPermissions",
             "--append-system-prompt-file", str(draft), "--max-budget-usd", str(BUDGET_USD)]
@@ -226,7 +240,9 @@ def run_codex(prompt, clone, env, cond, out, history=None, followup=None):
     if not jq:
         raise RuntimeError("Codex の評価で使う jq の実体が見つかりません")
     (bindir / "jq").symlink_to(jq)
-    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=isolated_zdotdir(out), GH_CONFIG_DIR=gh_config)
+    env = dict(env, HOME=str(user_home), CODEX_HOME=str(home), ZDOTDIR=isolated_zdotdir(out), GH_CONFIG_DIR=gh_config,
+               **trial_tmp(out))
+    sandbox = tmp_sandbox(out)
 
     def launch(text, path, session_id=None, warmup=False, timeout=WALL_SECONDS):
         last = out / ("last-message.txt" if path.name == "transcript.jsonl" else f"{path.stem}-last.txt")
@@ -234,7 +250,7 @@ def run_codex(prompt, clone, env, cond, out, history=None, followup=None):
                 "--json", "-m", CODEX_MODEL, "--skip-git-repo-check", "-o", str(last)]
         guard = ["--sandbox", "read-only"] if warmup else ["--dangerously-bypass-approvals-and-sandbox"]
         args = [session_id, text] if session_id else [text]
-        res = run_proc([*argv, *guard, "--", *args], clone, env, path, timeout)
+        res = run_proc([*([] if warmup else sandbox), *argv, *guard, "--", *args], clone, env, path, timeout)
         res["reply"] = last.read_text() if last.exists() else ""
         return res
 
