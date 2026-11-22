@@ -235,7 +235,7 @@ def dispatch(argv, started):
             fail("dispatch_not_found", f"Dispatch {dispatch_id} does not exist")
         worker.update(liveness="exited", state="stopped")
         save(state_path, state)
-        ok({"dispatchId": dispatch_id, "processAction": "closed_agent_terminal", "helpers": []})
+        ok({"dispatchId": dispatch_id, "state": "stopped", "processAction": "closed_agent_terminal", "helpers": []})
     elif cmd in ("run-use", "run-show"):
         rid = opt(argv, "--id")
         if rid != state["run_id"]:

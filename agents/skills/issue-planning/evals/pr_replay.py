@@ -151,7 +151,7 @@ def lifecycle(argv, records, event, rest_output=False):
 def close(argv, records, event):
     """取り下げの片付けで、マージしない PR を閉じる（dotfiles#190 の S7-C1）。"""
     parser = argparse.ArgumentParser(prog="gh pr close")
-    parser.add_argument("selector", nargs="?")
+    parser.add_argument("selector")  # 本物も、番号・URL・ブランチのどれかを要る
     parser.add_argument("-R", "--repo")
     parser.add_argument("-c", "--comment")
     parser.add_argument("-d", "--delete-branch", action="store_true")
