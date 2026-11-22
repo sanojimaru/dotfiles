@@ -16,7 +16,7 @@
   - やり残し: 完了の状態の残りの各項目と、それぞれを移す先の backlog の Issue。
   - 後片付け: 開いている子 Issue・動いているワーカー・worktree・PR を、それぞれどうするか（閉じる・止める・消す・残す）。
 
-  利用者の答えをもらってから、残りを backlog の Issue に移し、答えのとおりに後片付けをして、`--reason "not planned"` で閉じる。確認なしに `not planned` で閉じない。
+  利用者の答えをもらってから、残りを backlog の Issue に移し、答えのとおりに後片付けをして、`--reason "not planned"` で閉じる。worktree は、利用者が消すと答えても、子の worktree は AGENTS.md の「セッションと worktree」の条件を、親の worktree は下の「親の worktree」の条件を満たすときだけ消す。親の worktree は Epic を閉じた後に消す。確認なしに `not planned` で閉じない。
 
 ## 親の worktree
 
