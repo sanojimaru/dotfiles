@@ -68,6 +68,15 @@ python3 run_eval.py labels "$CODEX_DEV_OUTPUT" --out "$LABEL_DIR" --count 20 --p
 python3 run_eval.py labels "$CLAUDE_HOLDOUT_OUTPUT" --out "$LABEL_DIR" --cover --prefix B --append --title "組 B"
 ```
 
+### ラベラー（エージェントのラベル）
+
+`labeler.py` は、`labels.md` の問いと証拠だけを読み、別の会社の 2 モデルが同じ yes か no を返した問いにそのラベルを、unsure か食い違いの問いに保留（`null`）を付けます（dotfiles#193）。被験と同じ系統のモデルだけでラベルを決めないためです。`label_metrics.py` は、`human.json`・`answers.json` とラベラーの `agent.json` から、#193 の事前登録の合格線 1〜4 と、報告だけの指標を出します。`agent.json` を省くと、すべて yes の代役と判定器だけを出します。test（`190-labels`）を測るときは `--groups A,B` を付け、どちらかの組が `answers.json` に無ければ未判定にします。
+
+```sh
+orca-nested python3 labeler.py "$LABEL_DIR/labels.md" --out "$AGENT_DIR"
+python3 label_metrics.py "$LABEL_DIR/human.json" "$LABEL_DIR/answers.json" "$AGENT_DIR/agent.json" --reasons "$AGENT_DIR/reasons.json"
+```
+
 ## 会話の途中から始める
 
 `history` に、着信前に終わった会話を話者付きで書きます。評価器は手前の会話を新しいセッションの準備ターンで読み込ませ、確認応答のあとに、同じセッション ID で再開して `prompt` を送ります。準備ターンではケースの操作を実行せず、採点には再開後のターンだけを使います。準備ターンと再開後の記録は、それぞれ `history.jsonl` と `transcript.jsonl` に保存します。
