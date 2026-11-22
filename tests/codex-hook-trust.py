@@ -49,6 +49,7 @@ class CodexHookTrustTest(unittest.TestCase):
         self.files = {name: self.tmp / name.lower() for name in
                       ('FAKE_HOOKS', 'FAKE_WRITES', 'FAKE_EXEC', 'FAKE_CWDS')}
         self.env = {**os.environ, **{k: str(v) for k, v in self.files.items()}, 'HOME': str(self.tmp),
+                    'CODEX_HOME': str(self.tmp / '.codex'),
                     'PATH': f'{BIN}{os.pathsep}{self.fake_bin}{os.pathsep}{os.environ["PATH"]}'}
 
     def hook(self, key, source, status='untrusted', path=None):
