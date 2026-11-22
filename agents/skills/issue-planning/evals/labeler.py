@@ -65,7 +65,7 @@ def codex_args(home, deny):
     CODEX_HOME には auth.json だけを置き、~/.codex/AGENTS.md（評価しているワークフローの規則）と config.toml の MCP を読ませない。
     codex exec は read-only でも作業ディレクトリの外を読めるので、shell の道具を切り、sandbox-exec で deny のパスの読み取りを止める。
     Codex の道具は自分の sandbox-exec を入れ子にできず失敗するので、道具が動く前に止まる。Claude 側は --tools "" で道具が無い。"""
-    rules = "".join(f'(deny file-read* (subpath "{d}"))' for d in deny)
+    rules = "".join(f'(deny file-read* (subpath "{d.replace(chr(92), chr(92) * 2).replace(chr(34), chr(92) + chr(34))}"))' for d in deny)
     return ["sandbox-exec", "-p", f"(version 1)(allow default){rules}", "codex", "exec", "-m", MODELS["codex"], "-s", "read-only",
             "--skip-git-repo-check", "--ephemeral", "--json", "--disable", "shell_tool", "--disable", "unified_exec"]
 
@@ -83,11 +83,11 @@ def call(kind, prompt, home, deny):
                 r = sh([*codex_args(home, deny), "-o", str(out), prompt], env=env, cwd=tmp)
                 text, err = out.read_text() if out.exists() and r.returncode == 0 else "", r.stderr or f"終了コード {r.returncode}"
                 events = []
-                for line in r.stdout.splitlines():  # 異常終了で最後の行が切れていても、その呼び出しの失敗として扱う
+                for line in filter(str.strip, r.stdout.splitlines()):  # 読めない行があると、道具を使ったかを確かめられないので、その呼び出しの失敗として扱う
                     try:
                         events.append(json.loads(line))
                     except json.JSONDecodeError:
-                        pass
+                        text, err = "", f"JSONL を読めなかった: {line[:100]}"
                 usage = next((e.get("usage") for e in reversed(events) if e.get("type") == "turn.completed"), None)
                 # 道具を使おうとした答えは、証拠のほかの何かに基づいた答えかもしれないので捨てる
                 tools = sorted({f"{it['type']}: {str(it.get('command', ''))[:80]}" for e in events if (it := e.get("item")) and it.get("type") not in ("agent_message", "reasoning")})
