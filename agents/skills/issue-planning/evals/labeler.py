@@ -21,7 +21,7 @@ from common import CLAUDE_MODEL, CODEX_MODEL, STRIP_ENV, sh
 MODELS = {"claude": CLAUDE_MODEL, "codex": CODEX_MODEL}
 PROMPT = """あなたは、AI エージェントの評価で、人の代わりに yes/no のラベルを付けます。
 下の証拠は、評価の試行でエージェントが残したもの（{source}）です。問いに、証拠だけから答えてください。ファイルを読んだりコマンドを実行したりしないでください。
-
+{examples}
 - 問いが求めることを、証拠の記述で確かめられるときだけ yes にします。
 - 証拠に問いが求めることが無いか、反する記述があれば no にします。
 - 証拠を読んでも yes とも no とも決められないときは unsure にします。推測で yes や no を選ばないでください。
@@ -33,6 +33,11 @@ PROMPT = """あなたは、AI エージェントの評価で、人の代わり�
 
 次の JSON だけを 1 行で答えてください。reason は日本語で 1〜2 文にし、根拠にした証拠の箇所を書きます。
 {{"answer": "yes" | "no" | "unsure", "reason": "..."}}"""
+EXAMPLES = """
+ラベルを付ける利用者は、同じ評価の別の試行に、下のようにラベルを付けています。利用者がどこまでを yes とし、どこからを no とするかの基準を、この例から読み取り、同じ基準で答えてください。例の問いと答える問いは、試行も証拠も別のものです。
+
+{blocks}
+"""
 SOURCES = {"reply": "利用者への返事", "first_reply": "最初の返事", "issues": "Issue の本文やコメントの JSON", "orca": "orca コマンドの呼び出し", "combined": "返事と記録を合わせたもの"}
 
 
@@ -58,6 +63,29 @@ def parse_labels(text):
             raise SystemExit(f"{it['key']}/{it['qid']} の問いを labels.md から読めなかった")
         it["evidence"] = "\n".join(it["evidence"])
     return items
+
+
+def load_examples(pairs, target):
+    """--examples の labels.md と human.json から、試行ごとに証拠と利用者のラベルを並べた例の文を作る。
+    例の選び方を利用者のラベルや判定器の答えで変えると、ラベラーが answers.json を読むのと同じになるので、渡した組の問いをすべて使う。"""
+    blocks = []
+    for labels, human in pairs:
+        if labels.resolve().parent == target.resolve().parent or human.resolve().parent == target.resolve().parent:
+            raise SystemExit(f"ラベルを付ける組と同じ置き場のラベルは、例に使えない: {labels}")
+        got = json.loads(human.read_text())
+        by_key = {}
+        for it in parse_labels(labels.read_text()):
+            label = got.get(it["key"], {}).get(it["qid"])
+            if label is not None:
+                by_key.setdefault(it["key"], []).append((it, label))
+        for key, rows in by_key.items():
+            evidences = list(dict.fromkeys((it["source"], it["evidence"]) for it, _ in rows))
+            lines = [f"### 例 {labels.parent.name}/{key}"]
+            for n, (source, ev) in enumerate(evidences, 1):
+                lines += [f"証拠 {n}（{SOURCES.get(source, source)}）:", *(f"> {x}" for x in ev.split("\n"))]
+            lines += [f"- 問い（証拠 {evidences.index((it['source'], it['evidence'])) + 1}）: {it['q']} → 利用者のラベル: {'yes' if label else 'no'}" for it, label in rows]
+            blocks.append("\n".join(lines))
+    return EXAMPLES.format(blocks="\n\n".join(blocks)) if blocks else ""
 
 
 def codex_args(home, deny):
@@ -116,8 +144,8 @@ def call(kind, prompt, home, deny):
     return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
 
 
-def ask(kind, item, home, deny):
-    prompt = PROMPT.format(source=SOURCES.get(item["source"], item["source"]), evidence=item["evidence"], question=item["q"])
+def ask(kind, item, home, deny, examples):
+    prompt = PROMPT.format(source=SOURCES.get(item["source"], item["source"]), evidence=item["evidence"], question=item["q"], examples=examples)
     res = call(kind, prompt, home, deny)
     if res["answer"] is None:  # 一時的な失敗か書式の崩れ。1 回だけ呼び直す。費用は両方の回を数える
         first = res
@@ -136,10 +164,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("labels", type=Path, help="labels.md のパス（同じディレクトリの answers.json・human.json は読まない）")
     ap.add_argument("--out", type=Path, required=True, help="agent.json と reasons.json を書くディレクトリ")
+    ap.add_argument("--examples", nargs=2, action="append", type=Path, default=[], metavar=("LABELS_MD", "HUMAN_JSON"),
+                    help="利用者のラベルの例に使う別の組の labels.md と human.json（繰り返せる）。ラベルを付ける組と同じ置き場は使えない")
     ap.add_argument("--jobs", type=int, default=4, help="モデルごとの並列数")
     ap.add_argument("--only", help="この正規表現に合う key/qid だけを付ける（動作の確認用）")
     args = ap.parse_args()
     items = parse_labels(args.labels.read_text())
+    examples = load_examples(args.examples, args.labels)
     if args.only:
         items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
     args.out.mkdir(parents=True, exist_ok=True)
@@ -150,7 +181,7 @@ def main():
         src = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "auth.json"
         (Path(home) / "auth.json").symlink_to(src)
         pools = {kind: concurrent.futures.ThreadPoolExecutor(args.jobs) for kind in MODELS}
-        futures = {(i, kind): pools[kind].submit(ask, kind, it, home, deny) for i, it in enumerate(items) for kind in MODELS}
+        futures = {(i, kind): pools[kind].submit(ask, kind, it, home, deny, examples) for i, it in enumerate(items) for kind in MODELS}
         results = {k: f.result() for k, f in futures.items()}
         for pool in pools.values():
             pool.shutdown()
@@ -163,7 +194,7 @@ def main():
         answers = {kind: results[(i, kind)] for kind in MODELS}
         agent.setdefault(it["key"], {})[it["qid"]] = decide(answers)
         reasons.setdefault(it["key"], {})[it["qid"]] = {"q": it["q"], **answers}
-    meta = {"models": MODELS, "items": len(items), "seconds": round(time.monotonic() - start, 1),
+    meta = {"models": MODELS, "items": len(items), "examples": [[str(p) for p in pair] for pair in args.examples], "seconds": round(time.monotonic() - start, 1),
             "cost_usd": {"claude": round(sum(u.get("cost_usd") or 0 for u in usages("claude")), 4)},
             "tokens": {"codex": {f: sum(u.get(f, 0) for u in usages("codex")) for f in ("input_tokens", "cached_input_tokens", "output_tokens")}},
             "parse_errors": sum(r["answer"] is None for r in results.values()),
