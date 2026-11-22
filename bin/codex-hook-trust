@@ -18,13 +18,24 @@ import threading
 OWNERS = {'sanojimaru', 'spikestudio'}
 NEEDS_TRUST = {'untrusted', 'modified'}
 TIMEOUT = 10
-GITHUB_URL = re.compile(r'^(?:[a-z+]+://)?(?:[^@/]+@)?github\.com(?::\d+)?[:/]([^/]+)/[^/]+$', re.I)
+# https://github.com/<owner>/<repo>、ssh://git@github.com[:port]/<owner>/<repo>、git@github.com:<owner>/<repo>。
+# スキームもユーザーも無い "github.com/..." は git にとってローカルのパスなので通さない。
+GITHUB_URLS = (re.compile(r'^(?:https|ssh|git)://(?:[^@/]+@)?github\.com(?::\d+)?/([^/]+)/[^/]+$', re.I),
+               re.compile(r'^[^@/:]+@github\.com:([^/]+)/[^/]+$', re.I))
+# フックを使わない呼び出し。Orca が版を確かめるときなどに、承認を書き換えないため。
+NO_SESSION_FLAGS = {'-h', '--help', '-V', '--version'}
+NO_SESSION_COMMANDS = {'help', 'completion', 'login', 'logout', 'mcp', 'plugin', 'features', 'doctor',
+                       'debug', 'update', 'apply', 'a', 'archive', 'unarchive', 'delete', 'app',
+                       'migrate-rollouts', 'migrate-nfs-db'}
 
 
 def remote_owner(url):
     """GitHub の remote の URL から owner を返す。GitHub でなければ None。"""
-    match = GITHUB_URL.match(url.strip())
-    return match.group(1).lower() if match else None
+    for pattern in GITHUB_URLS:
+        match = pattern.match(url.strip())
+        if match:
+            return match.group(1).lower()
+    return None
 
 
 def own_repository(path):
@@ -102,15 +113,25 @@ def find_codex():
     return None
 
 
+def starts_session(args):
+    """codex の引数が、フックを使うセッションを始めうるなら True。"""
+    if args and args[0] in NO_SESSION_COMMANDS:
+        return False
+    options = args[:args.index('--')] if '--' in args else args
+    return not NO_SESSION_FLAGS & set(options)
+
+
 def codex_cwd(args):
     """codex の引数の -C/--cd を作業ディレクトリとして返す。無ければ今のディレクトリ。"""
     for i, arg in enumerate(args):
+        if arg == '--':
+            break
         if arg in ('-C', '--cd') and i + 1 < len(args):
             return os.path.abspath(args[i + 1])
         if arg.startswith('--cd='):
             return os.path.abspath(arg[len('--cd='):])
-        if arg == '--':
-            break
+        if arg.startswith('-C') and len(arg) > 2:
+            return os.path.abspath(arg[2:].removeprefix('='))
     return os.getcwd()
 
 
@@ -119,6 +140,8 @@ def main(argv):
     codex = None
     if len(argv) >= 2 and argv[0] == '--codex':
         codex, argv = argv[1], argv[2:]
+    if not starts_session(argv):
+        return 0
     codex = codex or find_codex()
     if not codex:
         print('codex-hook-trust: codex が PATH に見つからない', file=sys.stderr)

@@ -100,12 +100,13 @@ class CodexHookTrustTest(unittest.TestCase):
                 'mixed', 'git@github.com:sanojimaru/x.git', 'https://github.com/someone/x.git')),
             self.hook('lookalike', 'project', path=self.repo('lookalike', 'https://github.com/sanojimaru-evil/x')),
             self.hook('gitlab', 'project', path=self.repo('gitlab', 'git@gitlab.com:sanojimaru/x.git')),
+            self.hook('local-path', 'project', path=self.repo('local-path', 'github.com/sanojimaru/x')),
             self.hook('no-remote', 'project', path=self.repo('no-remote')),
             self.hook('no-repo', 'project', path=self.tmp / 'plain/.codex/hooks.json'),
         ]
         stderr = self.run_codex(hooks)
         self.assertEqual(set(self.written()), {'own'})
-        self.assertIn('プロジェクトのフック 6 件は信頼しなかった', stderr)
+        self.assertIn('プロジェクトのフック 7 件は信頼しなかった', stderr)
 
     def test_leaves_trusted_managed_and_other_sources(self):
         hooks = [self.hook('trusted', 'user', 'trusted'), self.hook('managed', 'project', 'managed'),
@@ -116,9 +117,18 @@ class CodexHookTrustTest(unittest.TestCase):
     def test_wrapper_execs_real_codex_with_same_args_and_cd(self):
         work = self.tmp / 'work'
         work.mkdir()
-        self.run_codex([self.hook('user', 'user')], '-C', 'work', 'exec', 'hi')
-        self.assertEqual(json.loads(self.files['FAKE_EXEC'].read_text()), ['-C', 'work', 'exec', 'hi'])
-        self.assertEqual(self.files['FAKE_CWDS'].read_text().split(), [str(work)] * 2)
+        for args in (['-C', 'work', 'exec', 'hi'], ['-Cwork', 'exec', 'hi'], ['--cd=work']):
+            self.files['FAKE_CWDS'].unlink(missing_ok=True)
+            self.run_codex([self.hook('user', 'user')], *args)
+            self.assertEqual(json.loads(self.files['FAKE_EXEC'].read_text()), args)
+            self.assertEqual(self.files['FAKE_CWDS'].read_text().split(), [str(work)] * 2)
+
+    def test_wrapper_leaves_hooks_for_calls_without_session(self):
+        for args in (['--version'], ['-c', 'x=1', '--help'], ['login', 'status'], ['completion', 'fish']):
+            self.assertEqual(self.run_codex([self.hook('user', 'user')], *args), '')
+            self.assertEqual(json.loads(self.files['FAKE_EXEC'].read_text()), args)
+        self.assertFalse(self.files['FAKE_CWDS'].exists())
+        self.assertEqual(self.written(), {})
 
     def test_wrapper_still_starts_codex_when_trust_fails(self):
         self.files['FAKE_HOOKS'].write_text('not json')
