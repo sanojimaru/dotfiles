@@ -656,6 +656,10 @@ def main():
     p.add_argument("transcript", type=Path, nargs="+")
     p = sub.add_parser("labels"); p.add_argument("dir", nargs="+"); p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=91); p.set_defaults(f=cmd_labels)
     p.add_argument("--count", type=int, default=20, help="判定器の問いがある試行から、混ぜて選ぶ件数")
+    p.add_argument("--cover", action="store_true", help="件数の代わりに、ケースの判定の問いがそれぞれ 1 回以上入るように選ぶ")
+    p.add_argument("--prefix", default="L", help="ラベルのキーの頭の英字。agreement はこの組ごとに一致率を出す")
+    p.add_argument("--append", action="store_true", help="--out にある labels.md・answers.json・human.json に足す")
+    p.add_argument("--title", help="labels.md でこの組の前に置く見出し")
     p = sub.add_parser("agreement"); p.add_argument("human"); p.add_argument("answers"); p.set_defaults(f=cmd_agreement)
     p = sub.add_parser("report"); p.add_argument("dir", nargs="+"); p.set_defaults(f=cmd_report)
     args = ap.parse_args()
@@ -669,6 +673,8 @@ def main():
             ap.error(str(exc))
         print(json.dumps(findings, ensure_ascii=False, indent=2))
         return int(bool(findings))
+    if args.cmd == "labels" and not re.fullmatch(r"[A-Za-z]+", args.prefix):
+        ap.error("--prefix は英字だけにしてください（agreement はキーの頭の英字で組を分ける）")
     if args.cmd in ("trial", "batch") and args.split == "holdout" and not args.out:
         ap.error("評価データセットの試行ログの保存先を --out で指定してください")
     return args.f(args)
