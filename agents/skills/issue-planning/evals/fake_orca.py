@@ -20,6 +20,14 @@ ORCHESTRATION_COMMANDS = {
     "worker-abandon", "worker-release", "worker-keep-open", "worker-list", "dispatch", "request-show",
     "dispatch-show", "ask", "coordinator-start", "coordinator-stop", "gate-create", "gate-resolve", "gate-list", "reset",
 }
+# `orca orchestration worker-start --help` が挙げるフラグ。本物はこれ以外のフラグ（`--issue` など）を invalid_argument で拒む
+WORKER_START_FLAGS = {
+    "agent", "base-branch", "comment", "deps", "display-name", "effort", "environment", "from", "full", "help", "json",
+    "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup", "spec",
+    "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
+}
+# 値を取らないフラグ。これ以外の `--x` の次の語は、そのフラグの値として読む
+BOOLEAN_FLAGS = {"--help", "-h", "--json", "--full", "--keep-open", "--all", "--peek", "--no-parent", "--force", "--unread", "--read"}
 
 
 def log(argv, started, rc):
@@ -50,6 +58,19 @@ def opt(argv, name):
         if value.startswith(name + "="):
             return value.split("=", 1)[1]
     return None
+
+
+def command_words(argv):
+    """オプションとその値を除いた、コマンドの語。本物はオプションの後に書いたサブコマンドもコマンドとして読む。"""
+    words, skip = [], False
+    for a in argv:
+        if skip and not a.startswith("-"):
+            skip = False
+            continue
+        skip = a.startswith("-") and "=" not in a and a not in BOOLEAN_FLAGS
+        if not a.startswith("-"):
+            words.append(a)
+    return words
 
 
 def save(path, state):
@@ -156,8 +177,9 @@ def dispatch(argv, started):
             sys.exit("fake_orca: 本物の orca のパスが代役自身を指している")
         os.environ["ORCA_FAKE_ACTIVE"] = "1"
         if argv[:1] != ["skills"]:
-            # 本物は `-h` をヘルプと読まないので、元の引数のまま渡すと状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
-            argv = next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv) + ["--help"]
+            # 本物は `-h` をヘルプと読まず、`--comment --help` の `--help` を値として読むので、元の引数のまま渡すと
+            # 状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
+            argv = command_words(argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
@@ -165,8 +187,7 @@ def dispatch(argv, started):
     cmd = argv[1] if argv[:1] == ["orchestration"] and len(argv) > 1 else None
     if cmd is not None and cmd not in ORCHESTRATION_COMMANDS:
         # 本物と同じく、無いサブコマンドは失敗させる（成功で返すと、被験が誤ったコマンドのまま進む）
-        words = " ".join(next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv))
-        fail("invalid_argument", f"Unknown command: {words}")
+        fail("invalid_argument", f"Unknown command: {' '.join(command_words(argv))}")
     if argv[:2] == ["worktree", "list"]:
         ok({"worktrees": worktrees(state)})
     elif cmd == "worker-list":
@@ -205,6 +226,9 @@ def dispatch(argv, started):
         save(state_path, state)
         ok({"taskId": task, "status": "ready"})
     elif cmd == "worker-start":
+        unknown = next((a for a in argv[2:] if a.startswith("--") and a[2:].split("=", 1)[0] not in WORKER_START_FLAGS), None)
+        if unknown:
+            fail("invalid_argument", f"Unknown flag {unknown.split('=', 1)[0]} for command: orchestration worker-start")
         if opt(argv, "--spec") or opt(argv, "--spec-file"):  # 本物は、--spec を渡すと Task を作って起動する
             state["seq"] = state.get("seq", 0) + 1
             state.setdefault("tasks", []).append(f"task_new{state['seq']:04d}")
@@ -244,6 +268,24 @@ def dispatch(argv, started):
                                      "worktree": wt, "dispatch_id": f"ctx_new{state['seq']:04d}"})
         save(state_path, state)
         ok({"worktree": worktrees(state)[-1]})
+    elif argv[:2] == ["worktree", "set"]:
+        selector, issue = opt(argv, "--worktree"), opt(argv, "--issue")
+        if not selector:
+            fail("invalid_argument", "Missing required --worktree")
+        if issue is not None and issue != "null" and not issue.isdecimal():
+            fail("invalid_argument", "--issue requires a number or null")
+        wt = current_worktree(state) if selector in ("current", "active") else next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
+        if wt is None:
+            fail("selector_not_found", f"No worktree matches {selector}")
+        if issue is not None:
+            # 本物は worktree に Issue を結び付け、そこで動くワーカーもその Issue のものになる。採点はワーカーの Issue を読むので、
+            # 起動の後に結び付けた試行も数えられるよう、同じ worktree のワーカーの記録も直す（dotfiles#173）
+            wt["issue"] = None if issue == "null" else int(issue)
+            for worker in state["workers"]:
+                if worker.get("worktree", {}).get("path") == wt["path"]:
+                    worker["issue"], worker["worktree"] = wt["issue"], wt
+            save(state_path, state)
+        ok({"worktree": next(row for row in worktrees(state) if row["path"] == wt["path"])})
     elif argv[:2] == ["worktree", "rm"]:
         selector = opt(argv, "--worktree") or (argv[2] if len(argv) > 2 else "")
         wt = next((w for w in state["worktrees"] if selector_hits(selector, w)), None)
