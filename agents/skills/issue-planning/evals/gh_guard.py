@@ -24,7 +24,7 @@ GH_REAL = "@@GH_REAL@@"  # 試行ごとにコピーするとき、本物の gh �
 # 通すのは、評価で使うコマンドだけ（`issue transfer`・`issue delete`・`repo delete`・`auth` などは通さない）
 ALLOW = {
     "issue": {"list", "view", "comment", "close", "reopen", "edit", "create", "status"},
-    "pr": {"list", "ls", "view", "checks", "diff", "merge"},
+    "pr": {"list", "ls", "view", "checks", "diff", "merge", "close"},
     "stack": {"merge", "sync", "view"},
     "label": {"list", "create"},
     "repo": {"view"},
