@@ -85,7 +85,7 @@ drawio (cask), libreoffice (cask)
 
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
-- `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す。`codex` は本物の codex より前に PATH に置くラッパーで、起動のたびに `codex-hook-trust` で自分が管理するフックを信頼してから本物を起動する。信頼するのはユーザーのフック、インストール済みのプラグインのフック、remote がすべて `sanojimaru/*` か `spikestudio/*` の GitHub リポジトリにあるプロジェクトのフックだけで、ほかのプロジェクトのフックは件数を表示して Codex の `/hooks` での承認に任せる)
+- `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す。`codex` は本物の codex より前に PATH に置くラッパーで、起動のたびに `codex-hook-trust` で自分が管理するフックを信頼してから本物を起動する。信頼するのはユーザーのフックとインストール済みのプラグインのフックだけで、プロジェクトのフックは件数を表示して Codex の `/hooks` での承認に任せる)
 - `tests/` — 自作コマンドとインストールのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`tests/install.sh`、`tests/codex-hook-trust.py`。本物の codex は呼ばない)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
 - `agents/skills/<スキル名>/SKILL.md` — 共通スキル。`./install.sh` がスキルのディレクトリを `~/.claude/skills/<スキル名>` と `~/.agents/skills/<スキル名>`（Codex）へリンクする。追加したら再実行し、新しいセッションで使う。例: `agents/skills/issue-planning/SKILL.md`。配置先に別のファイル・リンクがある場合や Codex 専用スキルと同名の場合は、既存のものを保ち、エラーで止まるので名前を分ける

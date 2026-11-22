@@ -48,17 +48,8 @@ class CodexHookTrustTest(unittest.TestCase):
         (self.fake_bin / 'codex').chmod(0o755)
         self.files = {name: self.tmp / name.lower() for name in
                       ('FAKE_HOOKS', 'FAKE_WRITES', 'FAKE_EXEC', 'FAKE_CWDS')}
-        self.env = {**os.environ, **{k: str(v) for k, v in self.files.items()},
-                    'HOME': str(self.tmp), 'GIT_CONFIG_NOSYSTEM': '1',
+        self.env = {**os.environ, **{k: str(v) for k, v in self.files.items()}, 'HOME': str(self.tmp),
                     'PATH': f'{BIN}{os.pathsep}{self.fake_bin}{os.pathsep}{os.environ["PATH"]}'}
-
-    def repo(self, name, *remotes):
-        path = self.tmp / name
-        (path / '.codex').mkdir(parents=True)
-        subprocess.run(['git', 'init', '-q', str(path)], check=True, env=self.env)
-        for i, url in enumerate(remotes):
-            subprocess.run(['git', '-C', str(path), 'remote', 'add', f'r{i}', url], check=True, env=self.env)
-        return path / '.codex/hooks.json'
 
     def hook(self, key, source, status='untrusted', path=None):
         return {'key': key, 'source': source, 'trustStatus': status, 'currentHash': f'sha256:{key}',
@@ -78,43 +69,17 @@ class CodexHookTrustTest(unittest.TestCase):
                             p['edits'][0]['mergeStrategy'] == 'upsert' for p in params))
         return {k: v for p in params for k, v in p['edits'][0]['value'].items()}
 
-    def test_trusts_user_plugin_and_own_project_hooks(self):
-        hooks = [
-            self.hook('user', 'user'),
-            self.hook('plugin', 'plugin', 'modified'),
-            self.hook('ssh', 'project', path=self.repo('ssh', 'git@github.com:sanojimaru/dotfiles.git')),
-            self.hook('https', 'project', 'modified',
-                      self.repo('https', 'https://github.com/SpikeStudio/app', 'https://github.com/sanojimaru/app.git')),
-        ]
+    def test_trusts_only_user_and_plugin_hooks(self):
+        hooks = [self.hook('user', 'user'), self.hook('plugin', 'plugin', 'modified'),
+                 self.hook('project', 'project', path=self.tmp / 'a/.codex/hooks.json'),
+                 self.hook('changed', 'project', 'modified', self.tmp / 'b/.codex/hooks.json')]
         stderr = self.run_codex(hooks)
-        self.assertEqual(self.written(), {h['key']: {'trusted_hash': h['currentHash']} for h in hooks})
-        self.assertIn('フック 4 件を信頼した', stderr)
-        self.assertNotIn('信頼しなかった', stderr)
+        self.assertEqual(self.written(), {h['key']: {'trusted_hash': h['currentHash']} for h in hooks[:2]})
+        self.assertIn('フック 2 件を信頼した', stderr)
+        self.assertIn('プロジェクトなどのフック 2 件は信頼しなかった', stderr)
 
-    def test_skips_project_hooks_outside_own_repositories(self):
-        own = self.repo('own', 'git@github.com:sanojimaru/x.git')
-        hooks = [
-            self.hook('own', 'project', path=own),
-            self.hook('other', 'project', path=self.repo('other', 'https://github.com/someone/x.git')),
-            self.hook('mixed', 'project', path=self.repo(
-                'mixed', 'git@github.com:sanojimaru/x.git', 'https://github.com/someone/x.git')),
-            self.hook('lookalike', 'project', path=self.repo('lookalike', 'https://github.com/sanojimaru-evil/x')),
-            self.hook('gitlab', 'project', path=self.repo('gitlab', 'git@gitlab.com:sanojimaru/x.git')),
-            self.hook('local-path', 'project', path=self.repo('local-path', 'github.com/sanojimaru/x')),
-            self.hook('no-remote', 'project', path=self.repo('no-remote')),
-            self.hook('no-repo', 'project', path=self.tmp / 'plain/.codex/hooks.json'),
-        ]
-        # 自分のリポジトリの hooks.json が、外のリポジトリのファイルへのリンクになっている。
-        linked = self.repo('linked', 'git@github.com:sanojimaru/x.git')
-        linked.symlink_to(self.repo('target', 'https://github.com/someone/x.git'))
-        hooks.append(self.hook('linked', 'project', path=linked))
-        stderr = self.run_codex(hooks)
-        self.assertEqual(set(self.written()), {'own'})
-        self.assertIn('プロジェクトのフック 8 件は信頼しなかった', stderr)
-
-    def test_leaves_trusted_managed_and_other_sources(self):
-        hooks = [self.hook('trusted', 'user', 'trusted'), self.hook('managed', 'project', 'managed'),
-                 self.hook('mdm', 'mdm')]
+    def test_leaves_trusted_and_managed_hooks(self):
+        hooks = [self.hook('trusted', 'user', 'trusted'), self.hook('managed', 'project', 'managed')]
         self.assertEqual(self.run_codex(hooks), '')
         self.assertEqual(self.written(), {})
 

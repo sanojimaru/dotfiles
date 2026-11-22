@@ -3,26 +3,20 @@
 
 Codex はフックの定義やプラグインの中身が変わると、/hooks で承認し直すまでそのフックを動かさない。
 未信頼のフックは動かないので、フックの中からは信頼できない。だから起動の前に app-server で信頼する。
-信頼するのは、ユーザーのフック・インストール済みのプラグインのフック・remote がすべて OWNERS の
-GitHub リポジトリにあるプロジェクトのフックだけ。外部のリポジトリを clone して開いたときに、
-そのフック（任意のコマンド）が確認なしで動かないようにするため。
+信頼するのは、ユーザーのフックとインストール済みのプラグインのフックだけ。プロジェクトのフックは
+信頼しない。checkout したブランチのフック（任意のコマンド）が、誰が書いたかを確かめずに動かないようにするため。
 """
 import fcntl
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 import threading
 
-OWNERS = {'sanojimaru', 'spikestudio'}
 NEEDS_TRUST = {'untrusted', 'modified'}
+TRUSTED_SOURCES = {'user', 'plugin'}
 TIMEOUT = 10
-# https://github.com/<owner>/<repo>、ssh://git@github.com[:port]/<owner>/<repo>、git@github.com:<owner>/<repo>。
-# スキームもユーザーも無い "github.com/..." は git にとってローカルのパスなので通さない。
-GITHUB_URLS = (re.compile(r'^(?:https|ssh|git)://(?:[^@/]+@)?github\.com(?::\d+)?/([^/]+)/[^/]+$', re.I),
-               re.compile(r'^[^@/:]+@github\.com:([^/]+)/[^/]+$', re.I))
 # フックを使わない呼び出し。Orca が版を確かめるときなどに、承認を書き換えないため。
 NO_SESSION_FLAGS = {'-h', '--help', '-V', '--version'}
 NO_SESSION_COMMANDS = {'help', 'completion', 'login', 'logout', 'mcp', 'plugin', 'features', 'doctor',
@@ -30,41 +24,11 @@ NO_SESSION_COMMANDS = {'help', 'completion', 'login', 'logout', 'mcp', 'plugin',
                        'migrate-rollouts', 'migrate-nfs-db'}
 
 
-def remote_owner(url):
-    """GitHub の remote の URL から owner を返す。GitHub でなければ None。"""
-    for pattern in GITHUB_URLS:
-        match = pattern.match(url.strip())
-        if match:
-            return match.group(1).lower()
-    return None
-
-
-def own_repository(path):
-    """path を含むリポジトリの remote がすべて OWNERS の GitHub リポジトリなら True。remote が無ければ False。"""
-    try:
-        out = subprocess.run(['git', '-C', str(path), 'remote', '-v'], capture_output=True,
-                             text=True, timeout=TIMEOUT)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    urls = {line.split()[1] for line in out.stdout.splitlines() if len(line.split()) >= 2}
-    return out.returncode == 0 and bool(urls) and all(remote_owner(u) in OWNERS for u in urls)
-
-
-def classify(hooks, is_own=own_repository):
-    """信頼が要るフックを (信頼するもの, 信頼しないプロジェクトのフック) に分ける。"""
-    trust, skipped = [], []
-    for hook in hooks:
-        if hook['trustStatus'] not in NEEDS_TRUST:
-            continue
-        source = hook['source']
-        if source in ('user', 'plugin'):
-            trust.append(hook)
-        elif source == 'project':
-            # リンクで外のファイルを指していれば、その置き場所も自分のリポジトリでなければ信頼しない。
-            path = Path(hook['sourcePath'])
-            own = is_own(path.parent) and is_own(path.resolve().parent)
-            (trust if own else skipped).append(hook)
-    return trust, skipped
+def classify(hooks):
+    """信頼が要るフックを (信頼するもの, 信頼しないもの) に分ける。"""
+    pending = [h for h in hooks if h['trustStatus'] in NEEDS_TRUST]
+    trust = [h for h in pending if h['source'] in TRUSTED_SOURCES]
+    return trust, [h for h in pending if h['source'] not in TRUSTED_SOURCES]
 
 
 class AppServer:
@@ -178,7 +142,7 @@ def main(argv):
             print(f'codex-hook-trust: フック {len(trust)} 件を信頼した', file=sys.stderr)
         if skipped:
             paths = sorted({h['sourcePath'] for h in skipped})
-            print(f'codex-hook-trust: 自分のリポジトリでないプロジェクトのフック {len(skipped)} 件は信頼しなかった'
+            print(f'codex-hook-trust: プロジェクトなどのフック {len(skipped)} 件は信頼しなかった'
                   f'（{", ".join(paths)}）。使うなら Codex の /hooks で確かめて承認する', file=sys.stderr)
     finally:
         server.close()
