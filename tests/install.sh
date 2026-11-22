@@ -99,3 +99,12 @@ for base in .claude .agents; do
   [ ! -L "$TEST_HOME/$base/skills/aaa-first" ]
 done
 echo "ok   後ろのスキルの衝突でも、スキル・設定とも変更前に止まる"
+
+# ~/.local/bin に本物の codex があれば、ラッパーで置き換えない。
+TEST_HOME="$TMP/codex home"
+mkdir -p "$TEST_HOME/.local/bin"
+printf 'real\n' >"$TEST_HOME/.local/bin/codex"
+install_test || { cat "$TMP/install.log"; exit 1; }
+[ "$(cat "$TEST_HOME/.local/bin/codex")" = real ]
+check_link "$TEST_HOME/.local/bin/codex-hook-trust" "$REPO/bin/codex-hook-trust"
+echo "ok   ~/.local/bin の本物の codex は置き換えない"
