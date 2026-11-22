@@ -2,7 +2,8 @@
 """評価用の `orca` の代役。PATH の先頭に `orca` として置く。
 
 呼ばれたコマンドを ORCA_FAKE_LOG に記録し、ORCA_FAKE_STATE（試行の種）の状態を本物の出力の形で返す。
-`skills` だけは本物へ渡す（orchestration の SKILL.md が `orca skills get` で本文を取るため）。
+`skills` とヘルプは本物へ渡す（orchestration の SKILL.md が `orca skills get` で本文を取るため。ヘルプは状態を変えず、
+代役の作ったヘルプでは本物に無いコマンドも成功して見え、被験がそれを使ってしまうため。dotfiles#171）。
 """
 import json
 import os
@@ -12,6 +13,13 @@ import time
 
 
 ORCA_REAL = "@@ORCA_REAL@@"  # 試行ごとにコピーするとき、本物の orca のパスを埋める
+# `orca orchestration --help` が挙げるサブコマンド（Orca 1.4 系）
+ORCHESTRATION_COMMANDS = {
+    "run-create", "run-use", "run-current", "run-list", "run-show", "send", "check", "reply", "inbox",
+    "task-create", "task-list", "task-update", "worker-start", "worker-show", "worker-read", "worker-stop", "deny",
+    "worker-abandon", "worker-release", "worker-keep-open", "worker-list", "dispatch", "request-show",
+    "dispatch-show", "ask", "coordinator-start", "coordinator-stop", "gate-create", "gate-resolve", "gate-list", "reset",
+}
 
 
 def log(argv, started, rc):
@@ -140,19 +148,20 @@ def mail(cmd, argv, state, state_path):
 
 
 def dispatch(argv, started):
-    if argv[:1] == ["skills"]:
+    if argv[:1] == ["skills"] or "--help" in argv or "-h" in argv:
         log(argv, started, None)
         if os.environ.get("ORCA_FAKE_ACTIVE"):
             sys.exit("fake_orca: 本物の orca のパスが代役自身を指している")
         os.environ["ORCA_FAKE_ACTIVE"] = "1"
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
-    if "--help" in argv or "-h" in argv:  # ヘルプは何も変えない
-        print("Usage: orca " + " ".join(a for a in argv if a not in ("--help", "-h")) + " [options]  (評価用の代役のヘルプ。本物のオプションは orca --help を見る)")
-        return
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
         state = json.load(f)
     cmd = argv[1] if argv[:1] == ["orchestration"] and len(argv) > 1 else None
+    if cmd is not None and cmd not in ORCHESTRATION_COMMANDS:
+        # 本物と同じく、無いサブコマンドは失敗させる（成功で返すと、被験が誤ったコマンドのまま進む）
+        words = " ".join(next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv))
+        fail("invalid_argument", f"Unknown command: {words}")
     if argv[:2] == ["worktree", "list"]:
         ok({"worktrees": worktrees(state)})
     elif cmd == "worker-list":
