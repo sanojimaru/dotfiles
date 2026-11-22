@@ -142,6 +142,8 @@ def mail(cmd, argv, state, state_path):
         return
     if cmd == "reply" and not any(m["id"] == opt(argv, "--id") and m["type"] == "question" for m in messages):
         fail("message_not_found", "reply に対応する question がありません")
+    if cmd == "send" and not opt(argv, "--subject"):  # 本物と同じく --subject を必須にする
+        fail("invalid_argument", "Missing required --subject")
     if cmd == "send" and opt(argv, "--type") == "worker_done" and opt(argv, "--outcome") not in ("succeeded", "failed"):
         fail("invalid_args", "worker_done requires --outcome succeeded or failed")
     ok({"messageId": "msg_eval_sent"})
@@ -153,6 +155,9 @@ def dispatch(argv, started):
         if os.environ.get("ORCA_FAKE_ACTIVE"):
             sys.exit("fake_orca: 本物の orca のパスが代役自身を指している")
         os.environ["ORCA_FAKE_ACTIVE"] = "1"
+        if argv[:1] != ["skills"]:
+            # 本物は `-h` をヘルプと読まないので、元の引数のまま渡すと状態を変えるコマンドが本物に届く。コマンドの語だけを渡す
+            argv = next((argv[:i] for i, a in enumerate(argv) if a.startswith("-")), argv) + ["--help"]
         os.execv(ORCA_REAL, [ORCA_REAL] + argv)
     state_path = os.environ["ORCA_FAKE_STATE"]
     with open(state_path) as f:
