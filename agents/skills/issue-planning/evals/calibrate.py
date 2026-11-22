@@ -30,7 +30,7 @@ def cmd_labels(args):
     for _, r in trials:  # 証拠が空の問いは判定器を呼ばず allow_empty で決まるので、較正に入れない
         inputs = (r.get("grade") or {}).get("judge_inputs", {})
         r["judged"] = {j: v for j, v in (r.get("grade") or {}).get("judge", {}).items() if inputs.get(j, {}).get("evidence", "").strip()}
-    graded = {r["case"] for _, r in trials if not r["infra_failure"]}  # 証拠が全試行で空の問いも、入れられなかった問いとして示す
+    graded = {r["case"] for _, r in trials}  # 証拠が全試行で空か、全試行が失敗したケースの問いも、入れられなかった問いとして示す
     trials = [(d, r) for d, r in trials if not r["infra_failure"] and r["judged"]]
     for d, r in trials:  # 問いを直す前の試行は、古い問いの答えを今の較正に混ぜてしまう
         current = {j["id"]: j["q"] for j in load_case(r["case"])["expect"].get("judge", [])}
@@ -44,6 +44,8 @@ def cmd_labels(args):
         raise SystemExit(f"判定器の問いがある試行が {len(trials)} 件しかありません（{args.count} 件が要る）。dev の試行を足してください")
     else:
         trials = trials[:args.count]
+    if not trials:  # 空の組を足すと、agreement がその組を出さず、較正していないことが分からない
+        raise SystemExit("判定器の問いがある試行がありません")
     lines, answers, human = ["# 判定器の較正: 判定器の証拠に yes/no を付ける", "",
                              "問いごとに、判定器に渡したものと同じ証拠を読み、yes か no を human.json に書いてください。判定器の答えは別のファイル（answers.json）にあり、ここには出していません。", ""], {}, {}
     if args.append:  # 判定器の違う組（被験が Claude と Codex）を、1 回のラベル付けにまとめる
