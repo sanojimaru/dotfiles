@@ -53,6 +53,7 @@ def make_workdir(repo, case, nums, cond, agent, root, fake):
     if files:
         seed_commit(repo_clone, files, "Prepare repository files")
         seed_git(repo_clone, "update-ref", "refs/remotes/origin/main", "HEAD")
+    merged = merge_seed_prs(repo_clone, case, nums)
     orca = orca_state(case, nums, repo_clone, repo)
     clone = repo_clone
     for spec, wt in zip(case["orca"]["worktrees"], orca["worktrees"][1:]):
@@ -73,6 +74,9 @@ def make_workdir(repo, case, nums, cond, agent, root, fake):
         with (repo_clone / ".git/info/exclude").open("a") as exclude:
             exclude.write("\n/.claude/skills/\n/.agents/skills/\n")
     prs = pr_state(case, nums, repo)
+    for pr in prs:
+        if pr["number"] in merged:
+            pr["headRefOid"], pr["mergeCommit"] = merged[pr["number"]]
     local_branches = {wt["name"] for wt in orca["worktrees"] if wt.get("checkout")}
     local_prs = [pr for pr in prs if (case["split"] == "dev" or fake) and pr["headRefName"] in local_branches]
     for pr in local_prs:
@@ -112,6 +116,27 @@ def make_workdir(repo, case, nums, cond, agent, root, fake):
             pr["headRefOid"] = seed_git(repo_clone, "rev-parse", f"refs/heads/{pr['headRefName']}").strip()
     (root / "pr-state.json").write_text(json.dumps(prs, ensure_ascii=False))
     return clone, bindir, state
+
+
+def merge_seed_prs(clone, case, nums):
+    """`merged_files` を持つマージ済みの PR を、ブランチのコミットと main へのマージコミットとして種に置く。
+    子の worktree を片付け済みの Epic で、親が PR と main の成果を照らせるようにする（dotfiles#190 の S7-C2）。"""
+    merged = {}
+    for pr in case["seed"].get("prs", []):
+        if "merged_files" not in pr:
+            continue
+        branch = subst(pr["headRefName"], nums)
+        seed_git(clone, "checkout", "--quiet", "-b", branch, "main")
+        seed_commit(clone, pr["merged_files"], pr["title"])
+        head = seed_git(clone, "rev-parse", "HEAD").strip()
+        seed_git(clone, "checkout", "--quiet", "main")
+        seed_git(clone, "-c", "user.name=Repository Maintainer", "-c", "user.email=maintainer@example.invalid",
+                 "merge", "--quiet", "--no-ff", "--no-gpg-sign", "-m", f"Merge pull request #{nums[pr['key']]} from {branch}", branch)
+        seed_git(clone, "branch", "--quiet", "-D", branch)  # マージ後に消したブランチ
+        merged[nums[pr["key"]]] = (head, {"oid": seed_git(clone, "rev-parse", "HEAD").strip()})
+    if merged:
+        seed_git(clone, "update-ref", "refs/remotes/origin/main", "HEAD")
+    return merged
 
 
 def write_files(directory, files):

@@ -27,6 +27,7 @@ VALID_FLAGS = {
         "keep-open", "model", "name", "on", "pairing-code", "parent", "repo", "retry-of", "retry-request", "run", "setup",
         "spec", "spec-file", "task", "task-title", "terminal", "timeout-ms", "worktree",
     },
+    ("orchestration", "worker-stop"): {"dispatch", "environment", "full", "help", "json", "pairing-code", "retry-request"},
     ("worktree", "set"): {
         "comment", "display-name", "environment", "gitlab-issue", "gitlab-mr", "help", "issue", "json", "linear-issue",
         "no-parent", "pairing-code", "parent-environment", "parent-worktree", "pr", "read", "unread", "workspace-status",

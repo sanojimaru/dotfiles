@@ -156,6 +156,8 @@ def close(argv, records, event):
     parser.add_argument("-c", "--comment")
     parser.add_argument("-d", "--delete-branch", action="store_true")
     args = parser.parse_intermixed_args(argv)
+    if args.delete_branch:  # ブランチの削除は再生しない。黙って成功させると、片付けが済んだと読まれる
+        raise ValueError("評価では `gh pr close --delete-branch` を再生しません。ブランチは git で消してください")
     pr = find_pr(records, args.selector)
     if pr["state"] != "OPEN":
         raise ValueError(f"Pull request #{pr['number']} is already {pr['state'].lower()}")
