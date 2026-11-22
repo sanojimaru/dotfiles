@@ -92,6 +92,7 @@ def main():
     ap.add_argument("agent", type=Path, nargs="?", help="ラベラーの agent.json。省くと、すべて yes の代役と判定器だけを出す")
     ap.add_argument("--flipped", type=Path, help="向きを反転した問いに付けた agent.json（反転した向きのまま）。元の向きの答えと矛盾しない割合を出す")
     ap.add_argument("--reasons", type=Path, help="ラベラーの reasons.json。費用と時間を出す")
+    ap.add_argument("--groups", help="測る組の英字をカンマで並べる（例: A,B）。answers.json に無い組があれば未判定にする")
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=193)
     ap.add_argument("--json", type=Path, help="指標と食い違った問いを JSON で書く")
@@ -104,7 +105,7 @@ def main():
         raise SystemExit("利用者のラベルが付いた問いがありません")
     if unlabeled := sum(len(v["judge"]) for v in answers.values()) - len(rows):
         print(f"利用者のラベルが無い問いが {unlabeled} 問あります。付いた問いだけで測るので、合否は未判定にします")
-    groups = sorted({group_of(k) for k in answers})
+    groups = sorted({group_of(k) for k in answers} | set(args.groups.split(",") if args.groups else []))
     result = {"all_yes": measure(rows, lambda r: True, args.boot, args.seed, groups, bool(unlabeled)), "judge": measure(rows, lambda r: r[3], args.boot, args.seed, groups, bool(unlabeled))}
     if args.agent:
         if missing := [f"{r[0]}/{r[1]}" for r in rows if r[1] not in agent.get(r[0], {})]:
@@ -117,7 +118,7 @@ def main():
         print("- 保留した問い（U / J）:", *(f"{d['q']} {d['user']}/{d['judge']}" for d in result["held"]) or ["なし"])
     if args.flipped:
         flipped = json.loads(args.flipped.read_text())
-        both = [(r[4], flipped.get(r[0], {}).get(r[1])) for r in rows]
+        both = [(agent.get(k, {}).get(j), flipped.get(k, {}).get(j)) for k, v in answers.items() for j in v["judge"]]  # 利用者のラベルが無い問いも数える
         both = [(a, f) for a, f in both if a is not None and f is not None]
         result["flip_consistent"] = {"n": len(both), "rate": rate([(a, not f) for a, f in both])}
         print(f"- 報告だけ: 反転した問いと矛盾しない割合 {pct(result['flip_consistent']['rate'])}（両方で保留しなかった {len(both)} 問）")

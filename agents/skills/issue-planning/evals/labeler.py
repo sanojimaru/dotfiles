@@ -60,18 +60,17 @@ def parse_labels(text):
     return items
 
 
-def codex_home():
-    """auth.json と config.toml だけを置いた CODEX_HOME。~/.codex/AGENTS.md（評価しているワークフローの規則）を
-    ラベラーに読ませず、Claude 側（CLAUDE.md を無効にする）と同じく、問いと証拠だけで答えさせるため。"""
-    home = Path(tempfile.mkdtemp(prefix="labeler-codex-home-"))
-    src = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    for name in ("auth.json", "config.toml"):
-        if (src / name).exists():
-            (home / name).symlink_to(src / name)
-    return home
+def codex_args(home, deny):
+    """Codex に、問いと証拠のほかを読ませずに答えさせる起動のしかた。
+    CODEX_HOME には auth.json だけを置き、~/.codex/AGENTS.md（評価しているワークフローの規則）と config.toml の MCP を読ませない。
+    codex exec は read-only でも作業ディレクトリの外を読めるので、shell の道具を切り、sandbox-exec で deny のパスの読み取りを止める。
+    Codex の道具は自分の sandbox-exec を入れ子にできず失敗するので、道具が動く前に止まる。Claude 側は --tools "" で道具が無い。"""
+    rules = "".join(f'(deny file-read* (subpath "{d}"))' for d in deny)
+    return ["sandbox-exec", "-p", f"(version 1)(allow default){rules}", "codex", "exec", "-m", MODELS["codex"], "-s", "read-only",
+            "--skip-git-repo-check", "--ephemeral", "--json", "--disable", "shell_tool", "--disable", "unified_exec"]
 
 
-def call(kind, prompt, home=None):
+def call(kind, prompt, home, deny):
     """{"answer", "reason", "usage", "seconds"} を返す。答えが読めないか、道具を使ったか、時間切れなら answer は None。"""
     env = {k: v for k, v in os.environ.items() if not STRIP_ENV.match(k)}
     start = time.monotonic()
@@ -79,25 +78,24 @@ def call(kind, prompt, home=None):
     with tempfile.TemporaryDirectory() as tmp:  # 被験の試行と同じく、空のディレクトリで動かして手元のファイルを読ませない
         try:
             if kind == "codex":
-                env["CODEX_HOME"] = str(home or codex_home())
+                env["CODEX_HOME"] = str(home)
                 out = Path(tmp) / "answer.txt"
-                r = sh(["codex", "exec", "-m", MODELS[kind], "-s", "read-only", "--skip-git-repo-check", "--ephemeral", "--json", "-o", str(out), prompt], env=env, cwd=tmp)
-                text, err = out.read_text() if out.exists() else "", r.stderr
+                r = sh([*codex_args(home, deny), "-o", str(out), prompt], env=env, cwd=tmp)
+                text, err = out.read_text() if out.exists() and r.returncode == 0 else "", r.stderr or f"終了コード {r.returncode}"
                 events = [json.loads(l) for l in r.stdout.splitlines() if l.startswith("{")]
                 usage = next((e.get("usage") for e in reversed(events) if e.get("type") == "turn.completed"), None)
-                # codex exec は read-only でも作業ディレクトリの外を読めるので、道具を使った答えは捨てる。
-                # human.json や answers.json を読んだ答えを、証拠だけから付けたラベルとして数えないため
+                # 道具を使おうとした答えは、証拠のほかの何かに基づいた答えかもしれないので捨てる
                 tools = sorted({f"{it['type']}: {str(it.get('command', ''))[:80]}" for e in events if (it := e.get("item")) and it.get("type") not in ("agent_message", "reasoning")})
                 if tools:
                     return {"answer": None, "reason": "tool-use: " + " / ".join(tools), "usage": usage, "seconds": round(time.monotonic() - start, 1)}
             else:
                 env.update(CLAUDE_CODE_DISABLE_CLAUDE_MDS="1", CLAUDE_CODE_DISABLE_AUTO_MEMORY="1")
                 r = sh(["claude", "-p", prompt, "--model", MODELS[kind], "--output-format", "json", "--setting-sources", "project,local", "--strict-mcp-config", "--tools", ""], env=env, cwd=tmp)
-                err = r.stderr
+                err = r.stderr or f"終了コード {r.returncode}"
                 try:
                     res = json.loads(r.stdout)
                     u = res.get("usage") or {}
-                    text, usage = res.get("result", ""), {"cost_usd": res.get("total_cost_usd"), **{f: u.get(f, 0) for f in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")}}
+                    text, usage = "" if r.returncode or res.get("is_error") else res.get("result", ""), {"cost_usd": res.get("total_cost_usd"), **{f: u.get(f, 0) for f in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")}}
                 except json.JSONDecodeError:
                     pass
         except subprocess.TimeoutExpired as e:
@@ -113,12 +111,12 @@ def call(kind, prompt, home=None):
     return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
 
 
-def ask(kind, item, home):
+def ask(kind, item, home, deny):
     prompt = PROMPT.format(source=SOURCES.get(item["source"], item["source"]), evidence=item["evidence"], question=item["q"])
-    res = call(kind, prompt, home)
+    res = call(kind, prompt, home, deny)
     if res["answer"] is None:  # 一時的な失敗か書式の崩れ。1 回だけ呼び直す。費用は両方の回を数える
         first = res
-        res = call(kind, prompt, home) | {"retried": first["reason"][:300]}
+        res = call(kind, prompt, home, deny) | {"retried": first["reason"][:300]}
         res["usages"] = [first["usage"], res["usage"]]
     return res
 
@@ -141,12 +139,17 @@ def main():
         items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
     args.out.mkdir(parents=True, exist_ok=True)
     start = time.monotonic()
-    home = codex_home()
-    pools = {kind: concurrent.futures.ThreadPoolExecutor(args.jobs) for kind in MODELS}
-    futures = {(i, kind): pools[kind].submit(ask, kind, it, home) for i, it in enumerate(items) for kind in MODELS}
-    results = {k: f.result() for k, f in futures.items()}
-    for pool in pools.values():
-        pool.shutdown()
+    # ラベルの置き場（human.json・answers.json）と、試行の記録（判定器の答えが入った trial.json）の置き場を読ませない
+    deny = sorted({str(args.labels.resolve().parent), str(Path.home() / ".cache/issue-planning-eval")})
+    with tempfile.TemporaryDirectory(prefix="labeler-codex-home-") as home:
+        src = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")) / "auth.json"
+        (Path(home) / "auth.json").symlink_to(src)
+        pools = {kind: concurrent.futures.ThreadPoolExecutor(args.jobs) for kind in MODELS}
+        futures = {(i, kind): pools[kind].submit(ask, kind, it, home, deny) for i, it in enumerate(items) for kind in MODELS}
+        results = {k: f.result() for k, f in futures.items()}
+        for pool in pools.values():
+            pool.shutdown()
+
     def usages(kind):
         return [u or {} for i in range(len(items)) for u in results[(i, kind)].get("usages", [results[(i, kind)]["usage"]])]
 
