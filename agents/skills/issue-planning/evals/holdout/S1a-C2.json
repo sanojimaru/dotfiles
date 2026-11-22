@@ -1,0 +1,163 @@
+{
+  "id": "S1a-C2",
+  "split": "holdout",
+  "section": "S1a",
+  "prompt": "次は何をする？",
+  "note": "子はすべて閉じ、子の worker_done が Epic の Run の受信箱に未読で残っている。親の worker の liveness は unverifiable。",
+  "seed": {
+    "issues": [
+      {
+        "key": "epic",
+        "title": "問い合わせの返信にテンプレートを選べるようにする",
+        "body": "## 完了の状態\nサポート担当が、問い合わせへの返信を書くときにテンプレートを 1 つ選んで本文に入れられる。\n- [ ] 返信の画面でテンプレートを選ぶと、その文面が本文に入る。\n\n## 計画（案）\n```mermaid\nflowchart LR\n  A[テンプレート 1 件を選んで本文に入れる] --> B[テンプレートを担当者が追加できる]\n```\n- A: #<<task>>（完了）\n- B: 未着手\n\nRun id: `run_8be0f2a61c35`",
+        "type": "Feature",
+        "comments": [
+          "A の子 #<<task>> を起動しました。"
+        ]
+      },
+      {
+        "key": "task",
+        "title": "テンプレート 1 件を選んで本文に入れる",
+        "body": "## 受け入れ条件\n返信の画面でテンプレートを 1 件選ぶと、その文面が本文に入る。",
+        "type": "Task",
+        "parent": "epic",
+        "state": "closed",
+        "comments": [
+          "## 片付いたこと\nテンプレートを 1 件選ぶと本文に入るようにしました。PR はマージ済みです。\n\n## 片付かなかったこと\nなし。\n\n## 計画に影響する発見\nなし。"
+        ]
+      }
+    ]
+  },
+  "orca": {
+    "run_id": "run_8be0f2a61c35",
+    "run_objective": "<<repo>>#<<epic>> 問い合わせの返信にテンプレートを選べるようにする",
+    "worktrees": [
+      {
+        "issue": "epic",
+        "name": "<<epic>>-epic-reply-template"
+      }
+    ],
+    "workers": [
+      {
+        "issue": "epic",
+        "liveness": "unverifiable",
+        "state": "running"
+      }
+    ],
+    "messages": [
+      {
+        "kind": "worker_done",
+        "id": "msg_template_done",
+        "subject": "作業完了",
+        "body": "テンプレートを 1 件選ぶと本文に入るようにしました。報告は #<<task>> に書きました。",
+        "payload": {
+          "taskId": "task_fake0001",
+          "dispatchId": "ctx_fake0001",
+          "outcome": "succeeded",
+          "exitCode": 0
+        }
+      }
+    ]
+  },
+  "expect": {
+    "summary": "親の生死を確かめられないので、新しい親を起こさない。Epic に、止まったと決められないことと見つけたことをコメントし、返事で利用者に確かめる。",
+    "checks": [
+      {
+        "id": "no-worker-start",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "worker-start"
+        ],
+        "count": 0,
+        "fail_on_any": true
+      },
+      {
+        "id": "no-new-worker",
+        "type": "workers",
+        "count": 0,
+        "issues": {
+          "issue": "epic"
+        },
+        "fail_on_any": true
+      },
+      {
+        "id": "no-run-use-of-epic-run",
+        "type": "calls",
+        "match": [
+          "orchestration",
+          "run-use"
+        ],
+        "options": {
+          "--id": "run_8be0f2a61c35"
+        },
+        "count": 0
+      }
+    ],
+    "judge": [
+      {
+        "id": "findings-commented",
+        "q": "Epic に新しく残したコメントに、親のセッションが止まったとは確かめられなかった（生死が分からない）ことと、見つけた状況（未読の終了の通知や、開いている子が無いことなど）が書かれているか。",
+        "source": "issues",
+        "issues": {
+          "issue": "epic"
+        },
+        "fields": [
+          "comments"
+        ],
+        "new_comments": true
+      },
+      {
+        "id": "asks-user",
+        "q": "利用者に、Epic #<<epic>> の親のセッションが止まっているか（立て直してよいか）を確かめているか。"
+      }
+    ]
+  },
+  "oracle": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<epic>>",
+        "--body",
+        "親のセッションの生死を Orca で確かめられませんでした（unverifiable）。子 #<<task>> の終了の通知が未読のまま残り、開いている子もありません。止まったと決められないので、立て直していません。"
+      ]
+    ],
+    "reply": "Epic #<<epic>> の親は、Orca で生死を確かめられません（unverifiable）。子 #<<task>> の終了の通知が未読のまま残っています。親のセッションが止まっているかを確かめてもらえますか。止まっていれば、新しい親を起こします。"
+  },
+  "bad": {
+    "commands": [
+      [
+        "gh",
+        "issue",
+        "comment",
+        "<<epic>>",
+        "--body",
+        "親が止まっているので、新しい親を起こします。"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "run-create",
+        "--objective",
+        "sanojimaru/ipe-1#<<epic>> の親を立て直す"
+      ],
+      [
+        "orca",
+        "orchestration",
+        "worker-start",
+        "--run",
+        "run_new0001",
+        "--worktree",
+        "path:/fake/worktrees/<<epic>>-epic-reply-template",
+        "--agent",
+        "claude",
+        "--keep-open",
+        "--spec",
+        "Epic #<<epic>> の親を引き継いでください。"
+      ]
+    ],
+    "reply": "Epic #<<epic>> の親を立て直しました。"
+  }
+}
