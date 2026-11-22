@@ -60,7 +60,18 @@ def parse_labels(text):
     return items
 
 
-def call(kind, prompt):
+def codex_home():
+    """auth.json と config.toml だけを置いた CODEX_HOME。~/.codex/AGENTS.md（評価しているワークフローの規則）を
+    ラベラーに読ませず、Claude 側（CLAUDE.md を無効にする）と同じく、問いと証拠だけで答えさせるため。"""
+    home = Path(tempfile.mkdtemp(prefix="labeler-codex-home-"))
+    src = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    for name in ("auth.json", "config.toml"):
+        if (src / name).exists():
+            (home / name).symlink_to(src / name)
+    return home
+
+
+def call(kind, prompt, home=None):
     """{"answer", "reason", "usage", "seconds"} を返す。答えが読めないか、道具を使ったか、時間切れなら answer は None。"""
     env = {k: v for k, v in os.environ.items() if not STRIP_ENV.match(k)}
     start = time.monotonic()
@@ -68,6 +79,7 @@ def call(kind, prompt):
     with tempfile.TemporaryDirectory() as tmp:  # 被験の試行と同じく、空のディレクトリで動かして手元のファイルを読ませない
         try:
             if kind == "codex":
+                env["CODEX_HOME"] = str(home or codex_home())
                 out = Path(tmp) / "answer.txt"
                 r = sh(["codex", "exec", "-m", MODELS[kind], "-s", "read-only", "--skip-git-repo-check", "--ephemeral", "--json", "-o", str(out), prompt], env=env, cwd=tmp)
                 text, err = out.read_text() if out.exists() else "", r.stderr
@@ -95,16 +107,18 @@ def call(kind, prompt):
         ans = json.loads(m[0]) if m else {}
     except json.JSONDecodeError:
         ans = {}
+    if not isinstance(ans, dict) or not isinstance(ans.get("reason"), str):  # 理由の無い答えは、読めない答えとして呼び直す
+        ans = {}
     answer = ans.get("answer") if ans.get("answer") in ("yes", "no", "unsure") else None
     return {"answer": answer, "reason": ans.get("reason") or text.strip()[:300] or err.strip()[:300], "usage": usage, "seconds": round(time.monotonic() - start, 1)}
 
 
-def ask(kind, item):
+def ask(kind, item, home):
     prompt = PROMPT.format(source=SOURCES.get(item["source"], item["source"]), evidence=item["evidence"], question=item["q"])
-    res = call(kind, prompt)
+    res = call(kind, prompt, home)
     if res["answer"] is None:  # 一時的な失敗か書式の崩れ。1 回だけ呼び直す。費用は両方の回を数える
         first = res
-        res = call(kind, prompt) | {"retried": first["reason"][:300]}
+        res = call(kind, prompt, home) | {"retried": first["reason"][:300]}
         res["usages"] = [first["usage"], res["usage"]]
     return res
 
@@ -127,8 +141,9 @@ def main():
         items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
     args.out.mkdir(parents=True, exist_ok=True)
     start = time.monotonic()
+    home = codex_home()
     pools = {kind: concurrent.futures.ThreadPoolExecutor(args.jobs) for kind in MODELS}
-    futures = {(i, kind): pools[kind].submit(ask, kind, it) for i, it in enumerate(items) for kind in MODELS}
+    futures = {(i, kind): pools[kind].submit(ask, kind, it, home) for i, it in enumerate(items) for kind in MODELS}
     results = {k: f.result() for k, f in futures.items()}
     for pool in pools.values():
         pool.shutdown()

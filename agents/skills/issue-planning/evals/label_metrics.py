@@ -30,14 +30,14 @@ def bootstrap(pairs, times, seed):
     """問い単位で引き直した α の 2.5・97.5 パーセンタイル。引き直した組で α が出ない回は除く。"""
     rng = random.Random(seed)
     got = sorted(a for a in (alpha(rng.choices(pairs, k=len(pairs))) for _ in range(times)) if a is not None)
-    return (got[int(0.025 * len(got))], got[int(0.975 * len(got)) - 1]) if got else None
+    return (got[round(0.025 * (len(got) - 1))], got[round(0.975 * (len(got) - 1))]) if got else None
 
 
 def group_of(key):
     return re.match(r"[A-Za-z]*", key)[0]
 
 
-def measure(rows, a_of, times, seed, groups):
+def measure(rows, a_of, times, seed, groups, incomplete=False):
     """rows は (key, qid, U, J, A) の並び。a_of で A を取り出す（代役を同じ式で測るため）。"""
     filled = [(a_of(r) if a_of(r) is not None else r[2], r[2]) for r in rows]
     kept = [(a_of(r), r[2]) for r in rows if a_of(r) is not None]
@@ -46,7 +46,7 @@ def measure(rows, a_of, times, seed, groups):
            "held": sum(a_of(r) is None for r in rows) / len(rows),
            "kept_agree": rate(kept), "kept_alpha": alpha(kept),
            "user_no": len(no_rows), "user_no_caught": sum(a_of(r) is False for r in no_rows), "user_no_held": sum(a_of(r) is None for r in no_rows),
-           "groups": {}}
+           "groups": {}, "incomplete": incomplete}
     for g in groups:
         sub = [r for r in rows if group_of(r[0]) == g]
         if not sub:  # 利用者のラベルが無い組を黙って外すと、残りの組だけで合格と出てしまう
@@ -79,7 +79,7 @@ def show(name, m):
     print(f"- 合格線 2: A と U の一致率 {pct(m['agree'])}（95% 以上）")
     print(f"- 合格線 3: A と U の α {num(m['alpha'])}（0.800 以上。問い単位の bootstrap の 95% 区間 {'算出不能' if ci is None else f'{ci[0]:.3f}〜{ci[1]:.3f}'}）")
     print(f"- 合格線 4: 保留 {pct(m['held'])}（20% 以下）")
-    verdict = "未判定（未採点の組がある）" if None in m["pass"].values() else "合格" if all(m["pass"].values()) else "不合格"
+    verdict = "未判定（利用者のラベルが無い問いがある）" if m.get("incomplete") else "未判定（未採点の組がある）" if None in m["pass"].values() else "合格" if all(m["pass"].values()) else "不合格"
     print(f"- 判定: {'、'.join(f'{k} {chr(9675) if v else chr(215) if v is False else chr(8212)}' for k, v in m['pass'].items())} → {verdict}")
     print(f"- 報告だけ: 保留しなかった問いでの一致率 {pct(m['kept_agree'])}・α {num(m['kept_alpha'])}、"
           f"U の no {m['user_no']} 問のうち A も no {m['user_no_caught']} 問（保留 {m['user_no_held']} 問）")
@@ -102,12 +102,14 @@ def main():
             if human.get(k, {}).get(j) is not None]
     if not rows:
         raise SystemExit("利用者のラベルが付いた問いがありません")
+    if unlabeled := sum(len(v["judge"]) for v in answers.values()) - len(rows):
+        print(f"利用者のラベルが無い問いが {unlabeled} 問あります。付いた問いだけで測るので、合否は未判定にします")
     groups = sorted({group_of(k) for k in answers})
-    result = {"all_yes": measure(rows, lambda r: True, args.boot, args.seed, groups), "judge": measure(rows, lambda r: r[3], args.boot, args.seed, groups)}
+    result = {"all_yes": measure(rows, lambda r: True, args.boot, args.seed, groups, bool(unlabeled)), "judge": measure(rows, lambda r: r[3], args.boot, args.seed, groups, bool(unlabeled))}
     if args.agent:
         if missing := [f"{r[0]}/{r[1]}" for r in rows if r[1] not in agent.get(r[0], {})]:
             raise SystemExit(f"ラベラーが付けていない問いがあります: {missing}")
-        result["agent"] = measure(rows, lambda r: r[4], args.boot, args.seed, groups)
+        result["agent"] = measure(rows, lambda r: r[4], args.boot, args.seed, groups, bool(unlabeled))
         show("ラベラー（A）", result["agent"])
         result["disagree"] = [{"q": f"{r[0]}/{r[1]}", "user": r[2], "agent": r[4], "judge": r[3]} for r in rows if r[4] is not None and r[4] != r[2]]
         result["held"] = [{"q": f"{r[0]}/{r[1]}", "user": r[2], "judge": r[3]} for r in rows if r[4] is None]
