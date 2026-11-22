@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# PATH で本物の codex より前に置き、起動の前に codex-hook-trust で自分が管理するフックを信頼する。
+# Orca の端末の codex 関数も `command codex` で PATH を引くので、Orca のワーカーもここを通る。
+# 信頼に失敗しても codex の起動は止めない（フックが承認待ちになるだけ）。
+set -u
+self="$(realpath "$0")"
+real=""
+IFS=: read -ra dirs <<<"$PATH"
+for dir in "${dirs[@]}"; do
+  candidate="${dir:-.}/codex"
+  if [ -f "$candidate" ] && [ -x "$candidate" ] && [ "$(realpath "$candidate")" != "$self" ]; then
+    real="$candidate"; break
+  fi
+done
+[ -n "$real" ] || { echo "codex: 本物の codex が PATH に見つからない" >&2; exit 127; }
+"$(dirname "$self")/codex-hook-trust" --codex "$real" "$@" || true
+exec "$real" "$@"

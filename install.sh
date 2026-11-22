@@ -51,6 +51,9 @@ link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
 link bin/orca-nested           "$HOME/.local/bin/orca-nested"
+# PATH で本物の codex（/opt/homebrew/bin）より前に置き、起動のたびに自分が管理するフックを信頼する
+link bin/codex                 "$HOME/.local/bin/codex"
+link bin/codex-hook-trust      "$HOME/.local/bin/codex-hook-trust"
 copy bin/agent-usage           "$HOME/.local/bin/agent-usage"
 
 # VS Code (パスに空白を含むので必ず引用)
