@@ -151,6 +151,8 @@ def main():
     ap.add_argument("--jobs", type=int, default=4, help="モデルごとの並列数")
     ap.add_argument("--only", help="この正規表現に合う key/qid だけを付ける（動作の確認用）")
     args = ap.parse_args()
+    if not 0 <= args.hold <= 1:  # nan もここで止まる。モデルを呼んだ後に止まると、費用だけかかって結果が残らない
+        ap.error("--hold は 0〜1 の割合で指定する（例: 0.2）")
     items = parse_labels(args.labels.read_text())
     if args.only:
         items = [it for it in items if re.search(args.only, f"{it['key']}/{it['qid']}")]
