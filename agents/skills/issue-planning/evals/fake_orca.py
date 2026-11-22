@@ -212,10 +212,17 @@ def dispatch(argv, started):
         if opt(argv, "--task") not in state.get("tasks", []):
             fail("task_not_found", f"Task {opt(argv, '--task')} does not exist. Create it with task-create first.")
         sel = opt(argv, "--worktree")
-        wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w)), None)
+        state["seq"] = state.get("seq", 0) + 1
+        if sel in ("new-child", "new-top-level"):
+            # 本物は新しい worktree を作って起動する。worker-start には Issue を結び付ける指定が無いので、Issue に結び付けない（dotfiles#171）
+            name = opt(argv, "--name") or f"workspace-{state['seq']:04d}"
+            wt = {"name": name, "issue": None, "has_parent": sel == "new-child",
+                  "path": f"/fake/worktrees/{name}", "identity": f"wt2:local:{name}"}
+            state["worktrees"].append(wt)
+        else:
+            wt = current_worktree(state) if not sel or sel == "current" else next((w for w in state["worktrees"] if selector_hits(sel, w)), None)
         if wt is None:
             fail("worktree_not_found", f"No worktree matches {sel}")
-        state["seq"] = state.get("seq", 0) + 1
         state["workers"].append({"issue": wt["issue"], "liveness": "live", "state": "ready",
                                  "agent": opt(argv, "--agent"), "worktree": wt,
                                  "dispatch_id": f"ctx_new{state['seq']:04d}", "task_id": opt(argv, "--task")})
