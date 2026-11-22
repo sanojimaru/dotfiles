@@ -7,6 +7,7 @@ Codex はフックの定義やプラグインの中身が変わると、/hooks �
 GitHub リポジトリにあるプロジェクトのフックだけ。外部のリポジトリを clone して開いたときに、
 そのフック（任意のコマンド）が確認なしで動かないようにするため。
 """
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -59,7 +60,10 @@ def classify(hooks, is_own=own_repository):
         if source in ('user', 'plugin'):
             trust.append(hook)
         elif source == 'project':
-            (trust if is_own(Path(hook['sourcePath']).parent) else skipped).append(hook)
+            # リンクで外のファイルを指していれば、その置き場所も自分のリポジトリでなければ信頼しない。
+            path = Path(hook['sourcePath'])
+            own = is_own(path.parent) and is_own(path.resolve().parent)
+            (trust if own else skipped).append(hook)
     return trust, skipped
 
 
@@ -122,17 +126,21 @@ def starts_session(args):
 
 
 def codex_cwd(args):
-    """codex の引数の -C/--cd を作業ディレクトリとして返す。無ければ今のディレクトリ。"""
+    """codex の引数の -C/--cd を作業ディレクトリとして返す。無ければ今のディレクトリ。
+
+    `codex -C A exec -C B` では Codex と同じく後の B を使う。
+    """
+    cwd = os.getcwd()
     for i, arg in enumerate(args):
         if arg == '--':
             break
         if arg in ('-C', '--cd') and i + 1 < len(args):
-            return os.path.abspath(args[i + 1])
-        if arg.startswith('--cd='):
-            return os.path.abspath(arg[len('--cd='):])
-        if arg.startswith('-C') and len(arg) > 2:
-            return os.path.abspath(arg[2:].removeprefix('='))
-    return os.getcwd()
+            cwd = os.path.abspath(args[i + 1])
+        elif arg.startswith('--cd='):
+            cwd = os.path.abspath(arg[len('--cd='):])
+        elif arg.startswith('-C') and len(arg) > 2:
+            cwd = os.path.abspath(arg[2:].removeprefix('='))
+    return cwd
 
 
 def main(argv):
@@ -147,6 +155,12 @@ def main(argv):
         print('codex-hook-trust: codex が PATH に見つからない', file=sys.stderr)
         return 1
     cwd = codex_cwd(argv)
+    # app-server は起動したときの config.toml に書き足すので、並行して起動した Orca のワーカーどうしが
+    # 互いの承認を上書きする。app-server の起動から確認までを CODEX_HOME ごとに 1 つずつ通す。
+    home = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex')
+    home.mkdir(parents=True, exist_ok=True)
+    lock = open(home / '.codex-hook-trust.lock', 'w')
+    fcntl.flock(lock, fcntl.LOCK_EX)
     server = AppServer(codex)
     try:
         trust, skipped = classify(server.hooks(cwd))
@@ -168,6 +182,7 @@ def main(argv):
                   f'（{", ".join(paths)}）。使うなら Codex の /hooks で確かめて承認する', file=sys.stderr)
     finally:
         server.close()
+        lock.close()
     return 0
 
 

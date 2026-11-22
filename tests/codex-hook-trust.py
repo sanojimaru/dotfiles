@@ -104,9 +104,13 @@ class CodexHookTrustTest(unittest.TestCase):
             self.hook('no-remote', 'project', path=self.repo('no-remote')),
             self.hook('no-repo', 'project', path=self.tmp / 'plain/.codex/hooks.json'),
         ]
+        # 自分のリポジトリの hooks.json が、外のリポジトリのファイルへのリンクになっている。
+        linked = self.repo('linked', 'git@github.com:sanojimaru/x.git')
+        linked.symlink_to(self.repo('target', 'https://github.com/someone/x.git'))
+        hooks.append(self.hook('linked', 'project', path=linked))
         stderr = self.run_codex(hooks)
         self.assertEqual(set(self.written()), {'own'})
-        self.assertIn('プロジェクトのフック 7 件は信頼しなかった', stderr)
+        self.assertIn('プロジェクトのフック 8 件は信頼しなかった', stderr)
 
     def test_leaves_trusted_managed_and_other_sources(self):
         hooks = [self.hook('trusted', 'user', 'trusted'), self.hook('managed', 'project', 'managed'),
@@ -117,7 +121,8 @@ class CodexHookTrustTest(unittest.TestCase):
     def test_wrapper_execs_real_codex_with_same_args_and_cd(self):
         work = self.tmp / 'work'
         work.mkdir()
-        for args in (['-C', 'work', 'exec', 'hi'], ['-Cwork', 'exec', 'hi'], ['--cd=work']):
+        for args in (['-C', 'work', 'exec', 'hi'], ['-Cwork', 'exec', 'hi'], ['--cd=work'],
+                     ['-C', 'other', 'exec', '-C', 'work']):
             self.files['FAKE_CWDS'].unlink(missing_ok=True)
             self.run_codex([self.hook('user', 'user')], *args)
             self.assertEqual(json.loads(self.files['FAKE_EXEC'].read_text()), args)
