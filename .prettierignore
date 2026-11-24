@@ -1,0 +1,11 @@
+# development のガードレール: Prettier の対象外。
+node_modules/
+coverage/
+dist/
+.jscpd-report/
+pnpm-lock.yaml
+# Claude Code の設定（/development:setup が .claude/settings.json を書く）。
+.claude/
+# agents/・codex/ の既存のスキルと指示書は、整形すると意味が変わる箇所があるので、手で見直すまで外す（#208）。
+agents/
+codex/

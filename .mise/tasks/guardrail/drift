@@ -1,0 +1,90 @@
+#!/usr/bin/env sh
+# development のガードレール: リポジトリにあるスタックと、導入済みのガードレールのずれを報告する
+# （Issue #527）。サブディレクトリも含めて git ls-files で見る。
+#
+# 目印は .guardrail/stacks.tsv（/development:setup が配置する。各スタックの stack.toml から
+# 作ったもので、プラグインの更新後は setup をやり直すと新しくなる）。1行が
+#   スタック名<TAB>表示名<TAB>種類<TAB>値
+# で、種類は marker（ファイル名はどこかにあれば対象、./ で始まる値は直下の相対パス）・ext（この拡張子のファイルがあれば対象）・
+# exclude（ext の判定から外す、リポジトリ直下からの相対パス。末尾が / ならそのディレクトリの下すべて）。スタック名が - の行は、
+# development がまだ対応していない言語（未対応のスタック）。
+#
+# 導入済みかは .mise/tasks/check/lint/<スタック名> の有無で見る。見つかったずれは GitHub Actions の
+# 警告（::warning::）として出し、終了コードは常に 0（PR を止めない）。
+set -u
+
+MANIFEST=".guardrail/stacks.tsv"
+if [ ! -f "$MANIFEST" ]; then
+  echo "::warning title=guardrail-drift::$MANIFEST が無いため、スタックのずれを確かめられません。/development:setup を実行してください。"
+  exit 0
+fi
+# 読めるかは、このあと使う ls-files そのもので確かめる（パイプの先では git の失敗が見えず、
+# index が壊れているときなどに「ずれ無し」と区別できなくなるため）。
+if ! git ls-files -z >/dev/null 2>&1; then
+  echo "::warning title=guardrail-drift::git リポジトリとして読めないため、スタックのずれを確かめられません。"
+  exit 0
+fi
+
+# パスは -z（NUL 区切り）で受ける。改行区切りだと、ASCII 以外（既定の core.quotePath）・タブ・改行・"
+# を含むパスが "\343..." のように引用・エスケープされ、拡張子もファイル名も一致しなくなる。-z では
+# 引用されない。パス中の改行は ? に置き換えてから NUL を改行に戻す（awk は1行を1パスとして読む）。
+git ls-files -z | tr '\n\0' '?\n' | awk -F '\t' -v manifest="$MANIFEST" '
+  function installed(stack) {
+    return system("[ -e \".mise/tasks/check/lint/" stack "\" ]") == 0
+  }
+  BEGIN {
+    n = 0
+    while ((getline line < manifest) > 0) {
+      sub(/\r$/, "", line)  # Windows で CRLF になっていても読む
+      if (line ~ /^#/ || line == "") continue
+      split(line, f, "\t")
+      key = (f[1] == "-") ? "-" f[2] : f[1]
+      if (!(key in label)) { order[++n] = key; label[key] = f[2]; supported[key] = (f[1] != "-") }
+      if (f[3] == "marker") markers[key, ++nm[key]] = f[4]
+      else if (f[3] == "ext") exts[key, ++ne[key]] = f[4]
+      else if (f[3] == "exclude") {
+        if (substr(f[4], length(f[4])) == "/") excludedDir[key, ++nx[key]] = f[4]
+        else excluded[key, f[4]] = 1
+      }
+    }
+  }
+  {
+    path = $0
+    # tests/acceptance/ は共通部分の受け入れテスト（Playwright Test の独立パッケージ）で、言語の
+    # スタックではない。その package.json・.ts で TypeScript のずれを報告しない。
+    if (index(path, "tests/acceptance/") == 1) next
+    base = path; sub(/.*\//, "", base)
+    for (i = 1; i <= n; i++) {
+      key = order[i]
+      if (key in hit) continue
+      for (j = 1; j <= nm[key]; j++) {
+        marker = markers[key, j]
+        if (base == marker || (substr(marker, 1, 2) == "./" && path == substr(marker, 3))) { hit[key] = path; break }
+      }
+      if (key in hit) continue
+      if ((key, path) in excluded) continue
+      skip = 0
+      for (j = 1; j <= nx[key]; j++) if (index(path, excludedDir[key, j]) == 1) { skip = 1; break }
+      if (skip) continue
+      for (j = 1; j <= ne[key]; j++) {
+        ext = exts[key, j]
+        if (length(path) > length(ext) && substr(path, length(path) - length(ext) + 1) == ext) { hit[key] = path; break }
+      }
+    }
+  }
+  END {
+    for (i = 1; i <= n; i++) {
+      key = order[i]
+      if (!(key in hit)) continue
+      where = label[key] "（" hit[key] " ほか）"
+      if (!supported[key]) {
+        printf "::warning file=%s,title=guardrail-drift::%sを検出しました。development はこのスタックのガードレールにまだ対応していません（未対応のスタック）。\n", hit[key], where
+      } else if (installed(key)) {
+        printf "ok: %s のガードレールは導入済み\n", label[key]
+      } else {
+        printf "::warning file=%s,title=guardrail-drift::%sを検出しましたが、ガードレールが未導入です。/development:setup を実行してください。\n", hit[key], where
+      }
+    }
+  }
+'
+exit 0

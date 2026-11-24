@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の it（integration テスト（Docker が要る））。状態は stack.toml の [checks].it。
+echo "markdown: it は無し（文書にはintegration テスト（Docker が要る）が無い）"

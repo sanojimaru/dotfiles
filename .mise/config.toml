@@ -1,0 +1,98 @@
+# development のガードレール: ランタイムとどのスタックでも同じ入口（copier の common が置く。手で直すと次の
+# 更新で 3-way マージになる。変えたい値はプロジェクトの mise.toml に書く。mise は mise.toml と
+# .mise/config.toml の両方を読み、同じキーは mise.toml が勝つ）。
+#
+# タスクの中身はスタックの数・種類に依存しない。スタックごとの実体は
+# .mise/tasks/setup/<stack> と .mise/tasks/check/<種別>/<stack> に置き、ここでは
+# ワイルドカードの depends で集める（check:<種別> が全スタックの同じ種別を集め、check・check:full が
+# 種別をまとめて呼ぶ）。各スタックは at 以外の全種別のファイルを置く（その言語に無い
+# 検査は「無し」と表示して成功で終わるファイル）。at（受け入れテスト）は成果物の種類で決まるので、
+# acceptance か acceptance-none のどちらかが .mise/tasks/check/at/acceptance を必ず1つ置く。該当する
+# ファイルが1つも無いワイルドカードは mise がエラーにするので、種別が黙って抜けることはない。
+
+[tools]
+# 版ファイル・.tool-versions に版があるツールは書かない。
+# node は共通の check:unit（scripts/guardrail-coverage.mjs）と jscpd・npm バックエンドのツールが使う。
+node = "24"
+lefthook = "2.1.10"
+# markdownlint-cli2・prettier は mise の npm バックエンドで、版を固定して入れる（`mise install` の
+# 1回だけネットワークから取得し、以降は手元のものを使う）。
+"npm:markdownlint-cli2" = "0.22.0"
+"npm:prettier" = "3.9.6"
+lychee = "0.23.0"
+
+[tasks.setup]
+description = "依存関係とgitフック（lefthook）をローカルに入れる"
+depends = ["setup:*"]
+run = "lefthook install"
+
+[tasks.fix]
+description = "全スタックの整形と自動修正。ファイルを渡すとそのファイルだけを直す"
+# depends は引数を渡さないので、run のワイルドカードで各スタックへ同じ引数を渡す。
+run = 'mise run "fix:*"'
+
+[tasks.check]
+description = "速い検査（lint・format・型・unit（カバレッジ計測）・静的解析・コード品質）。push の前と PR の CI で呼ぶ"
+# depends ではなく --continue-on-error 付きの mise run で呼ぶ。depends だと最初に失敗したタスクで
+# 残りが止まり、他の検査の結果が分からない。こうすると全部走らせてから、1つでも失敗すれば失敗する。
+# guardrail-check.mjs が検査を走らせ、通った作業ツリーを記録する。pre-push はこの記録だけを確かめる
+# （検査をロックの外で走らせ、push のあいだ gh stack のロックを持ち続けないため。#174）。
+run = "node scripts/guardrail-check.mjs run mise run --continue-on-error check:lint ::: check:format ::: check:typecheck ::: check:unit ::: check:deadcode ::: check:deps ::: check:duplication ::: check:complexity"
+
+[tasks."check:full"]
+description = "check に IT・AT を足した全検査。PR の CI（Docker のある ubuntu）と手動で呼ぶ"
+# 前回の計測を消し、並行する unit・integration が両方成功してから合算する。
+# unit だけを合算用の閾値と比べると、integration に移したコードの分だけ誤って落ちる。
+run = "node scripts/guardrail-coverage.mjs reset && mise run --continue-on-error check ::: check:it ::: check:at && mise run coverage:check"
+
+[tasks."check:lint"]
+description = "全スタックのlint"
+depends = ["check:lint:*"]
+
+[tasks."check:format"]
+description = "全スタックのformat"
+depends = ["check:format:*"]
+
+[tasks."check:typecheck"]
+description = "全スタックの型検査"
+depends = ["check:typecheck:*"]
+
+[tasks."check:unit"]
+description = "全スタックのunit テスト（計測のみ。全体の下限は check:full が integration と合算して判定）"
+depends = ["check:unit:*"]
+
+[tasks."coverage:check"]
+description = "unit と integration を合算し、.guardrail/thresholds.json の下限を判定する"
+run = "node scripts/guardrail-coverage.mjs combine && node scripts/guardrail-coverage.mjs check"
+
+[tasks."coverage:diff"]
+description = "変更行のカバレッジを報告する（.guardrail/thresholds.json の diff を下回ると失敗。既定は 100、null にすると報告だけ）。check:full の後に呼ぶ"
+run = "node scripts/guardrail-coverage.mjs diff"
+
+[tasks."coverage:raise"]
+description = "実測に合わせて .guardrail/thresholds.json の閾値を引き上げる（下げない）。main の CI が呼ぶ"
+run = "node scripts/guardrail-coverage.mjs raise"
+
+[tasks."check:deadcode"]
+description = "全スタックの未使用コード"
+depends = ["check:deadcode:*"]
+
+[tasks."check:deps"]
+description = "全スタックの依存関係のルール"
+depends = ["check:deps:*"]
+
+[tasks."check:duplication"]
+description = "全スタックの重複"
+depends = ["check:duplication:*"]
+
+[tasks."check:complexity"]
+description = "全スタックの複雑度"
+depends = ["check:complexity:*"]
+
+[tasks."check:it"]
+description = "全スタックのintegration テスト（Docker が要る）"
+depends = ["check:it:*"]
+
+[tasks."check:at"]
+description = "受け入れテスト（成果物の種類で決まる共通部分の .mise/tasks/check/at/acceptance）"
+depends = ["check:at:*"]

@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# development のガードレール: 受け入れテスト（AT）。この成果物の種類には AT を置かない
+# AT の有無は docs/conventions/artifact-types.md の検証モデルで選ぶ。外部 SaaS だけに作用する
+# CLI などは integration で受け入れを確かめるので、ここでは AT を重ねない。
+# 成果物の種類が変わって AT が要るようになったら、このファイルを消してから /development:setup を
+# やり直す（setup は既にあるこのファイルを上書きしない）。
+echo "at は無し（この成果物の種類には置かない）"

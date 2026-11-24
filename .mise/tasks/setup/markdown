@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の依存関係。markdownlint-cli2・prettier・lychee は
+# .mise/config.toml の [tools] にあり、mise install（CI では jdx/mise-action）が
+# 入れるので、ここで入れるものは無い。
+echo "markdown: 入れる依存関係は無し（ツールは .mise/config.toml の [tools]）"

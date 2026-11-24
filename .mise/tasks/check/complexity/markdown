@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の complexity（複雑度）。状態は stack.toml の [checks].complexity。
+echo "markdown: complexity は無し（文書には複雑度が無い）"

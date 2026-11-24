@@ -1,0 +1,28 @@
+# development のガードレール: スタックの目印（guardrail:drift が読む）。
+# 生成物。手で直さない。プラグインの templates/*/stack.toml と templates/languages.toml から
+# tools/development の gen:stack-manifest が作る。
+# スタック名<TAB>表示名<TAB>種類（marker・ext・exclude）<TAB>値。スタック名が - は未対応の言語。
+docker	Docker	marker	./Dockerfile
+go	Go	ext	.go
+markdown	Markdown	ext	.md
+markdown	Markdown	exclude	README.md
+markdown	Markdown	exclude	CLAUDE.md
+markdown	Markdown	exclude	AGENTS.md
+markdown	Markdown	exclude	docs/guardrails/typescript.md
+markdown	Markdown	exclude	docs/guardrails/python.md
+markdown	Markdown	exclude	CODE_REVIEW.md
+markdown	Markdown	exclude	DOCUMENT_REVIEW.md
+markdown	Markdown	exclude	docs/conventions/
+python	Python	marker	pyproject.toml
+terraform	Terraform/Terragrunt	ext	.tf
+typescript	TypeScript/Node.js	marker	package.json
+-	C#	ext	.cs
+-	Dart	ext	.dart
+-	Elixir	ext	.ex
+-	Java	ext	.java
+-	Kotlin	ext	.kt
+-	PHP	ext	.php
+-	Ruby	ext	.rb
+-	Rust	ext	.rs
+-	Scala	ext	.scala
+-	Swift	ext	.swift

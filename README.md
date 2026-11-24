@@ -41,29 +41,29 @@ chsh -s /opt/homebrew/bin/fish
 
 ### ターミナル環境
 
-| ソフト | 用途 | 設定ファイル |
-|---|---|---|
-| Ghostty (公式アプリを直接導入。brew 管理外) | ターミナル。Solarized Dark、fish 起動 | `config/ghostty/config` |
-| fish | 普段使いのシェル (ログインシェル) | `config/fish/config.fish` |
-| zsh | 互換用に維持 (`zsh-autosuggestions` `zsh-completions` 使用) | `home/.zshrc` `home/.zshenv` |
-| tmux | 端末多重化。prefix は `C-a`、Solarized Dark | `config/tmux/tmux.conf` |
-| starship | プロンプト | `config/starship.toml` |
-| vim + vim-plug | エディタ。NERDTree / airline / fugitive | `home/.vimrc` |
-| font-hack-nerd-font | ターミナルのフォント (アイコン用 Nerd Font) | |
-| font-plemol-jp / font-ricty-diminished / font-powerline-symbols | 日本語・powerline 用の予備フォント | |
+| ソフト                                                          | 用途                                                        | 設定ファイル                 |
+| --------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------- |
+| Ghostty (公式アプリを直接導入。brew 管理外)                     | ターミナル。Solarized Dark、fish 起動                       | `config/ghostty/config`      |
+| fish                                                            | 普段使いのシェル (ログインシェル)                           | `config/fish/config.fish`    |
+| zsh                                                             | 互換用に維持 (`zsh-autosuggestions` `zsh-completions` 使用) | `home/.zshrc` `home/.zshenv` |
+| tmux                                                            | 端末多重化。prefix は `C-a`、Solarized Dark                 | `config/tmux/tmux.conf`      |
+| starship                                                        | プロンプト                                                  | `config/starship.toml`       |
+| vim + vim-plug                                                  | エディタ。NERDTree / airline / fugitive                     | `home/.vimrc`                |
+| font-hack-nerd-font                                             | ターミナルのフォント (アイコン用 Nerd Font)                 |                              |
+| font-plemol-jp / font-ricty-diminished / font-powerline-symbols | 日本語・powerline 用の予備フォント                          |                              |
 
 ### コマンドラインツール
 
-| 分類 | ソフト |
-|---|---|
-| 検索・表示 | ripgrep, fd, fzf, eza, bat, zoxide, cloc, poppler |
-| Git | git, gh, gibo, git-filter-repo, subversion |
-| ランタイム管理 | mise (`config/mise/config.toml`: direnv, golangci-lint, lefthook, task, websocat) |
-| Python | python@3.13, uv, pipx |
-| Java / ネイティブ | openjdk, icu4c@76, pkgconf, pango |
-| ネットワーク | wget, tailscale, ngrok (cask) |
-| データ・メディア | postgresql@18, ffmpeg, openai-whisper |
-| 検証 | actionlint |
+| 分類              | ソフト                                                                            |
+| ----------------- | --------------------------------------------------------------------------------- |
+| 検索・表示        | ripgrep, fd, fzf, eza, bat, zoxide, cloc, poppler                                 |
+| Git               | git, gh, gibo, git-filter-repo, subversion                                        |
+| ランタイム管理    | mise (`config/mise/config.toml`: direnv, golangci-lint, lefthook, task, websocat) |
+| Python            | python@3.13, uv, pipx                                                             |
+| Java / ネイティブ | openjdk, icu4c@76, pkgconf, pango                                                 |
+| ネットワーク      | wget, tailscale, ngrok (cask)                                                     |
+| データ・メディア  | postgresql@18, ffmpeg, openai-whisper                                             |
+| 検証              | actionlint                                                                        |
 
 ### クラウド・インフラ
 

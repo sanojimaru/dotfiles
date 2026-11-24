@@ -1,0 +1,22 @@
+# development のガードレール: git フックは手動実行と同じ入口を呼ぶ。
+pre-commit:
+  parallel: false
+  commands:
+    fix:
+      run: mise run fix -- {staged_files}
+      stage_fixed: true
+
+pre-push:
+  parallel: false
+  commands:
+    # pre-push は検査を走らせず、push する ref の中身に mise run check が通った記録があるかだけを
+    # 確かめる。gh stack は push のあいだ全 worktree で共有するロックを持ち続け、待つ側は 5 秒で諦める
+    # ので、ここで検査を走らせると、別の worktree の gh stack が止まった（#174）。検査は mise run check を
+    # ロックの外で走らせる。記録の付け方は scripts/guardrail-check.mjs。
+    #
+    # gh stack はフックの stdout を捨て、stderr だけを失敗の理由に出す。lefthook は出力を自分の stdout に
+    # 書き直すので、use_stdin: true で取り込ませずにそのまま流させ、`>&2` で stderr に流す。stdin には git が
+    # push する ref の一覧を渡し、verify --refs がそれを読む（use_stdin: true で lefthook が stdin をそのまま渡す）。
+    check:
+      use_stdin: true
+      run: mise exec -- node scripts/guardrail-check.mjs verify --refs >&2

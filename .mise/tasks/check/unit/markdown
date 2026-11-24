@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の unit（unit テスト（カバレッジ閾値込み））。状態は stack.toml の [checks].unit。
+echo "markdown: unit は無し（文書にはunit テスト（カバレッジ閾値込み）が無い）"

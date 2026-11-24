@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の deps（依存関係のルール）。状態は stack.toml の [checks].deps。
+echo "markdown: deps は無し（文書には依存関係のルールが無い）"
