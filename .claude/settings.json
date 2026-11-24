@@ -11,5 +11,14 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "engineering-standards": {
+      "source": {
+        "source": "github",
+        "repo": "spikestudio/engineering-standards"
+      },
+      "autoUpdate": true
+    }
   }
 }

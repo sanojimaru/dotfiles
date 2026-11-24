@@ -1,0 +1,12 @@
+_commit: v0.3.0
+_src_path: https://github.com/spikestudio/engineering-standards.git
+acceptance: false
+idiomatic_tools: []
+keep: []
+node_version: '24'
+part: common
+pnpm_version: 10.6.4
+python_version: '3.12'
+stacks:
+- markdown
+tool_versions_tools: []

@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の lint（lint）。状態は stack.toml の [checks].lint。
+# 対象は .markdownlint-cli2.jsonc の globs・ignores・gitignore。
+set -e
+markdownlint-cli2

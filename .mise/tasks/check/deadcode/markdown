@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の deadcode（リンク切れ）。状態は stack.toml の [checks].deadcode。
+# ファイルの移動・見出しの変更で切れたリンクを push 前と CI で検出する。
+# 外部 URL はネットワークが要るので検査しない。除外と理由は lychee.toml に置く。
+set -e
+# ディレクトリを入力にし、.gitignore の対象を除く（glob 入力は無視ファイルも列挙する）。
+lychee --offline --include-fragments --root-dir "$(pwd)" --hidden --extensions md .

@@ -1,0 +1,187 @@
+# development のガードレール: CI。
+#
+# ローカルと同じ入口を呼ぶ。Go の -race が要る C コンパイラだけ Windows で準備する:
+# - `mise run setup`: 依存関係とgitフック（.mise/tasks/setup/<stack>）
+# - `mise run check`: 速い検査。push の前に手元で走らせるものと同じ（pre-push はその記録を確かめる）
+# - `mise run check:full`: check に IT・AT を足したもの。Docker が要るので ubuntu だけで回す
+#   （AT が失敗したら、調べる材料を成果物として上げる）
+# 検査を足すときは .mise/tasks/check/<種別>/<stack> を直す。ここには列挙しない
+# （列挙するとローカルと CI で検査がずれる）。
+#
+# ランタイム（node・pnpm・python・uv・lefthook）は .mise/config.toml の [tools]（プロジェクトの
+# mise.toml にあればそちらが勝つ）が正本で、jdx/mise-action が入れる。
+#
+# PR ごとに ubuntu（check:full）+ macOS・Windows（check）を回す（Issue #529）。毎日 1 回の schedule でも
+# 回し、依存の更新などで壊れたことに PR を待たずに気づく。
+#
+# カバレッジ: ubuntu の check:full が unit・integration を合算して書いた .guardrail/coverage/ を、PR では diff-coverage が読んで変更行の
+# カバレッジを Job Summary に報告し（.guardrail/thresholds.json の diff を下回ると失敗。既定は 100 で、null にすると報告だけ）、
+# main への push では coverage-thresholds が読んで、閾値を引き上げられるときに、その案と手元で上げる手順を
+# Job Summary とログに出す（閾値は下げない）。PR は作らない: 組織が Actions による PR の作成を止めていても
+# 動くようにし、書き込みの権限もトークンも持たせないため。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # 03:00 JST 固定実行（依存の更新などで壊れたことに気づくため）
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+# ワークフローの既定の権限は空にし、ジョブごとに要る権限だけを書く（導入先の既定が広くても広がらない）。
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # PR と Issue の本文を読む（受け入れテストの AC の出どころ）。既定の権限が狭いリポジトリでも読めるように明示する。
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            task: check:full
+          - os: macos-latest
+            task: check
+          - os: windows-latest
+            task: check
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # 導入先が履歴やタグを使う検査（legacy snapshot の照合など）を check に足しても、浅い clone で落ちないようにする。
+          fetch-depth: 0
+          fetch-tags: true
+      # go test -race は cgo を使う。Go を導入した Windows だけ、同じ GCC の版で動かす。
+      - name: Prepare Go race compiler
+        if: runner.os == 'Windows' && hashFiles('.guardrail/answers/go.yml') != ''
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "go-gcc.zip"
+          Invoke-WebRequest -Uri "https://github.com/xpack-dev-tools/mingw-w64-gcc-xpack/releases/download/v15.2.0-2/xpack-mingw-w64-gcc-15.2.0-2-win32-x64.zip" -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne "0e541c0df2569b2593a39143b0512a1663827d0b9ee52b5f8c73dc67d03774c2") { throw "GCC archive checksum mismatch" }
+          $destination = Join-Path $env:RUNNER_TEMP "go-gcc"
+          Expand-Archive -Path $archive -DestinationPath $destination
+          (Join-Path $destination "xpack-mingw-w64-gcc-15.2.0-2/bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CGO_ENABLED=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - uses: jdx/mise-action@v5.2.10
+      - run: mise run setup
+      # 受け入れテストの reporter（tests/acceptance/support/ac-report.ts）は、ここで置いた PR の本文と、
+      # PR が閉じる Issue の本文に書かれた AC ごとに、テストがあるかを確かめる（無ければ check:at が落ちる）。
+      - if: matrix.task == 'check:full' && github.event_name == 'pull_request' && hashFiles('tests/acceptance/playwright.config.ts') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AC_DIR: ${{ runner.temp }}/ac-sources
+        run: |
+          mkdir -p "$AC_DIR"
+          gh pr view "$PR" --json body --jq .body > "$AC_DIR/pr.md"
+          # 別のリポジトリの Issue も閉じられるので、番号ではなく URL で取る。取れなければここで落とす
+          # （for の中の $(...) の失敗は set -e でも止まらない）。
+          urls=$(gh pr view "$PR" --json closingIssuesReferences --jq '.closingIssuesReferences[].url')
+          i=0
+          for url in $urls; do
+            i=$((i + 1))
+            gh issue view "$url" --json body --jq .body > "$AC_DIR/issue-$i.md"
+          done
+          echo "AC_SOURCES=$AC_DIR" >> "$GITHUB_ENV"
+      - run: mise run ${{ matrix.task }}
+      # 受け入れテスト（check:full の check:at）が失敗したときの、trace・スクリーンショット・動画・
+      # compose のログ・HTML レポート。検査の列挙ではなく、check:at が残すものの受け取り口。
+      # AC ごとの一覧はジョブの概要（GITHUB_STEP_SUMMARY）に出る。
+      - if: failure() && matrix.task == 'check:full'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: acceptance-test-results
+          path: |
+            tests/acceptance/test-results/
+            tests/acceptance/playwright-report/
+          if-no-files-found: ignore
+      - if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: guardrail-coverage
+          path: .guardrail/coverage/
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  diff-coverage:
+    needs: check
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # 変更行を base ブランチとの差分で求めるため、履歴を全部取る。
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8.0.2
+        # テストが0件だとカバレッジが無い。そのときは「記録したスタックが無い」と報告する。
+        continue-on-error: true
+        with:
+          name: guardrail-coverage
+          path: .guardrail/coverage/
+      - uses: jdx/mise-action@v5.2.10
+      - run: mise run coverage:diff
+
+  coverage-thresholds:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.2
+        continue-on-error: true
+        with:
+          name: guardrail-coverage
+          path: .guardrail/coverage/
+      - uses: jdx/mise-action@v5.2.10
+      - id: raise
+        run: mise run coverage:raise
+      # 引き上げられるときだけ、案と手元で上げる手順（raise.md）を Job Summary とログに出す。ジョブは成功のまま。
+      - if: steps.raise.outputs.changed == 'true'
+        run: tee -a "$GITHUB_STEP_SUMMARY" < .guardrail/coverage/raise.md
+
+  # 毎日の schedule では、PR と同じ check の matrix の代わりにこれを回す。
+  check-scheduled:
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: jdx/mise-action@v5.2.10
+      - run: mise run setup
+      - run: mise run check
+
+  # リポジトリにあるスタックと、導入済みのガードレールのずれを警告する（Issue #527）。
+  # サブディレクトリに増えたスタックや stack.toml の無い言語も見る。PR は止めない。
+  # mise を通さずに sh で呼ぶ（mise run は既定で [tools] を全部入れるため、この軽い検査には重い）。
+  guardrail-drift:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: sh .mise/tasks/guardrail/drift

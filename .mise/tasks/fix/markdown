@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+status=0
+# markdownlint が URL を直すと表の幅も変わるので、Prettier はその後にする。
+if [ "$#" -eq 0 ]; then
+  markdownlint-cli2 --fix || status=$?
+  prettier --write --no-error-on-unmatched-pattern "**/*.md"
+else
+  files=()
+  for file in "$@"; do
+    case "$file" in /*|./*) ;; *) file="./$file";; esac
+    case "$file" in *.md) files+=("$file");; esac
+  done
+  [ "${#files[@]}" -gt 0 ] || exit 0
+  # 設定の globs を追加すると指定外の Markdown まで書き換えてしまう。
+  markdownlint-cli2 --no-globs --fix "${files[@]}" || status=$?
+  prettier --write "${files[@]}"
+fi
+exit "$status"

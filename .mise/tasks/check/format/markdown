@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# development のガードレール: markdown の format（format）。状態は stack.toml の [checks].format。
+set -e
+prettier --check --no-error-on-unmatched-pattern "**/*.md"
