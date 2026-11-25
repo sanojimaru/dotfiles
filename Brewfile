@@ -77,8 +77,6 @@ brew "subversion"
 brew "swift-format"
 # Tool to enforce Swift style and conventions
 brew "swiftlint"
-# Easiest, most secure way to use WireGuard and 2FA
-brew "tailscale"
 # Terminal multiplexer
 brew "tmux"
 # Extremely fast Python package installer and resolver, written in Rust
