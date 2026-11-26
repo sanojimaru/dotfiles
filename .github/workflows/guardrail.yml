@@ -1,15 +1,20 @@
 # development のガードレール: 規則の判定。必須の規則を外した PR を、マージの前に止める。
 #
-# 判定器は、このリポジトリの scripts/guardrail-rules.mjs のコピーではなく、engineering-standards のものを
-# commit の SHA で固定して呼ぶ（PR でコピーを書き換えても、判定は変わらない）。SHA は development:setup が
-# 置いた版のもの。
+# pull_request_target で動かす。このイベントは、PR の中身ではなくマージ先（main）にあるこのファイルと
+# 判定器（scripts/guardrail-rules.mjs）で動くので、PR がこのジョブを書き換えて判定器を呼ばずに成功を報告しても、
+# その PR の判定には効かない。判定器は他のリポジトリから取らないので、Organization の外のリポジトリや、
+# 非公開のリポジトリの導入先でも動く。
+# PR の中身は pr/ に置き、判定器が読むだけにする。PR のコードは実行せず、トークンは読み取りだけで、
+# シークレットも使わない（pull_request_target で PR のコードを動かすと、書き込み権限が奪われるから）。
+# このファイルと判定器も harness-files が配布版と比べるので、PR がこれらを書き換えると、マージ先の一覧と違って
+# このジョブが落ちる。ハーネスを更新する PR（development:setup の apply）は、マージ先の判定器と一覧では配布版と違うので
+# harness-files で落ちる。ハーネスの更新は、管理者が中身を見て ruleset のバイパスでマージする。
 # development:setup が入れる ruleset（development guardrail）が、このジョブ guardrail-rules を必須の
-# チェックにする。このジョブやファイルを消した PR は、必須のチェックが報告されないのでマージできない。
-# ci.yml と分けるのは、ci.yml を keep している導入先にも届けるため。
+# チェックにする。ci.yml と分けるのは、ci.yml を keep している導入先にも届けるため。
 name: Guardrail
 
 on:
-  pull_request:
+  pull_request_target:
   push:
     branches: [main]
 
@@ -21,10 +26,23 @@ jobs:
     permissions:
       contents: read
     steps:
+      # マージ先の先端。pull_request_target も push も、既定ではこの checkout が信頼する版になる。
       - uses: actions/checkout@v7.0.1
         with:
+          path: trusted
           persist-credentials: false
-          # 判定器がカバレッジの閾値をマージ先と比べるため、PR のマージコミットの親（マージ先の先端）まで取る。
-          # ref は既定（PR ではマージコミット）のままにする。PR の head に変えると、親がマージ先でなくなる。
+      # 判定する中身。PR ではマージコミット、push ではその commit。判定器がカバレッジの閾値をマージ先と
+      # 比べるため、マージコミットの親（マージ先の先端）まで取る。
+      - uses: actions/checkout@v7.0.1
+        with:
+          path: pr
+          ref: ${{ github.event_name == 'pull_request_target' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.sha }}
+          persist-credentials: false
           fetch-depth: 2
-      - uses: spikestudio/engineering-standards/plugins/development/actions/guardrail-rules@1bef8bc796be70af2fcda0af2ef69fbe373fc0cb
+      # --ci は、判定に要る道具（Docker の Compose）が無いときに、判定を飛ばさずに落とさせる。
+      - shell: bash
+        run: |
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request_target ]; then base=(--base HEAD^1); fi
+          cd pr
+          node ../trusted/scripts/guardrail-rules.mjs --ci "${base[@]}"

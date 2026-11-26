@@ -13,7 +13,7 @@ common	.guardrail/stacks.tsv	harness	fdc6dfb3d5c6f85d95c224667589360f78095240780
 common	.guardrail/files.tsv	harness	-	-
 common	.mise/config.toml	harness	-	-
 common	lefthook.yml	harness	-	-
-common	.github/workflows/guardrail.yml	harness	-	-
+common	.github/workflows/guardrail.yml	harness	84140c21fc235ba461e656b86741f45716902f51b0b431077d9dafa4fdc2a12b	-
 common	.guardrail/answers/common.yml	harness	-	-
 common	.github/workflows/ci.yml	shared	-	-
 common	.gitattributes	shared	-	-
