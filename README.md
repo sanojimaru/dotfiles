@@ -88,7 +88,7 @@ drawio (cask), libreoffice (cask)
 - `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く。`orca-nested` は Orca の中から `claude -p` などを入れ子で起動するとき `ORCA_` の環境変数を外す。`codex` は本物の codex より前に PATH に置くラッパーで、起動のたびに `codex-hook-trust` で自分が管理するフックを信頼してから本物を起動する。信頼するのはユーザーのフックとインストール済みのプラグインのフックだけで、プロジェクトのフックは件数を表示して Codex の `/hooks` での承認に任せる)
 - `tests/` — 自作コマンドとインストールのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`tests/install.sh`、`tests/codex-hook-trust.py`。本物の codex は呼ばない)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
-- `agents/skills/<スキル名>/SKILL.md` — 共通スキル。`./install.sh` がスキルのディレクトリを `~/.claude/skills/<スキル名>` と `~/.agents/skills/<スキル名>`（Codex）へリンクする。追加したら再実行し、新しいセッションで使う。例: `agents/skills/issue-planning/SKILL.md`。配置先に別のファイル・リンクがある場合や Codex 専用スキルと同名の場合は、既存のものを保ち、エラーで止まるので名前を分ける
+- `agents/skills/<スキル名>/SKILL.md` — 共通スキル。`./install.sh` がスキルのディレクトリを `~/.claude/skills/<スキル名>` と `~/.agents/skills/<スキル名>`（Codex）へリンクする。追加したら再実行し、新しいセッションで使う。配置先に別のファイル・リンクがある場合や Codex 専用スキルと同名の場合は、既存のものを保ち、エラーで止まるので名前を分ける
 - `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `require-orca-nested.sh` は `Bash`。止めずに Claude へ警告する。`block-heavy-ask-user-question.sh` は `AskUserQuestion`)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
@@ -135,7 +135,6 @@ cd ~/dotfiles && brew bundle dump --force
 ## Claude / Codex の週の使用率
 
 `agent-usage` で、両方の週枠・5時間枠の使用率・リセット日時・最終取得日時を表示する。
-モデルを選ぶ際の取得・振り分けのルールは [agents/AGENTS.md](agents/AGENTS.md#issue-を渡すエージェントとモデルは作業の中心と使用量で選ぶ) に従う。
 取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
 取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
 Claude・Codex とも `orca account list --json` と従来の記録の最終取得日時を比べ、新しい取得元の使用率と出典を表示する。
