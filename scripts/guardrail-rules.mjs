@@ -4,9 +4,8 @@
 // 規則は、導入先が外してはいけない設定（必須、required）と、外すなら理由を残す設定（任意、optional）を
 // 並べる。必須の違反があれば終了コード 1 で落とす。任意の違反は警告にとどめ、導入先が理由と一緒に
 // .guardrail/exceptions.json に書いた規則は警告も出さない。必須の規則は、そこに書いても外れない。
-// CI は、導入先にあるこのファイルのコピーではなく、engineering-standards のこのファイルを commit の SHA で
-// 固定して呼ぶ（.github/workflows/guardrail.yml）。導入先でこのファイルを書き換えても、CI の判定は変わらない。
-// 手元の mise run check（.mise/tasks/check/lint/guardrail）は、push の前に気づくためにこのコピーを呼ぶ。
+// CI（.github/workflows/guardrail.yml）も、導入先にあるこのファイルのコピーを呼ぶ。導入先でこのファイルを書き換えると、
+// 規則 harness-files が配布版の一覧と比べて落とす。
 //
 //   node scripts/guardrail-rules.mjs               判定して、違反を出す（必須の違反があれば 1）
 //   node scripts/guardrail-rules.mjs --json        判定の結果を JSON で出す（development の setup が読む）
@@ -29,8 +28,8 @@ const CI = ".github/workflows/ci.yml";
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
 const LOOPBACK = "127.0.0.1";
 /**
- * 配布版の置き場所（このファイルの 1 つ上）。CI では engineering-standards の、SHA で固定した
- * templates/common/files/、手元では導入先の直下。harness-files は、ここにある .guardrail/files.tsv と比べる。
+ * 配布版の置き場所（このファイルの 1 つ上）。導入先の直下で動かすときは導入先の直下で、プラグインの
+ * templates/common/files/ で動かすとそこになる。harness-files は、ここにある .guardrail/files.tsv と比べる。
  */
 const DIST = fileURLToPath(new URL("..", import.meta.url));
 /** 配る ci.yml の ci-required が待つジョブ。配布版の ci.yml と同じ（tools/development のテストが確かめる）。 */
@@ -314,7 +313,7 @@ function manifestRows(text) {
 /**
  * ハーネスが持つファイルのうち、配布版（DIST の .guardrail/files.tsv の sha256）と違うものと、無いもの。
  * part は、直下に置く part のうち導入したもの（common と、.guardrail/answers/<part>.yml があるもの）だけを見る。
- * CI では一覧そのものも、固定した版の一覧と比べる（導入先がファイルと一覧を両方書き換えても通さないため）。
+ * プラグインの判定器で動かすと、一覧そのものも、プラグインの一覧と比べる（導入先がファイルと一覧を両方書き換えても通さないため）。
  */
 function harnessViolation(root) {
   const manifest = join(DIST, FILES_MANIFEST);

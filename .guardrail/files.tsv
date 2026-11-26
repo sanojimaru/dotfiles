@@ -5,7 +5,7 @@
 # 置くスタックが - でないファイルは、そのどれかを導入したときだけ置く（それ以外で無くても落とさない）。
 common	scripts/guardrail-check.mjs	harness	2948a549eaf43de401614accfb068065b2c938a2dfb7dc61483b07b0c07b4f7e	-
 common	scripts/guardrail-coverage.mjs	harness	4a250836cc3cf16643007863692900be23f3c827adbba99f00d43bd2aeae5db8	-
-common	scripts/guardrail-rules.mjs	harness	fec96df950cf69dadb75dfdd91e59225f0f94c4468a0358dadf1ed855b28c321	-
+common	scripts/guardrail-rules.mjs	harness	cc339c33c7d987f9229c1e06355889159c616276b0688ea48e0858a5f39d2b66	-
 common	scripts/jscpd-annotate.mjs	harness	546a40416dae150aa0fdcc87c31002759d27c0a00b7025c6df2cf34046f94f57	typescript,python
 common	.mise/tasks/check/lint/guardrail	harness	4121ecde9508a7c4d4045a6307939e9d3da194800e31d5dccb065beb96b7aeb3	-
 common	.mise/tasks/guardrail/drift	harness	f9df15ea40ef23def4a2def93d6c3f6294863fca644c5adde5dba143b634f078	-
@@ -13,7 +13,7 @@ common	.guardrail/stacks.tsv	harness	fdc6dfb3d5c6f85d95c224667589360f78095240780
 common	.guardrail/files.tsv	harness	-	-
 common	.mise/config.toml	harness	-	-
 common	lefthook.yml	harness	-	-
-common	.github/workflows/guardrail.yml	harness	-	-
+common	.github/workflows/guardrail.yml	harness	cf64724e3765aca96a543ae3226810444653d421f2d2bdbc504449f215243f9c	-
 common	.guardrail/answers/common.yml	harness	-	-
 common	.github/workflows/ci.yml	shared	-	-
 common	.gitattributes	shared	-	-
