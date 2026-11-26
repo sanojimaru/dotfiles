@@ -3,7 +3,6 @@
 # CI の Windows ジョブがシェルの文法エラー（`set -e\r` 等）で止まる。
 # .mise/tasks 配下は拡張子が無いため、*.sh だけでは覆えない。.guardrail 配下（guardrail:drift が読む
 # 目印のデータ）も、CRLF だと Windows の手元で読めなくなるため含める。
-*.sh text eol=lf
 .mise/tasks/** text eol=lf
 .guardrail/** text eol=lf
 # Prettier は LF を求めるので、Markdown も LF で checkout する。これが無いと Windows の CI の check:format が
