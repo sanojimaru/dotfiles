@@ -1,8 +1,8 @@
 # development のガードレール: 規則の判定。必須の規則を外した PR を、マージの前に止める。
 #
-# 判定器は、このリポジトリの scripts/guardrail-rules.mjs のコピーではなく、engineering-standards のものを
-# commit の SHA で固定して呼ぶ（PR でコピーを書き換えても、判定は変わらない）。SHA は development:setup が
-# 置いた版のもの。
+# 判定器は、このリポジトリにある scripts/guardrail-rules.mjs を呼ぶ。他のリポジトリの action から取らないので、
+# Organization の外のリポジトリや、公開のリポジトリの導入先でも動く。判定器と、このファイルを含むハーネスの
+# ファイルを書き換えた PR は、規則 harness-files が配布版の一覧（.guardrail/files.tsv）と比べて落とす。
 # development:setup が入れる ruleset（development guardrail）が、このジョブ guardrail-rules を必須の
 # チェックにする。このジョブやファイルを消した PR は、必須のチェックが報告されないのでマージできない。
 # ci.yml と分けるのは、ci.yml を keep している導入先にも届けるため。
@@ -27,4 +27,11 @@ jobs:
           # 判定器がカバレッジの閾値をマージ先と比べるため、PR のマージコミットの親（マージ先の先端）まで取る。
           # ref は既定（PR ではマージコミット）のままにする。PR の head に変えると、親がマージ先でなくなる。
           fetch-depth: 2
-      - uses: spikestudio/engineering-standards/plugins/development/actions/guardrail-rules@1bef8bc796be70af2fcda0af2ef69fbe373fc0cb
+      # PR では、カバレッジの閾値をマージ先と比べる。マージコミットの第 1 親が、マージ先の先端である。
+      # 読めなければ判定器が落ちる（比べずに通さないため）。push では比べない（PR で比べた変更が入るため）。
+      # --ci は、判定に要る道具（Docker の Compose）が無いときに、判定を飛ばさずに落とさせる。
+      - shell: bash
+        run: |
+          base=()
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=(--base HEAD^1); fi
+          node scripts/guardrail-rules.mjs --ci "${base[@]}"
