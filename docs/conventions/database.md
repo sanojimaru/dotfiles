@@ -22,7 +22,7 @@ DB を使うプロジェクトで、選定・読み書き・変更時に守る�
 
 ## import の境界
 
-TypeScript・Python のデータアクセス層は `src/data/` とし、DB ツールの import はここにまとめる。TypeScript のアプリの CLI・seed も `src/` に置き、dependency-cruiser の検査対象にする。Python はプロジェクト全体を検査する。別の構成では `.dependency-cruiser.cjs`・`ruff-data-layer.toml` の境界を理由付きで変更する。層を飛ばした import は `check:deps` が止める。
+TypeScript・Python のデータアクセス層は `src/data/` とし、DB ツールの import はここにまとめる。検査は、CLI・seed・テストを含むプロジェクト全体（pnpm workspace では各パッケージの全体）を対象にする。別の構成では `.dependency-cruiser.cjs`・`ruff-data-layer.toml` の境界を理由付きで変更する。層を飛ばした import は `check:deps` が止める。
 
 Python の Alembic 環境は `uv run alembic init src/data/migrations` でデータアクセス層内に作る。既存の環境を移すときは、`env.py` と `versions/` を含むディレクトリを移し、`alembic.ini` の `script_location` も移動先に合わせる。
 

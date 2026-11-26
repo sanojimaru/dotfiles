@@ -1,19 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
-status=0
-# markdownlint が URL を直すと表の幅も変わるので、Prettier はその後にする。
+files=$(mktemp)
+trap 'rm -f "$files"' EXIT
 if [ "$#" -eq 0 ]; then
-  markdownlint-cli2 --fix || status=$?
-  prettier --write --no-error-on-unmatched-pattern "**/*.md"
+  sh scripts/markdown-files.sh >"$files"
 else
-  files=()
+  # mise はタスクを設定のあるディレクトリで実行するので、渡された相対パスは呼び出した
+  # ディレクトリ（MISE_ORIGINAL_CWD）からのパスに直す（#256）。
+  root=$(pwd -P)
+  base=$(cd "${MISE_ORIGINAL_CWD:-$PWD}" && pwd -P)
+  case "$base" in
+    "$root") prefix=./;;
+    "$root"/*) prefix="./${base#"$root"/}/";;
+    *) prefix="$base/";;
+  esac
   for file in "$@"; do
-    case "$file" in /*|./*) ;; *) file="./$file";; esac
-    case "$file" in *.md) files+=("$file");; esac
+    case "$file" in
+      /*) ;;
+      *) while [ "${file#./}" != "$file" ]; do file=${file#./}; done; file="$prefix$file";;
+    esac
+    case "$file" in *.md) printf '%s\0' "$file" >>"$files";; esac
   done
-  [ "${#files[@]}" -gt 0 ] || exit 0
-  # 設定の globs を追加すると指定外の Markdown まで書き換えてしまう。
-  markdownlint-cli2 --no-globs --fix "${files[@]}" || status=$?
-  prettier --write "${files[@]}"
 fi
-exit "$status"
+[ -s "$files" ] || exit 0
+# 設定の globs を足すと指定外の Markdown まで書き換えてしまうので、--no-globs を付ける。
+# ファイルは ./ から始めて渡す（# で始まる名前を除外の指定と読ませないため）。
+lint() {
+  xargs -0 markdownlint-cli2 --no-globs "$@" <"$files"
+}
+# markdownlint が URL を直すと表の幅も変わるので、Prettier はその後にする。
+if lint --fix >/dev/null 2>&1; then
+  xargs -0 prettier --write <"$files"
+  exit 0
+fi
+xargs -0 prettier --write <"$files"
+# --fix が直せない指摘（MD060 の表の空白など）も Prettier で直りうるので、終了コードは
+# 整形の後にもう一度検査して決める（#257）。
+lint

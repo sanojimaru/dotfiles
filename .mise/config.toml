@@ -33,17 +33,17 @@ run = 'mise run "fix:*"'
 
 [tasks.check]
 description = "速い検査（lint・format・型・unit（カバレッジ計測）・静的解析・コード品質）。push の前と PR の CI で呼ぶ"
-# depends ではなく --continue-on-error 付きの mise run で呼ぶ。depends だと最初に失敗したタスクで
-# 残りが止まり、他の検査の結果が分からない。こうすると全部走らせてから、1つでも失敗すれば失敗する。
-# guardrail-check.mjs が検査を走らせ、通った作業ツリーを記録する。pre-push はこの記録だけを確かめる
+# guardrail-check.mjs が .mise/tasks/check/<種別>/ を列挙し、it・at 以外を --continue-on-error 付きで
+# すべて走らせる。通った作業ツリーを記録し、pre-push はこの記録だけを確かめる
 # （検査をロックの外で走らせ、push のあいだ gh stack のロックを持ち続けないため。#174）。
-run = "node scripts/guardrail-check.mjs run mise run --continue-on-error check:lint ::: check:format ::: check:typecheck ::: check:unit ::: check:deadcode ::: check:deps ::: check:duplication ::: check:complexity"
+run = "node scripts/guardrail-check.mjs run-checks"
 
 [tasks."check:full"]
 description = "check に IT・AT を足した全検査。PR の CI（Docker のある ubuntu）と手動で呼ぶ"
-# 前回の計測を消し、並行する unit・integration が両方成功してから合算する。
+# 前回の計測を消し、.mise/tasks/check/<種別>/ のすべてを走らせ、
+# 並行する unit・integration が両方成功してから合算する。
 # unit だけを合算用の閾値と比べると、integration に移したコードの分だけ誤って落ちる。
-run = "node scripts/guardrail-coverage.mjs reset && mise run --continue-on-error check ::: check:it ::: check:at && mise run coverage:check"
+run = "node scripts/guardrail-check.mjs run-full"
 
 [tasks."check:lint"]
 description = "全スタックのlint"
@@ -66,7 +66,7 @@ description = "unit と integration を合算し、.guardrail/thresholds.json �
 run = "node scripts/guardrail-coverage.mjs combine && node scripts/guardrail-coverage.mjs check"
 
 [tasks."coverage:diff"]
-description = "変更行のカバレッジを報告する（.guardrail/thresholds.json の diff を下回ると失敗。既定は 100、null にすると報告だけ）。check:full の後に呼ぶ"
+description = "変更行のカバレッジを報告する（.guardrail/thresholds.json の diff を下回ると失敗。既定は 90）。check:full の後に呼ぶ"
 run = "node scripts/guardrail-coverage.mjs diff"
 
 [tasks."coverage:raise"]

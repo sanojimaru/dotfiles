@@ -3,6 +3,10 @@
 # tools/development の gen:stack-manifest が作る。
 # スタック名<TAB>表示名<TAB>種類（marker・ext・exclude）<TAB>値。スタック名が - は未対応の言語。
 docker	Docker	marker	./Dockerfile
+docker	Docker	marker	./compose.yaml
+docker	Docker	marker	./compose.yml
+docker	Docker	marker	./docker-compose.yaml
+docker	Docker	marker	./docker-compose.yml
 go	Go	ext	.go
 markdown	Markdown	ext	.md
 markdown	Markdown	exclude	README.md

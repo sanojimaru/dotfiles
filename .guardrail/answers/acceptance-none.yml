@@ -1,4 +1,6 @@
-_commit: v0.3.0
+# development のガードレール: copier の回答（apply が書き直す）。Prettier の整形の対象から外す。
+# prettier-ignore
+_commit: v1.1.0
 _src_path: https://github.com/spikestudio/engineering-standards.git
 keep: []
 part: acceptance-none

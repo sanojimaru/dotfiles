@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# development のガードレール: 規則の一覧（scripts/guardrail-rules.mjs）の判定。必須の規則を外すと落ちる。
+# マージを止めるのは CI（.github/workflows/guardrail.yml が engineering-standards の判定器を SHA で固定して
+# 呼ぶ）で、これは push の前に手元で気づくためのもの。
+set -e
+node scripts/guardrail-rules.mjs

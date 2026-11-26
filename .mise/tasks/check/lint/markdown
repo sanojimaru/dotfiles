@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
 # development のガードレール: markdown の lint（lint）。状態は stack.toml の [checks].lint。
-# 対象は .markdownlint-cli2.jsonc の globs・ignores・gitignore。
+# 対象は scripts/markdown-files.sh が git から選び、.markdownlint-cli2.jsonc の ignores で除く。
 set -e
-markdownlint-cli2
+files=$(mktemp)
+trap 'rm -f "$files"' EXIT
+sh scripts/markdown-files.sh >"$files"
+[ -s "$files" ] || exit 0
+xargs -0 markdownlint-cli2 --no-globs <"$files"
