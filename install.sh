@@ -50,7 +50,6 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
-link bin/orca-nested           "$HOME/.local/bin/orca-nested"
 # PATH で本物の codex（/opt/homebrew/bin）より前に置き、起動のたびに自分が管理するフックを信頼する
 if { [ -e "$HOME/.local/bin/codex" ] || [ -L "$HOME/.local/bin/codex" ]; } &&
    [ "$(readlink "$HOME/.local/bin/codex")" != "$ROOT/bin/codex" ]; then
@@ -70,7 +69,6 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 # 全体指示は 1 ファイルを両方へ (Claude は全体指示としての AGENTS.md を読まないため CLAUDE.md の名前でリンク)
 link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
 link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
-link claude/hooks/worktree-branch-cleanup.sh "$HOME/.claude/hooks/worktree-branch-cleanup.sh"
 link claude/hooks/require-orca-nested.sh "$HOME/.claude/hooks/require-orca-nested.sh"
 link claude/hooks/block-heavy-ask-user-question.sh "$HOME/.claude/hooks/block-heavy-ask-user-question.sh"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
