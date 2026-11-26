@@ -1,12 +1,12 @@
 {
-  // 検査対象と除外は globs / ignores で持つ。CI と手元で同じ範囲を見るため、
-  // コマンドライン側でグロブを指定しない。gitignore: true で .gitignore の対象（他のスタックの
-  // node_modules・.venv 等）も見ない。
+  // mise のタスクは scripts/markdown-files.sh が git から選んだファイルを --no-globs で渡すので、
+  // 対象から外すものは ignores に書く。globs と gitignore は、markdownlint-cli2 を引数なしで
+  // 実行したときの対象を、タスクとそろえるために残す。
   "globs": ["**/*.md"],
   // CLAUDE.md は @AGENTS.md の 1 行だけにする決まり（Codex は AGENTS.md しか読まない）で、見出しを持てないので
   // MD041（先頭の見出し）を求めない。
   // agents/・codex/ の既存のスキルと指示書は、自動修正すると意味が変わる箇所（コードスパンの末尾の空白、
-  // 途中から始まる番号付きリスト、1 行の JSON のフィクスチャ）があるので、手で見直すまで対象から外す（#208）。
+  // 途中から始まる番号付きリスト、1 行の JSON のフィクスチャ）があるので、手で見直すまで対象から外す（#208・#210）。
   "ignores": ["node_modules", "**/CLAUDE.md", "agents/**", "codex/**"],
   "gitignore": true,
   "config": {

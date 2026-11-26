@@ -1,4 +1,9 @@
 #!/usr/bin/env sh
 # development のガードレール: markdown の format（format）。状態は stack.toml の [checks].format。
+# 対象は scripts/markdown-files.sh が git から選び、.prettierignore で除く。
 set -e
-prettier --check --no-error-on-unmatched-pattern "**/*.md"
+files=$(mktemp)
+trap 'rm -f "$files"' EXIT
+sh scripts/markdown-files.sh >"$files"
+[ -s "$files" ] || exit 0
+xargs -0 prettier --check <"$files"

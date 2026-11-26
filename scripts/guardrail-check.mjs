@@ -7,7 +7,10 @@
 // mise run check で走らせ、通った作業ツリーのハッシュを worktree ごとの git ディレクトリに残す。
 // pre-push は push する ref の中身がそのハッシュと同じか、同じ中身の commit の祖先かだけを見る。
 //
-//   node scripts/guardrail-check.mjs run <command> ...   検査を走らせ、通ったら作業ツリーを記録する（mise run check）
+//   node scripts/guardrail-check.mjs run-checks          it・at 以外の検査を走らせ、通ったら記録する
+//   node scripts/guardrail-check.mjs run-full            すべての検査と合算カバレッジの下限を確かめる
+//   node scripts/guardrail-check.mjs matrix <os> ...     CI が並列に走らせる matrix の JSON を出す
+//   node scripts/guardrail-check.mjs run <command> ...   指定した検査を走らせ、通ったら記録する
 //   node scripts/guardrail-check.mjs verify --refs       stdin の ref に通った記録が無ければ失敗する（pre-push）
 //   node scripts/guardrail-check.mjs verify              HEAD に通った記録が無ければ失敗する（手で確かめる）
 //
@@ -20,6 +23,7 @@ import {
   copyFileSync,
   existsSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -104,6 +108,70 @@ function run(command) {
   return 0;
 }
 
+/** .mise/tasks/check/<種別>/ を正本として、導入済みの検査種別を列挙する。 */
+function checkKinds() {
+  const root = resolve(".mise/tasks/check");
+  return readdirSync(root, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function checkCommand(full) {
+  const kinds = checkKinds().filter(
+    (kind) => full || (kind !== "it" && kind !== "at"),
+  );
+  if (kinds.length === 0)
+    return ["node", "-e", "console.log('速い検査はありません')"];
+  return [
+    "mise",
+    "run",
+    "--continue-on-error",
+    ...kinds.flatMap((kind, index) => [
+      ...(index === 0 ? [] : [":::"]),
+      `check:${kind}`,
+    ]),
+  ];
+}
+
+function execute(command) {
+  const [file, ...args] = command;
+  const result = spawnSync(file, args, { stdio: "inherit" });
+  if (result.error) throw result.error;
+  return result.status ?? 1;
+}
+
+function runFull() {
+  const reset = execute(["node", "scripts/guardrail-coverage.mjs", "reset"]);
+  if (reset !== 0) return reset;
+  const checks = run(checkCommand(true));
+  if (checks !== 0) return checks;
+  return execute(["mise", "run", "coverage:check"]);
+}
+
+/**
+ * ubuntu ではすべての検査、それ以外では Docker を使わない検査を返す。
+ * OS を足す導入先は ci.yml の matrix ステップの引数に足す。
+ */
+function matrix(oses) {
+  if (oses.length === 0)
+    throw new Error("matrix には OS を 1 つ以上渡してください");
+  const include = oses.flatMap((os) =>
+    checkKinds()
+      .filter(
+        (kind) => os.startsWith("ubuntu-") || (kind !== "it" && kind !== "at"),
+      )
+      .map((kind) => ({
+        os,
+        task: `check:${kind}`,
+        ...(os.startsWith("ubuntu-") && (kind === "unit" || kind === "it")
+          ? { coverage: kind === "it" ? "integration" : kind }
+          : {}),
+      })),
+  );
+  return { include };
+}
+
 const ZERO = /^0+$/;
 
 /**
@@ -180,13 +248,19 @@ function verify(fromStdin) {
 
 const [command, ...rest] = process.argv.slice(2);
 if (command === "run" && rest.length > 0) process.exitCode = run(rest);
+else if (command === "run-checks" && rest.length === 0)
+  process.exitCode = run(checkCommand(false));
+else if (command === "run-full" && rest.length === 0)
+  process.exitCode = runFull();
+else if (command === "matrix" && rest.length > 0)
+  process.stdout.write(`${JSON.stringify(matrix(rest))}\n`);
 else if (command === "verify" && rest.length === 0)
   process.exitCode = verify(false);
 else if (command === "verify" && rest.join(" ") === "--refs")
   process.exitCode = verify(true);
 else {
   console.error(
-    "使い方: node scripts/guardrail-check.mjs run <command> ... | verify [--refs]",
+    "使い方: node scripts/guardrail-check.mjs run-checks | run-full | matrix <os> ... | run <command> ... | verify [--refs]",
   );
   process.exitCode = 2;
 }

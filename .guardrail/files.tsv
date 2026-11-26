@@ -1,0 +1,24 @@
+# development のガードレール: 配るファイルの区別（scripts/guardrail-rules.mjs の harness-files が読む）。
+# 生成物。手で直さない。tools/development/src/guardrail/files.ts の一覧から gen:files-manifest が作る。
+# part<TAB>パス<TAB>区別（harness・shared・project）<TAB>配布版の sha256（改行を LF にそろえた中身）<TAB>置くスタック。
+# sha256 が - のファイルは、同じかを判定しない（Jinja で描くファイルと、この一覧そのもの）。
+# 置くスタックが - でないファイルは、そのどれかを導入したときだけ置く（それ以外で無くても落とさない）。
+common	scripts/guardrail-check.mjs	harness	2948a549eaf43de401614accfb068065b2c938a2dfb7dc61483b07b0c07b4f7e	-
+common	scripts/guardrail-coverage.mjs	harness	4a250836cc3cf16643007863692900be23f3c827adbba99f00d43bd2aeae5db8	-
+common	scripts/guardrail-rules.mjs	harness	fec96df950cf69dadb75dfdd91e59225f0f94c4468a0358dadf1ed855b28c321	-
+common	scripts/jscpd-annotate.mjs	harness	546a40416dae150aa0fdcc87c31002759d27c0a00b7025c6df2cf34046f94f57	typescript,python
+common	.mise/tasks/check/lint/guardrail	harness	4121ecde9508a7c4d4045a6307939e9d3da194800e31d5dccb065beb96b7aeb3	-
+common	.mise/tasks/guardrail/drift	harness	f9df15ea40ef23def4a2def93d6c3f6294863fca644c5adde5dba143b634f078	-
+common	.guardrail/stacks.tsv	harness	fdc6dfb3d5c6f85d95c224667589360f78095240780cf24ebbaaa77abd62169e	-
+common	.guardrail/files.tsv	harness	-	-
+common	.mise/config.toml	harness	-	-
+common	lefthook.yml	harness	-	-
+common	.github/workflows/guardrail.yml	harness	-	-
+common	.guardrail/answers/common.yml	harness	-	-
+common	.github/workflows/ci.yml	shared	-	-
+common	.gitattributes	shared	-	-
+common	.prettierignore	shared	-	-
+common	.env.example	shared	-	-
+terraform	.tflint.hcl	shared	-	-
+common	.guardrail/thresholds.json	project	-	-
+deployment	.github/workflows/deploy.yml	shared	-	-

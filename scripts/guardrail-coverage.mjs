@@ -8,6 +8,7 @@
 //
 //   node scripts/guardrail-coverage.mjs collect <stack> [--suite unit|integration] [--base <dir>] <lcov> ...
 //                                                               LCOV を共通の JSON へ変換する（複数あればまとめる）
+//     手元の TypeScript・Python unit では、今回の計測で変更行も報告する。比較先は GUARDRAIL_DIFF_BASE で指定できる。
 //   node scripts/guardrail-coverage.mjs reset                   前回の計測を消す（check:full の最初）
 //   node scripts/guardrail-coverage.mjs combine                 unit・integration の LCOV を合算する
 //   node scripts/guardrail-coverage.mjs check                   合計のカバレッジを閾値と比べる
@@ -36,6 +37,10 @@ const COVERAGE_DIR = ".guardrail/coverage";
 const THRESHOLDS = ".guardrail/thresholds.json";
 const RAISE_BODY = `${COVERAGE_DIR}/raise.md`;
 const STEP = 1;
+const LOCAL_UNIT_DIFF_LABELS = new Map([
+  ["typescript", "TypeScript"],
+  ["python", "Python"],
+]);
 // 閾値の種類（thresholds.json のキー）と、カバレッジの JSON で対応する集計。キーの文字列で
 // オブジェクトを引かず、取り出す関数で持つ（ESLint の security/detect-object-injection）。
 const METRICS = [
@@ -494,6 +499,9 @@ function collect(root, stack, args) {
   console.log(
     `${stack}: 行カバレッジ ${format(parsed.lines.pct)}（${parsed.lines.hit}/${parsed.lines.found} 行）・分岐カバレッジ ${format(parsed.branches.pct)}（${parsed.branches.hit}/${parsed.branches.found} 分岐）`,
   );
+  const label = LOCAL_UNIT_DIFF_LABELS.get(stack);
+  if (suite === "unit" && label)
+    reportUnitDiff(root, { stack, coverage: parsed, label });
   return 0;
 }
 
@@ -541,10 +549,11 @@ function checkMetric(coverage, thresholds, metric) {
   const { key, label } = metric;
   let failed = false;
   // 閾値のあるスタックのカバレッジが無いとき（LCOV が出なくなった・計測対象が 0 行）は失敗にする。
-  // 黙って通すと、閾値の判定が外れたことに誰も気づかない。
+  // 黙って通すと、閾値の判定が外れたことに誰も気づかない。閾値が 0 のスタック（導入した直後で、初回の計測の
+  // 前の値。テストがまだ無いこともある）は、下限が無いので落とさない。
   for (const [stack, threshold] of thresholds) {
     const data = coverage.get(stack);
-    if (typeof (data && metric.pick(data))?.pct !== "number") {
+    if (threshold > 0 && typeof (data && metric.pick(data))?.pct !== "number") {
       console.error(
         `${stack}: ${label}の閾値 ${threshold}% があるのに、カバレッジが記録されていません（${COVERAGE_DIR}/${stack}.json。スタックを外したなら ${THRESHOLDS} の ${key} からも消してください）`,
       );
@@ -585,7 +594,7 @@ function check(root) {
   return failed ? 1 : 0;
 }
 
-function gitDiff(root, base) {
+function gitDiff(root, base, unitOnly) {
   return execFileSync(
     "git",
     [
@@ -596,7 +605,7 @@ function gitDiff(root, base) {
       "--no-color",
       "--no-ext-diff",
       "--dst-prefix=b/",
-      `${base}...HEAD`,
+      ...(unitOnly ? ["--merge-base", base, "--"] : [`${base}...HEAD`]),
     ],
     { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
   );
@@ -615,13 +624,16 @@ function diffBase(args) {
   return ref ? `origin/${ref}` : "origin/main";
 }
 
-function diff(root, args) {
+function diff(root, args, unitReport) {
+  const unitOnly = unitReport !== undefined;
   const base = diffBase(args);
   const { diff: threshold } = loadThresholds(root);
-  const coverage = loadCoverage(root);
+  const coverage = unitOnly
+    ? new Map([[unitReport.stack, unitReport.coverage]])
+    : loadCoverage(root);
   let text;
   try {
-    text = gitDiff(root, base);
+    text = gitDiff(root, base, unitOnly);
   } catch (error) {
     console.error(
       `${base} との差分を取れませんでした: ${String(error.message ?? error).trim()}`,
@@ -633,6 +645,11 @@ function diff(root, args) {
   const thresholdText =
     threshold === null ? "未設定（報告のみ）" : `${threshold}%`;
   const lines = ["## 変更行のカバレッジ", ""];
+  if (unitOnly)
+    lines.push(
+      `${unitReport.label} の unit のみの参考値です。CI は integration と合算して判定します。`,
+      "",
+    );
   if (coverage.size === 0) {
     lines.push("カバレッジを記録したスタックがありません。");
   } else if (result.found === 0) {
@@ -653,12 +670,30 @@ function diff(root, args) {
   console.log(markdown);
   summary(markdown);
   if (threshold !== null && result.found > 0 && isBelow(result, threshold)) {
+    const advisoryPrefix = unitOnly
+      ? `${unitReport.label} unit の参考値: `
+      : "";
     console.error(
-      `変更行のカバレッジ ${format(result.pct)} が閾値 ${threshold}% を下回っています（${THRESHOLDS} の diff）`,
+      `${advisoryPrefix}変更行のカバレッジ ${format(result.pct)} が閾値 ${threshold}% を下回っています（${THRESHOLDS} の diff）`,
     );
-    return 1;
+    // integration だけが通す行も未カバーに見えるため、unit の結果で push を止めない。
+    return unitOnly ? 0 : 1;
   }
   return 0;
+}
+
+function reportUnitDiff(root, unitReport) {
+  if (process.env.CI || !existsSync(join(root, ".git"))) return;
+  // check だけでなく、check を上書きして unit タスクを呼ぶ導入先でも、今回の計測で報告する。
+  // unit の参考値を判定できなくても、unit 自体が失敗したとは扱わない。
+  const base = process.env.GUARDRAIL_DIFF_BASE;
+  try {
+    diff(root, base ? ["--base", base] : [], unitReport);
+  } catch (error) {
+    console.error(
+      `${unitReport.label} の変更行のカバレッジを確認できませんでした: ${String(error)}`,
+    );
+  }
 }
 
 function raise(root) {
