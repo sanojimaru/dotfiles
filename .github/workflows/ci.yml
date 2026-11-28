@@ -115,7 +115,7 @@ jobs:
           key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise/config.toml', 'mise.toml', '**/go.mod', '**/go.sum', '.golangci.yml', '.golangci.yaml') }}
           restore-keys: |
             go-${{ runner.os }}-${{ runner.arch }}-
-      - uses: jdx/mise-action@v5.2.10
+      - uses: jdx/mise-action@v5.3.0
       - run: mise run setup
         # tflint --init はルールセットを GitHub から取る。未認証だと回数制限に当たるので、ワークフローのトークンを渡す
         # （読むだけなので権限は足さない）。
@@ -175,7 +175,7 @@ jobs:
           pattern: guardrail-coverage-*
           merge-multiple: true
           path: .guardrail/coverage/
-      - uses: jdx/mise-action@v5.2.10
+      - uses: jdx/mise-action@v5.3.0
       - run: mise run coverage:check
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7.0.2
@@ -202,7 +202,7 @@ jobs:
         with:
           name: guardrail-coverage
           path: .guardrail/coverage/
-      - uses: jdx/mise-action@v5.2.10
+      - uses: jdx/mise-action@v5.3.0
       - run: mise run coverage:diff
 
   coverage-thresholds:
@@ -218,7 +218,7 @@ jobs:
         with:
           name: guardrail-coverage
           path: .guardrail/coverage/
-      - uses: jdx/mise-action@v5.2.10
+      - uses: jdx/mise-action@v5.3.0
       - id: raise
         run: mise run coverage:raise
       # 引き上げられるときだけ、案と手元で上げる手順（raise.md）を Job Summary とログに出す。ジョブは成功のまま。
@@ -265,7 +265,7 @@ jobs:
           key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.mise/config.toml', 'mise.toml', '**/go.mod', '**/go.sum', '.golangci.yml', '.golangci.yaml') }}
           restore-keys: |
             go-${{ runner.os }}-${{ runner.arch }}-
-      - uses: jdx/mise-action@v5.2.10
+      - uses: jdx/mise-action@v5.3.0
       - run: mise run setup
         env:
           GITHUB_TOKEN: ${{ github.token }}
