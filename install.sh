@@ -14,14 +14,6 @@ link() { # link <repo内の相対パス> <リンク先の絶対パス>
   ln -s "$src" "$dst"; echo "link    $dst"
 }
 
-copy() { # copy <repo内の相対パス> <配置先の絶対パス>。worktree を消しても動くよう実体を置く
-  local src="$ROOT/$1" dst="$2" tmp
-  mkdir -p "$(dirname "$dst")"
-  tmp="$(mktemp "$(dirname "$dst")/.install.XXXXXX")"
-  cp "$src" "$tmp" && chmod 755 "$tmp" && mv -f "$tmp" "$dst" || { rm -f "$tmp"; return 1; }
-  echo "copy    $dst"
-}
-
 # 共通スキルは他のツールも管理する場所へ配るため、同名の既存スキルを退避・上書きしない。
 # 全件を先に確かめ、衝突する名前があればリンクを変更する前に止める。
 for skill in "$ROOT"/agents/skills/*; do
@@ -50,7 +42,6 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
-copy bin/agent-usage           "$HOME/.local/bin/agent-usage"
 
 # VS Code (パスに空白を含むので必ず引用)
 VSCODE="$HOME/Library/Application Support/Code/User"
@@ -60,8 +51,6 @@ for f in settings.json keybindings.json mcp.json; do link "vscode/$f" "$VSCODE/$
 # 全体指示は 1 ファイルを両方へ (Claude は全体指示としての AGENTS.md を読まないため CLAUDE.md の名前でリンク)
 link agents/AGENTS.md                     "$HOME/.claude/CLAUDE.md"
 link agents/AGENTS.md                     "$HOME/.codex/AGENTS.md"
-link claude/hooks/require-orca-nested.sh "$HOME/.claude/hooks/require-orca-nested.sh"
-link claude/hooks/block-heavy-ask-user-question.sh "$HOME/.claude/hooks/block-heavy-ask-user-question.sh"
 link codex/keybindings.json               "$HOME/.codex/keybindings.json"
 for s in proposal-slide-design-markdown proposal-slide-image-deck; do
   link "codex/skills/$s" "$HOME/.codex/skills/$s"

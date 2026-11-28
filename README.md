@@ -86,10 +86,9 @@ drawio (cask), libreoffice (cask)
 - `home/` — ホーム直下 (`.zshrc` `.zshenv` `.gitconfig` `.vimrc`)
 - `config/` — `~/.config` 配下 (ghostty, fish, tmux, starship, git, mise)
 - `bin/` — 自作コマンド (`~/.local/bin` へリンク。`op-env` は 1Password の Service Account でキーを `.env` に書く)
-- `tests/` — 自作コマンドとインストールのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`tests/install.sh`)
+- `tests/` — 自作コマンドとインストールのテスト (`tests/op-env.sh`。本物の `op` は呼ばない。`tests/install.sh`)
 - `agents/AGENTS.md` — Claude Code と Codex 共通の全体指示 (`~/.claude/CLAUDE.md` と `~/.codex/AGENTS.md` へリンク)
 - `agents/skills/<スキル名>/SKILL.md` — 共通スキルを置く場所（今は 1 つも置いていない）。置くと `./install.sh` がスキルのディレクトリを `~/.claude/skills/<スキル名>` と `~/.agents/skills/<スキル名>`（Codex）へリンクする。追加したら再実行し、新しいセッションで使う。配置先に別のファイル・リンクがある場合や Codex 専用スキルと同名の場合は、既存のものを保ち、エラーで止まるので名前を分ける
-- `claude/` — Claude Code のフック (`~/.claude` へリンク。`settings.json` は管理しないので、PreToolUse への登録は各マシンで足す: `require-orca-nested.sh` は `Bash`。止めずに Claude へ警告する。`block-heavy-ask-user-question.sh` は `AskUserQuestion`)
 - `codex/` — Codex のキーバインド・自作スキル (`~/.codex` へリンク)
 - `vscode/` — VS Code ユーザー設定 (`settings.json` `keybindings.json` `mcp.json`)
 - `Brewfile` — brew / cask
@@ -132,35 +131,4 @@ cd ~/dotfiles && brew bundle dump --force
 
 設定ファイルはシンボリックリンクなので、`~` 側を編集すればそのままリポジトリに反映される。
 
-## Claude / Codex の週の使用率
-
-`agent-usage` で、両方の週枠・5時間枠の使用率・リセット日時・最終取得日時を表示する。
-取得から15分を超えた値、リセット日時を過ぎた値は古いと表示する。
-取得できない値を 0% として扱わない。閾値は `--max-age-minutes 30` のように変更できる。
-Claude・Codex とも `orca account list --json` と従来の記録の最終取得日時を比べ、新しい取得元の使用率と出典を表示する。
-同じ日時なら Orca を使う。取得元はサービスごとに選び、最新の記録に無い枠を別の取得元から補わない。
-`ORCA_CLI_COMMAND` があればその実行ファイルを使い、なければ `orca` を使う。
-Orca が無い・5秒以内に応答しない・サービスの使用率を読めないときは、Claude は statusLine の保存値、Codex はセッションログに戻る。
-Codex のログは `CODEX_HOME`（既定 `~/.codex`）の `sessions/` から、イベントの日時が最も新しい使用率の記録を 1 件だけ読む。
-その記録で提供されていない枠は、古い記録から補わずに取得不可と表示する。
-
-`agent-usage` は、ほかのコマンドと違ってリンクでなく実体を `~/.local/bin/agent-usage` へコピーする。
-Claude の statusLine が毎回このコマンドを実行するので、リンク元の worktree を消すとステータスラインと Orca の表示が止まるから。
-`bin/agent-usage` を変えたら、`~/dotfiles` を更新してから `./install.sh` を実行し直して入れ替える。
-
-Claude の保存は `./install.sh` の後、`agent-usage --install-claude-statusline` で有効にする。
-既存の Orca statusLine コマンドを `~/.claude/agent-usage/delegate.json` へ保存し、
-受け取った入力をそのまま元コマンドへ渡す。Orca は独自の statusLine コマンドを保持する。
-Claude の次の応答から週枠を `~/.claude/agent-usage/claude.json`、5時間枠を `claude-five-hour.json` に保存する。
-保存に失敗しても元コマンドへの受け渡しは続ける。
-`CLAUDE_CONFIG_DIR` 指定時はそのディレクトリを使う。会話本文は保存しない。
-
-Claude statusLine の保存値の最終取得日時は、statusLine が呼ばれた日時で、Claude が API から使用率を受け取った日時とは限らない。
-statusLine の入力には受け取った日時が無いので、しばらく応答していないセッションの再描画も新しい値に見える。
-そのため、保存済みよりリセット日時が前の値と、リセット日時が同じで保存済みより低い値は、古いセッションの再描画とみなし、保存済みの値と最終取得日時を残す。
-同じ期間の使用率は下がらないという運用上の仮定による。保存済みよりリセット日時が後の値だけを新しい期間として受け入れる。
-
-保存をやめるときは、`delegate.json` の `command` を `settings.json` の
-`statusLine.command` に戻す。Orca を更新した後は使用率表示も確認する。
-
-検査: `tests/op-env.sh`、`tests/session-hooks.sh`、`tests/ask-user-question-hook.sh`、`python3 tests/agent-usage.py`。
+検査: `bash tests/install.sh` と `bash tests/op-env.sh`。

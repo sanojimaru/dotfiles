@@ -9,7 +9,7 @@ REPO="$TMP/repo with spaces"
 TEST_HOME="$TMP/home with spaces"
 mkdir -p "$REPO" "$TEST_HOME"
 cp "$ROOT/install.sh" "$REPO/"
-for dir in home config bin vscode agents claude codex; do cp -R "$ROOT/$dir" "$REPO/"; done
+for dir in home config bin vscode agents codex; do cp -R "$ROOT/$dir" "$REPO/"; done
 
 check_link() {
   [ -L "$1" ] && [ "$(readlink "$1")" = "$2" ] || {
