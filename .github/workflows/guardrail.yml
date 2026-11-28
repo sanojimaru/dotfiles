@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           # 判定器がカバレッジの閾値をマージ先と比べるため、PR のマージコミットの親（マージ先の先端）まで取る。

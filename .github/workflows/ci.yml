@@ -58,7 +58,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - id: matrix
         run: |
           matrix=$(node scripts/guardrail-check.mjs matrix ubuntu-latest)
@@ -77,7 +77,7 @@ jobs:
       matrix: ${{ fromJSON(needs.prepare-check.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
         with:
           # 導入先が履歴やタグを使う検査（legacy snapshot の照合など）を check に足しても、浅い clone で落ちないようにする。
           fetch-depth: 0
@@ -167,7 +167,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8.0.2
         # テストが0件だと成果物が無い。coverage:check が「記録したスタックが無い」と報告する。
         continue-on-error: true
@@ -192,7 +192,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
         with:
           # 変更行を base ブランチとの差分で求めるため、履歴を全部取る。
           fetch-depth: 0
@@ -212,7 +212,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8.0.2
         continue-on-error: true
         with:
@@ -236,7 +236,7 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -280,7 +280,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - run: sh .mise/tasks/guardrail/drift
 
   # 必須チェックにするジョブ。ほかの全ジョブを needs に並べ、どれかが failure か cancelled なら失敗する
