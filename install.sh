@@ -50,15 +50,6 @@ link config/starship.toml      "$HOME/.config/starship.toml"
 link config/git/ignore         "$HOME/.config/git/ignore"
 link config/mise/config.toml   "$HOME/.config/mise/config.toml"
 link bin/op-env                "$HOME/.local/bin/op-env"
-# PATH で本物の codex（/opt/homebrew/bin）より前に置き、起動のたびに自分が管理するフックを信頼する
-if { [ -e "$HOME/.local/bin/codex" ] || [ -L "$HOME/.local/bin/codex" ]; } &&
-   [ "$(readlink "$HOME/.local/bin/codex")" != "$ROOT/bin/codex" ]; then
-  # 本物の codex を退避すると、ラッパーが起動する先を失うので置き換えない
-  echo "skip    $HOME/.local/bin/codex（ほかの codex がある。別の場所へ移してから再実行する）" >&2
-else
-  link bin/codex                "$HOME/.local/bin/codex"
-fi
-link bin/codex-hook-trust      "$HOME/.local/bin/codex-hook-trust"
 copy bin/agent-usage           "$HOME/.local/bin/agent-usage"
 
 # VS Code (パスに空白を含むので必ず引用)
